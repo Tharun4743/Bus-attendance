@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#FAF7F0] text-slate-800 antialiased min-h-screen font-sans;
+    background-color: #FAF7F0;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F4EFE4;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #DECFA4;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #C7B183;
+}
+
+/* Pulse animation for active session */
+@keyframes soft-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.02);
+  }
+}
+
+.animate-soft-pulse {
+  animation: soft-pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

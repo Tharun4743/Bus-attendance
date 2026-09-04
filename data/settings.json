@@ -1,0 +1,18 @@
+{
+  "sessionType": "EVENING",
+  "startTime": "16:50",
+  "endTime": "16:55",
+  "reportTime": "16:57",
+  "timezone": "Asia/Kolkata",
+  "location": {
+    "name": "College Ground",
+    "latitude": 13.0827,
+    "longitude": 80.2707,
+    "radiusMeters": 10,
+    "maxGpsAccuracyMeters": 20
+  },
+  "simulation": {
+    "enabled": false,
+    "simulatedTime": null
+  }
+}
