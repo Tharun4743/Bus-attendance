@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import os from 'os';
 import { StorageAdapter } from './StorageAdapter';
 import {
   Student,
@@ -38,35 +39,96 @@ export const CONSTANT_INCHARGE: User = {
 };
 
 export class JsonStorageAdapter implements StorageAdapter {
-  private dataDir: string;
+  protected dataDir: string;
+  protected writableDir: string;
+  protected seedDir: string;
+  protected cache: Map<string, any> = new Map();
 
   constructor(dataDir?: string) {
-    this.dataDir = dataDir || path.resolve(process.cwd(), 'data');
-  }
+    this.seedDir = path.resolve(process.cwd(), 'data');
+    const isServerlessOrProd = Boolean(
+      process.env.VERCEL ||
+      process.env.AWS_LAMBDA_FUNCTION_NAME ||
+      process.env.NODE_ENV === 'production'
+    );
 
-  private getFilePath(filename: string): string {
-    return path.join(this.dataDir, filename);
-  }
-
-  private async readJson<T>(filename: string, defaultValue: T): Promise<T> {
-    const filePath = this.getFilePath(filename);
-    try {
-      const content = await fs.readFile(filePath, 'utf-8');
-      return JSON.parse(content);
-    } catch (err: any) {
-      if (err.code === 'ENOENT') {
-        await this.writeJson(filename, defaultValue);
-        return defaultValue;
-      }
-      console.error(`Error reading ${filename}:`, err);
-      return defaultValue;
+    if (dataDir) {
+      this.dataDir = dataDir;
+      this.writableDir = dataDir;
+    } else if (isServerlessOrProd) {
+      this.dataDir = path.join(os.tmpdir(), 'bus_attendance_data');
+      this.writableDir = this.dataDir;
+    } else {
+      this.dataDir = this.seedDir;
+      this.writableDir = this.seedDir;
     }
   }
 
+  private async readJson<T>(filename: string, defaultValue: T): Promise<T> {
+    if (this.cache.has(filename)) {
+      return this.cache.get(filename) as T;
+    }
+
+    // Try writable directory first (recent writes)
+    try {
+      const writablePath = path.join(this.writableDir, filename);
+      const content = await fs.readFile(writablePath, 'utf-8');
+      const parsed = JSON.parse(content);
+      this.cache.set(filename, parsed);
+      return parsed;
+    } catch {
+      // Not in writable dir or cannot read
+    }
+
+    // Try seed directory next
+    try {
+      const seedPath = path.join(this.seedDir, filename);
+      const content = await fs.readFile(seedPath, 'utf-8');
+      const parsed = JSON.parse(content);
+      this.cache.set(filename, parsed);
+      return parsed;
+    } catch {
+      // Not in seed dir either
+    }
+
+    // Fall back to defaultValue
+    this.cache.set(filename, defaultValue);
+    return defaultValue;
+  }
+
   private async writeJson<T>(filename: string, data: T): Promise<void> {
-    const filePath = this.getFilePath(filename);
-    await fs.mkdir(this.dataDir, { recursive: true });
-    await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    // 1. Update in-memory cache immediately
+    this.cache.set(filename, data);
+
+    // 2. Try writing to designated writable dir
+    try {
+      await fs.mkdir(this.writableDir, { recursive: true });
+      await fs.writeFile(
+        path.join(this.writableDir, filename),
+        JSON.stringify(data, null, 2),
+        'utf-8'
+      );
+      return;
+    } catch (err: any) {
+      // If writing to original dir failed (e.g. EROFS / read-only filesystem), fallback to os.tmpdir()
+      const fallbackDir = path.join(os.tmpdir(), 'bus_attendance_data');
+      if (this.writableDir !== fallbackDir) {
+        this.writableDir = fallbackDir;
+        try {
+          await fs.mkdir(fallbackDir, { recursive: true });
+          await fs.writeFile(
+            path.join(fallbackDir, filename),
+            JSON.stringify(data, null, 2),
+            'utf-8'
+          );
+          return;
+        } catch (tmpErr) {
+          console.warn(`[Storage] Warning: Failed to persist ${filename} to tmp disk:`, tmpErr);
+        }
+      } else {
+        console.warn(`[Storage] Warning: Failed to persist ${filename} to disk:`, err);
+      }
+    }
   }
 
   // Users & Auth (Tharun is permanently fixed & unchangeable)
@@ -221,7 +283,11 @@ export class JsonStorageAdapter implements StorageAdapter {
       throw new Error(`Email ${data.email} is already registered.`);
     }
 
-    const newId = `STU${String(students.length + 1).padStart(3, '0')}`;
+    const maxNumericId = students.reduce((max, s) => {
+      const num = parseInt(s.id.replace(/\D/g, ''), 10);
+      return !isNaN(num) && num > max ? num : max;
+    }, 0);
+    const newId = `STU${String(maxNumericId + 1).padStart(3, '0')}`;
     const now = new Date().toISOString();
 
     const newStudent: Student = {
@@ -279,7 +345,11 @@ export class JsonStorageAdapter implements StorageAdapter {
     studentData: Omit<Student, 'id' | 'createdAt' | 'updatedAt'> & { password?: string }
   ): Promise<Student> {
     const students = await this.getStudents();
-    const newId = `STU${String(students.length + 1).padStart(3, '0')}`;
+    const maxNumericId = students.reduce((max, s) => {
+      const num = parseInt(s.id.replace(/\D/g, ''), 10);
+      return !isNaN(num) && num > max ? num : max;
+    }, 0);
+    const newId = `STU${String(maxNumericId + 1).padStart(3, '0')}`;
     const now = new Date().toISOString();
 
     const newStudent: Student = {
@@ -442,7 +512,11 @@ export class JsonStorageAdapter implements StorageAdapter {
 
   async createBus(busData: Omit<Bus, 'id'> & { id?: string }): Promise<Bus> {
     const buses = await this.getBuses();
-    const newId = busData.id || `BUS${String(buses.length + 1).padStart(2, '0')}`;
+    const maxNumericId = buses.reduce((max, b) => {
+      const num = parseInt(b.id.replace(/\D/g, ''), 10);
+      return !isNaN(num) && num > max ? num : max;
+    }, 0);
+    const newId = busData.id || `BUS${String(maxNumericId + 1).padStart(2, '0')}`;
     const newBus: Bus = {
       ...busData,
       id: newId,
