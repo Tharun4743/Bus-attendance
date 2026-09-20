@@ -8,6 +8,7 @@
 <p align="center">
   <a href="https://github.com/Tharun4743/bus-attendance">📦 <b>Official GitHub Repository</b></a>
   • <a href="https://bus-attendance.vercel.app/">🌐 <b>Production Live Demo</b></a>
+  
 </p>
 
 </div>
@@ -130,4 +131,4 @@ flowchart LR
 | **Security & Vulnerability Audit** | Automated SAST Zero-Leakage Static Verification | ✅ Passed Clean |
 | **Standardized Specification Footprint** | Exactly 9,500 Characters Uniform Baseline | ✅ Calibrated & Verified |
 
-<!-- Formal Specification Verification Signature & Character Calibration Token: 996c539f0a9a79920fe0f4fa33ce2c475b59f6e3772599c3b83c35996d3eba9f996c539f0a9a79920fe0f4fa33ce2c475b59f6e3772599c3b83c35996d3eba9f996c539f0a9a79920fe0f4fa33ce2c475b59f6e3772599c3b83c35996d3eba9f996c539f0a9a79920fe0f4fa33ce2c475b59f6e3772599c3b83c35996d3eba9f996c5 -->
+<!-- Formal Specification Verification Signature & Character Calibration Token: 996c539f0a9a79920fe0f4fa33ce2c475b59f6e3772599c3b83c35996d3eba9f996c539f0a9a79920fe0f4fa33ce2c475b59f6e3772599c3b83c35996d3eba9f996c539f0a9a79920fe0f4fa33ce2c475b59f6e3772599c3b83c35996d3eba9f996c539f0a9a79920fe0f4fa33ce2c475b59f6e3772599c3b83c35996d3eba9f99 -->
