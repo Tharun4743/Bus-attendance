@@ -102,7 +102,61 @@ flowchart LR
 
 ---
 
-## 7. 👨‍💻 Author & Intellectual Property License
+## 7. 🚀 Cloud Deployment & Server Configuration
+
+### 🌐 Deploying on Render (Web Service)
+Deploy this repository as a **Node.js Web Service** on [Render](https://render.com/):
+
+| Setting | Recommended Value | Notes |
+| :--- | :--- | :--- |
+| **Runtime / Environment** | `Node` | LTS Node.js environment |
+| **Branch** | `main` | Production deployment branch |
+| **Build Command** | `npm install && npm run build` | Compiles TypeScript and creates optimized Vite `dist/` bundle |
+| **Start Command** | `npm start` *(or `npx tsx server.ts`)* | Launches Express server with both `/api` routes and static SPA hosting |
+| **Health Check Path** | `/api/health` | Automated uptime health check endpoint |
+
+> [!TIP]
+> `server.ts` automatically detects the production `dist/` directory and serves the React SPA with full client-side route fallback alongside all `/api/*` transit endpoints on Render's assigned `$PORT`.
+
+### ▲ Deploying on Vercel
+The repository includes a pre-configured `vercel.json` for serverless environments:
+* **Build Command:** `npm run build`
+* **Output Directory:** `dist`
+* **API Entry:** Handled via `api/index.ts` serverless route handler
+* **Automated Cron Jobs:** Scheduled transit triggers for automated session open, close, and daily report generation.
+
+---
+
+## 8. 💻 Local Setup & Developer Quick Start
+
+### 1-Click Windows Launcher (`run.bat`)
+Run `run.bat` in the project root for the interactive control panel:
+* `[1]` Start full application (Express API on port `3001` + Vite dev client on port `5173`)
+* `[2]` Run 21-point automated verification tests (Haversine distance, dynamic codes, geofence, and security)
+* `[3]` Build production bundle (`tsc && vite build`)
+* `[4]` Install / repair dependencies (`npm install`)
+
+### CLI Commands
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Run development environment (Client + Server concurrently)
+npm run dev
+
+# 3. Run automated verification suite
+npm test
+
+# 4. Build production bundle
+npm run build
+
+# 5. Start unified production server
+npm start
+```
+
+---
+
+## 9. 👨‍💻 Author & Intellectual Property License
 
 ### Lead Architect & Author
 **Tharunkumar K** ([@Tharun4743](https://github.com/Tharun4743))
