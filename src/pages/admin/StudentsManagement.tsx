@@ -145,20 +145,23 @@ export const StudentsManagement: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+      {/* Uniform Header Container */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-[#EAE2D2]">
         <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight">
+          <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 bg-amber-100/70 px-2.5 py-0.5 rounded-full border border-amber-200 inline-block">
+            STUDENT DIRECTORY
+          </span>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 mt-1 tracking-tight">
             Student Management
           </h1>
-          <p className="text-[11px] text-amber-900/70 font-medium">
+          <p className="text-xs text-amber-900/70 font-medium mt-0.5">
             Register students, manage active transport status, and assign buses.
           </p>
         </div>
 
         <button
           onClick={handleOpenAddModal}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-xs transition shadow-sm self-start sm:self-auto"
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-xs transition shadow-sm self-start sm:self-auto cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>Add Student</span>

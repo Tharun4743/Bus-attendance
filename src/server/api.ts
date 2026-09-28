@@ -86,17 +86,17 @@ apiRouter.post('/auth/setup', async (req: Request, res: Response) => {
 apiRouter.post('/auth/signup', async (req: Request, res: Response) => {
   try {
     const { name, registerNumber, email, phone, password, preferredBusId } = req.body;
-    if (!name || !registerNumber || !email || !phone || !password) {
+    if (!name || !registerNumber || !password) {
       return res.status(400).json({
-        error: 'All fields (Full Name, Register Number, Email, Phone, Password) are required.',
+        error: 'Full Name, Register Number, and Password are required.',
       });
     }
 
     const student = await storage.signupStudent({
-      name,
-      registerNumber,
-      email,
-      phone,
+      name: name.trim(),
+      registerNumber: registerNumber.trim().toUpperCase(),
+      email: email?.trim(),
+      phone: phone?.trim(),
       password,
       preferredBusId,
     });

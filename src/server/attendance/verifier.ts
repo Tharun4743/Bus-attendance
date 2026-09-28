@@ -82,28 +82,6 @@ export class AttendanceVerifier {
       targetRadius = activeDynamicSession.radiusMeters || 10;
       maxAccuracy = activeDynamicSession.maxGpsAccuracyMeters || 20;
 
-      // 4a. Validate 6-digit dynamic code
-      const submittedCode = (req.code || '').toString().trim();
-      const activeCode = (activeDynamicSession.currentCode || '').toString().trim();
-
-      if (!submittedCode || submittedCode !== activeCode) {
-        return {
-          status: 'INVALID_CODE',
-          message: 'The attendance code is incorrect or has expired.',
-        };
-      }
-
-      // 4b. Code expiration check
-      if (activeDynamicSession.codeExpiresAt) {
-        const now = Date.now();
-        const expiry = new Date(activeDynamicSession.codeExpiresAt).getTime();
-        if (now > expiry) {
-          return {
-            status: 'INVALID_CODE',
-            message: 'The attendance code is incorrect or has expired.',
-          };
-        }
-      }
 
       // 4c. Bus Isolation Security check: Student must belong to the active session bus
       if (activeDynamicSession.busId !== 'ALL' && activeDynamicSession.busId !== student.busId) {

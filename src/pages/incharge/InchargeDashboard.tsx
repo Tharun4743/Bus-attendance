@@ -82,21 +82,21 @@ export const InchargeDashboard: React.FC = () => {
       {/* Start Live Attendance (Morning / Travelling Bus) for Incharge Bus */}
       <StartAttendanceModal buses={[data.bus]} onSessionChanged={fetchData} />
 
-      {/* Header Info & Bus Details */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-[#EAE2D2] flex flex-col md:flex-row md:items-center justify-between gap-3">
+      {/* Uniform Header Container */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-[#EAE2D2] flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <span className="text-[9px] font-extrabold uppercase tracking-wider text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+          <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 bg-amber-100/70 px-2.5 py-0.5 rounded-full border border-amber-200 inline-block">
             BUS INCHARGE PORTAL
           </span>
-          <h1 className="text-xl font-extrabold text-slate-900 mt-0.5">
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 mt-1 tracking-tight">
             {data.bus.busNumber}
           </h1>
-          <p className="text-[11px] text-slate-500 font-medium">{data.bus.routeName}</p>
+          <p className="text-xs text-amber-900/70 font-medium mt-0.5">Route: {data.bus.routeName}</p>
         </div>
 
         <button
           onClick={handleRefresh}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FAF7F0] hover:bg-[#F4EFE4] text-slate-700 font-semibold rounded-xl text-xs transition border border-[#EAE2D2] self-start md:self-auto"
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-[#FAF7F0] hover:bg-stone-200/50 text-slate-700 font-bold rounded-xl text-xs transition border border-[#EAE2D2] self-start md:self-auto cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
           <span>Refresh Roster</span>

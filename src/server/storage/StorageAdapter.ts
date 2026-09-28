@@ -33,8 +33,8 @@ export interface StorageAdapter {
   signupStudent(data: {
     name: string;
     registerNumber: string;
-    email: string;
-    phone: string;
+    email?: string;
+    phone?: string;
     password?: string;
     preferredBusId?: string;
   }): Promise<Student>;

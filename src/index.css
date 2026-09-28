@@ -3,16 +3,32 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scrollbar-gutter: stable;
+    overflow-y: scroll;
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-[#FAF7F0] text-slate-800 antialiased min-h-screen font-sans;
     background-color: #FAF7F0;
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-/* Custom scrollbars */
+/* Eliminate GPU layer flashing & scroll jitter */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Custom scrollbars with stable gutter to prevent resize flickering */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -26,20 +42,4 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: #C7B183;
-}
-
-/* Pulse animation for active session */
-@keyframes soft-pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.85;
-    transform: scale(1.02);
-  }
-}
-
-.animate-soft-pulse {
-  animation: soft-pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

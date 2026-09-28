@@ -211,7 +211,7 @@ export const StudentApprovals: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span>{stu.phone}</span>
+                      <span>{stu.phone || 'No phone'}</span>
                     </div>
                   </div>
 

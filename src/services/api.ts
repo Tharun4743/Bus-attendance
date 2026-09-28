@@ -71,9 +71,9 @@ class ApiClient {
   async signupStudent(data: {
     name: string;
     registerNumber: string;
-    email: string;
-    phone: string;
     password: string;
+    email?: string;
+    phone?: string;
     preferredBusId?: string;
   }): Promise<{ message: string; student: any }> {
     return this.request('/auth/signup', {

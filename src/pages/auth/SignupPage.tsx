@@ -1,49 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
-import { Bus } from '../../types';
 import {
   Bus as BusIcon,
   User as UserIcon,
-  Mail,
-  Phone,
   Lock,
   CheckCircle2,
   AlertCircle,
   Clock,
   ArrowRight,
+  Hash,
 } from 'lucide-react';
 
 export const SignupPage: React.FC = () => {
   const [name, setName] = useState('');
   const [registerNumber, setRegisterNumber] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [preferredBusId, setPreferredBusId] = useState('');
-  const [buses, setBuses] = useState<Bus[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  useEffect(() => {
-    // Load available buses for preferred bus selection if any exist
-    api.getBuses().then((b) => setBuses(b || [])).catch(() => setBuses([]));
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!name || !registerNumber || !email || !phone || !password || !confirmPassword) {
-      setError('Please fill in all required fields.');
+    const trimmedName = name.trim();
+    const cleanReg = registerNumber.trim().toUpperCase();
+
+    if (!trimmedName || !cleanReg || !password || !confirmPassword) {
+      setError('Please fill in all fields (Full Name, Register Number, Password).');
       return;
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long.');
+    if (password.length < 4) {
+      setError('Password must be at least 4 characters long.');
       return;
     }
 
@@ -56,12 +48,9 @@ export const SignupPage: React.FC = () => {
 
     try {
       await api.signupStudent({
-        name,
-        registerNumber,
-        email,
-        phone,
+        name: trimmedName,
+        registerNumber: cleanReg,
         password,
-        preferredBusId: preferredBusId || undefined,
       });
 
       setIsSuccess(true);
@@ -86,17 +75,26 @@ export const SignupPage: React.FC = () => {
                 STATUS: PENDING APPROVAL
               </span>
               <h2 className="text-xl font-black text-slate-900 mt-2.5">
-                ACCOUNT CREATED
+                REGISTRATION SUBMITTED
               </h2>
               <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
-                Your registration has been submitted for Admin approval. You can login after your account has been approved and assigned to a bus by the Admin.
+                Your account has been submitted for Admin approval. Once approved and assigned to your bus route, you can log in directly using your Register Number and Password.
               </p>
             </div>
 
-            <div className="bg-[#FAF7F0] p-3.5 rounded-xl border border-[#EAE2D2] text-xs text-left space-y-1 font-mono text-slate-700">
-              <p><span className="text-slate-400 font-sans font-semibold">Name:</span> {name}</p>
-              <p><span className="text-slate-400 font-sans font-semibold">Register No:</span> {registerNumber.toUpperCase()}</p>
-              <p><span className="text-slate-400 font-sans font-semibold">Email:</span> {email}</p>
+            <div className="bg-[#FAF7F0] p-4 rounded-xl border border-[#EAE2D2] text-xs text-left space-y-1.5 font-mono text-slate-700">
+              <div className="flex justify-between border-b border-[#EAE2D2] pb-1 font-sans">
+                <span className="text-slate-500 text-[11px] font-semibold">Full Name:</span>
+                <span className="font-bold text-slate-800">{name}</span>
+              </div>
+              <div className="flex justify-between border-b border-[#EAE2D2] pb-1 font-sans">
+                <span className="text-slate-500 text-[11px] font-semibold">Register Number:</span>
+                <span className="font-bold text-brand-700 font-mono">{registerNumber.toUpperCase()}</span>
+              </div>
+              <div className="flex justify-between font-sans pt-0.5">
+                <span className="text-slate-500 text-[11px] font-semibold">Login Username:</span>
+                <span className="font-bold text-slate-800 font-mono">{registerNumber.toUpperCase()}</span>
+              </div>
             </div>
 
             <Link
@@ -122,7 +120,7 @@ export const SignupPage: React.FC = () => {
           Student Sign Up
         </h1>
         <p className="text-xs text-amber-900/70 font-medium">
-          Create your college bus attendance account
+          Create your account in seconds with your Register Number
         </p>
       </div>
 
@@ -135,7 +133,8 @@ export const SignupPage: React.FC = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-3">
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+            {/* Full Name */}
             <div>
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                 Full Name <span className="text-rose-500">*</span>
@@ -153,116 +152,64 @@ export const SignupPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Register Number */}
             <div>
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                 Register Number <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
-                <span className="text-slate-400 font-mono text-xs font-bold absolute left-3 top-2">#</span>
+                <Hash className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
                 <input
                   type="text"
                   required
                   placeholder="e.g. 24IT001"
                   value={registerNumber}
                   onChange={(e) => setRegisterNumber(e.target.value.toUpperCase())}
-                  className="w-full pl-8 pr-3 py-2 text-xs rounded-xl bg-[#FAF7F0]/50 border border-[#EAE2D2] text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none font-mono uppercase transition"
+                  className="w-full pl-8 pr-3 py-2 text-xs rounded-xl bg-[#FAF7F0]/50 border border-[#EAE2D2] text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none font-mono uppercase transition tracking-wider"
+                />
+              </div>
+              <p className="text-[10px] text-slate-500 mt-1">
+                This will be your primary login ID.
+              </p>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Password <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="password"
+                  required
+                  placeholder="Create a password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-8 pr-3 py-2 text-xs rounded-xl bg-[#FAF7F0]/50 border border-[#EAE2D2] text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Email <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type="email"
-                    required
-                    placeholder="student@college.edu"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 text-xs rounded-xl bg-[#FAF7F0]/50 border border-[#EAE2D2] text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Phone <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type="tel"
-                    required
-                    placeholder="9876543210"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 text-xs rounded-xl bg-[#FAF7F0]/50 border border-[#EAE2D2] text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition"
-                  />
-                </div>
+            {/* Confirm Password */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Confirm Password <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="password"
+                  required
+                  placeholder="Re-type password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full pl-8 pr-3 py-2 text-xs rounded-xl bg-[#FAF7F0]/50 border border-[#EAE2D2] text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition"
+                />
               </div>
             </div>
 
-            {buses.length > 0 && (
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Preferred Bus (Optional)
-                </label>
-                <select
-                  value={preferredBusId}
-                  onChange={(e) => setPreferredBusId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-[#FAF7F0]/50 border border-[#EAE2D2] text-slate-800 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition font-medium"
-                >
-                  <option value="">Select Preferred Bus</option>
-                  {buses.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.busNumber} — {b.routeName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Password <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type="password"
-                    required
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 text-xs rounded-xl bg-[#FAF7F0]/50 border border-[#EAE2D2] text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Confirm Password <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type="password"
-                    required
-                    placeholder="••••••••"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 text-xs rounded-xl bg-[#FAF7F0]/50 border border-[#EAE2D2] text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-1.5">
+            <div className="pt-2">
               <button
                 type="submit"
                 disabled={isLoading}
@@ -276,7 +223,7 @@ export const SignupPage: React.FC = () => {
                 ) : (
                   <>
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>CREATE ACCOUNT</span>
+                    <span>REGISTER ACCOUNT</span>
                   </>
                 )}
               </button>
@@ -286,7 +233,7 @@ export const SignupPage: React.FC = () => {
           <div className="pt-3 border-t border-[#EAE2D2] text-center text-[11px] text-slate-500">
             <span>Already registered? </span>
             <Link to="/login" className="text-brand-700 font-bold hover:underline">
-              Login here
+              Sign In here
             </Link>
           </div>
         </div>

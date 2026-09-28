@@ -17,20 +17,20 @@ export const Navbar: React.FC = () => {
     switch (role) {
       case 'ADMIN':
         return (
-          <span className="flex items-center gap-1 text-[11px] font-bold bg-purple-100 text-purple-700 px-2.5 py-0.5 rounded-full">
-            <Shield className="w-3 h-3" /> ADMIN
+          <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wider bg-purple-100/80 text-purple-800 border border-purple-200/80 px-2.5 py-0.5 rounded-full">
+            <Shield className="w-3 h-3 text-purple-700" /> Admin
           </span>
         );
       case 'INCHARGE':
         return (
-          <span className="flex items-center gap-1 text-[11px] font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full">
-            <UserCheck className="w-3 h-3" /> BUS INCHARGE
+          <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wider bg-blue-100/80 text-blue-800 border border-blue-200/80 px-2.5 py-0.5 rounded-full">
+            <UserCheck className="w-3 h-3 text-blue-700" /> Incharge
           </span>
         );
       case 'STUDENT':
         return (
-          <span className="flex items-center gap-1 text-[11px] font-bold bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full">
-            <GraduationCap className="w-3 h-3" /> STUDENT
+          <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wider bg-emerald-100/80 text-emerald-800 border border-emerald-200/80 px-2.5 py-0.5 rounded-full">
+            <GraduationCap className="w-3 h-3 text-emerald-700" /> Student
           </span>
         );
       default:
@@ -39,7 +39,7 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-[#FAF7F0]/95 backdrop-blur-md border-b border-[#EAE2D2]">
+    <header className="sticky top-0 z-40 bg-[#FAF7F0] border-b border-[#EAE2D2] shadow-2xs">
       <div className="max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
           {/* Brand Logo */}
@@ -51,21 +51,16 @@ export const Navbar: React.FC = () => {
                 ? '/incharge/dashboard'
                 : '/student/dashboard'
             }
-            className="flex items-center gap-2.5 group"
+            className="flex items-center gap-2.5"
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-600 to-brand-800 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition">
-              <Bus className="w-4 h-4" />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-700 flex items-center justify-center text-white shadow-xs shrink-0">
+              <Bus className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-black tracking-tight text-slate-900">
-                  BUS ATTENDANCE
-                </span>
-                {getRoleBadge()}
-              </div>
-              <p className="text-[10px] font-medium text-amber-800/70 tracking-wider uppercase leading-none">
-                College Transport Portal
-              </p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm sm:text-base font-black tracking-tight text-slate-900">
+                Bus Attendance
+              </span>
+              {getRoleBadge()}
             </div>
           </Link>
 

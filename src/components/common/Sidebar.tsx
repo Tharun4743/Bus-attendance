@@ -2,27 +2,17 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
-  Users,
   UserCheck,
   Bus,
-  CalendarCheck,
-  History,
   FileSpreadsheet,
-  MapPin,
-  Bell,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
   const navItems = [
-    { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/admin/dashboard', label: 'All-in-One Dashboard', icon: LayoutDashboard },
     { to: '/admin/approvals', label: 'Student Approvals', icon: UserCheck },
-    { to: '/admin/students', label: 'Students', icon: Users },
     { to: '/admin/buses', label: 'Buses', icon: Bus },
-    { to: '/admin/attendance', label: "Today's Attendance", icon: CalendarCheck },
-    { to: '/admin/attendance/history', label: 'Attendance History', icon: History },
-    { to: '/admin/reports', label: 'Final Reports', icon: FileSpreadsheet },
-    { to: '/admin/settings/geofence', label: 'Geofence Settings', icon: MapPin },
-    { to: '/admin/notifications', label: 'Notifications', icon: Bell },
+    { to: '/admin/reports', label: 'Attendance Reports', icon: FileSpreadsheet },
   ];
 
   return (

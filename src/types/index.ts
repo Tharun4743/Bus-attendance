@@ -210,7 +210,7 @@ export interface GpsReading {
 }
 
 export interface LocationVerificationRequest {
-  code: string; // 6-digit dynamic code
+  code?: string;
   latitude?: number;
   longitude?: number;
   accuracy?: number;
