@@ -5,7 +5,7 @@ import { Sidebar } from '../components/common/Sidebar';
 
 export const AdminLayout: React.FC = () => {
   return (
-    <div className="min-h-screen bg-[#FAF7F0] flex flex-col">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0b0e] text-zinc-900 dark:text-zinc-100 flex flex-col transition-colors duration-200">
       <Navbar />
       <div className="flex-1 flex flex-col lg:flex-row max-w-[1440px] w-full mx-auto">
         <Sidebar />

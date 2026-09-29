@@ -6,6 +6,7 @@ import { JsonStorageAdapter } from '../src/server/storage/JsonStorageAdapter';
 import { AttendanceSettings, User } from '../src/types';
 import path from 'path';
 import fs from 'fs/promises';
+import os from 'os';
 
 async function runSystemTests() {
   console.log('================================================================');
@@ -25,17 +26,18 @@ async function runSystemTests() {
     }
   }
 
-  const dataDir = path.resolve(process.cwd(), 'data');
-  const storage = new JsonStorageAdapter(dataDir);
+  const testDir = path.join(os.tmpdir(), `bus_attendance_test_${Date.now()}`);
+  await fs.mkdir(testDir, { recursive: true });
+  const storage = new JsonStorageAdapter(testDir);
 
-  // Clean slate initialization
-  await fs.writeFile(path.join(dataDir, 'users.json'), '[]', 'utf-8');
-  await fs.writeFile(path.join(dataDir, 'buses.json'), '[]', 'utf-8');
-  await fs.writeFile(path.join(dataDir, 'students.json'), '[]', 'utf-8');
-  await fs.writeFile(path.join(dataDir, 'attendance.json'), '[]', 'utf-8');
-  await fs.writeFile(path.join(dataDir, 'notifications.json'), '[]', 'utf-8');
-  await fs.writeFile(path.join(dataDir, 'reports.json'), '[]', 'utf-8');
-  await fs.writeFile(path.join(dataDir, 'active_session.json'), 'null', 'utf-8');
+  // Clean slate initialization in isolated test directory
+  await fs.writeFile(path.join(testDir, 'users.json'), '[]', 'utf-8');
+  await fs.writeFile(path.join(testDir, 'buses.json'), '[]', 'utf-8');
+  await fs.writeFile(path.join(testDir, 'students.json'), '[]', 'utf-8');
+  await fs.writeFile(path.join(testDir, 'attendance.json'), '[]', 'utf-8');
+  await fs.writeFile(path.join(testDir, 'notifications.json'), '[]', 'utf-8');
+  await fs.writeFile(path.join(testDir, 'reports.json'), '[]', 'utf-8');
+  await fs.writeFile(path.join(testDir, 'active_session.json'), 'null', 'utf-8');
 
   // 1. Haversine Formula Tests
   console.log('--- 1. HAVERSINE DISTANCE VERIFICATION ---');
@@ -235,33 +237,10 @@ async function runSystemTests() {
   assert(report.notPresent === 0, `Daily report reflects real notPresent count (0 not present)`);
   assert(report.busWise.length === 1 && report.busWise[0].busId === 'BUS06', 'Report contains BUS06 summary');
 
-  // Preserve fixed Bus No 6 with Incharge Aarthi in buses.json
-  await fs.writeFile(
-    path.join(dataDir, 'buses.json'),
-    JSON.stringify(
-      [
-        {
-          id: 'BUS06',
-          busNumber: 'Bus No 6',
-          routeName: 'Dharapuram',
-          inchargeId: 'INC006',
-          active: true,
-        },
-      ],
-      null,
-      2
-    ),
-    'utf-8'
-  );
-  await fs.writeFile(path.join(dataDir, 'users.json'), '[]', 'utf-8');
-  await fs.writeFile(path.join(dataDir, 'students.json'), '[]', 'utf-8');
-  await fs.writeFile(path.join(dataDir, 'attendance.json'), '[]', 'utf-8');
-  await fs.writeFile(path.join(dataDir, 'notifications.json'), '[]', 'utf-8');
-  await fs.writeFile(path.join(dataDir, 'reports.json'), '[]', 'utf-8');
-  await fs.writeFile(path.join(dataDir, 'active_session.json'), 'null', 'utf-8');
-  await storage.updateSettings({
-    simulation: { enabled: false, simulatedTime: null },
-  });
+  // Clean up isolated test directory
+  try {
+    await fs.rm(testDir, { recursive: true, force: true });
+  } catch {}
 
   console.log('\n================================================================');
   console.log(`📊 TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);

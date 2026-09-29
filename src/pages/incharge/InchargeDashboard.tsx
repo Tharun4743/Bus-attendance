@@ -6,7 +6,10 @@ import { SessionBanner } from '../../components/common/SessionBanner';
 import { EmptyState } from '../../components/common/EmptyState';
 import { StartAttendanceModal } from '../../components/admin/StartAttendanceModal';
 import { PwaNotificationPrompt } from '../../components/common/PwaNotificationPrompt';
-import { Bus as BusIcon, Users, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { StatCard } from '../../components/ui/StatCard';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { Bus as BusIcon, Users, CheckCircle, XCircle, RefreshCw, Percent } from 'lucide-react';
 
 export const InchargeDashboard: React.FC = () => {
   const [data, setData] = useState<{
@@ -43,7 +46,7 @@ export const InchargeDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 8000); // Poll during session
+    const interval = setInterval(fetchData, 8000);
     return () => clearInterval(interval);
   }, []);
 
@@ -54,9 +57,9 @@ export const InchargeDashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 space-y-3">
-        <div className="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm font-semibold text-slate-500">Loading bus roster...</p>
+      <div className="flex flex-col items-center justify-center py-24 space-y-3">
+        <div className="w-9 h-9 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Loading bus roster...</p>
       </div>
     );
   }
@@ -72,7 +75,7 @@ export const InchargeDashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-4xl mx-auto">
       {/* PWA Device Notification Permission Banner */}
       <PwaNotificationPrompt />
 
@@ -82,87 +85,77 @@ export const InchargeDashboard: React.FC = () => {
       {/* Start Live Attendance (Morning / Travelling Bus) for Incharge Bus */}
       <StartAttendanceModal buses={[data.bus]} onSessionChanged={fetchData} />
 
-      {/* Uniform Header Container */}
-      <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-[#EAE2D2] flex flex-col md:flex-row md:items-center justify-between gap-3">
+      {/* Header Container */}
+      <div className="bg-white dark:bg-[#141418] rounded-2xl p-5 sm:p-6 shadow-xs border border-zinc-200/90 dark:border-[#26262e] flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 bg-amber-100/70 px-2.5 py-0.5 rounded-full border border-amber-200 inline-block">
+          <Badge variant="blue" className="mb-2">
             BUS INCHARGE PORTAL
-          </span>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 mt-1 tracking-tight">
+          </Badge>
+          <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
             {data.bus.busNumber}
           </h1>
-          <p className="text-xs text-amber-900/70 font-medium mt-0.5">Route: {data.bus.routeName}</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-1">Route: {data.bus.routeName}</p>
         </div>
 
-        <button
+        <Button
           onClick={handleRefresh}
-          className="flex items-center gap-1.5 px-3.5 py-2 bg-[#FAF7F0] hover:bg-stone-200/50 text-slate-700 font-bold rounded-xl text-xs transition border border-[#EAE2D2] self-start md:self-auto cursor-pointer"
+          variant="secondary"
+          size="sm"
+          className="self-start md:self-auto"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
           <span>Refresh Roster</span>
-        </button>
+        </Button>
       </div>
 
       {/* Attendance Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-        <div className="bg-white p-3.5 rounded-2xl border border-[#EAE2D2] shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Assigned</span>
-            <Users className="w-3.5 h-3.5 text-slate-400" />
-          </div>
-          <p className="text-xl sm:text-2xl font-extrabold text-slate-800 mt-1">
-            {data.stats.total}
-          </p>
-          <p className="text-[10px] text-slate-500 font-medium">Active Students</p>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard
+          title="Assigned"
+          value={data.stats.total}
+          icon={<Users className="w-5 h-5" />}
+          color="indigo"
+          subtitle="Active Students"
+        />
 
-        <div className="bg-white p-3.5 rounded-2xl border border-[#EAE2D2] shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-emerald-600 uppercase">Present</span>
-            <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-          </div>
-          <p className="text-xl sm:text-2xl font-extrabold text-emerald-700 mt-1">
-            {data.stats.present}
-          </p>
-          <p className="text-[10px] text-emerald-600 font-medium">Verified Location</p>
-        </div>
+        <StatCard
+          title="Present"
+          value={data.stats.present}
+          icon={<CheckCircle className="w-5 h-5" />}
+          color="emerald"
+          subtitle="Verified Location"
+        />
 
-        <div className="bg-white p-3.5 rounded-2xl border border-[#EAE2D2] shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-rose-500 uppercase">Not Present</span>
-            <XCircle className="w-3.5 h-3.5 text-rose-500" />
-          </div>
-          <p className="text-xl sm:text-2xl font-extrabold text-rose-700 mt-1">
-            {data.stats.notPresent}
-          </p>
-          <p className="text-[10px] text-rose-500 font-medium">Unverified / Absent</p>
-        </div>
+        <StatCard
+          title="Not Present"
+          value={data.stats.notPresent}
+          icon={<XCircle className="w-5 h-5" />}
+          color="rose"
+          subtitle="Unverified / Absent"
+        />
 
-        <div className="bg-white p-3.5 rounded-2xl border border-[#EAE2D2] shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-brand-600 uppercase">Turnout</span>
-            <span className="text-[10px] font-bold text-brand-600">%</span>
-          </div>
-          <p className="text-xl sm:text-2xl font-extrabold text-brand-700 mt-1">
-            {data.stats.percentage}%
-          </p>
-          <p className="text-[10px] text-slate-500 font-medium">Bus Attendance Rate</p>
-        </div>
+        <StatCard
+          title="Turnout"
+          value={`${data.stats.percentage}%`}
+          icon={<Percent className="w-5 h-5" />}
+          color="blue"
+          subtitle="Bus Attendance Rate"
+        />
       </div>
 
       {/* Bus Student Roster Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-[#EAE2D2] overflow-hidden">
-        <div className="p-3.5 border-b border-[#EAE2D2]/60 flex items-center justify-between">
-          <h2 className="text-xs font-bold text-slate-800">
+      <div className="bg-white dark:bg-[#141418] rounded-2xl shadow-xs border border-zinc-200/90 dark:border-[#26262e] overflow-hidden transition-all">
+        <div className="p-4 border-b border-zinc-200 dark:border-[#26262e] bg-zinc-50/70 dark:bg-[#101014] flex items-center justify-between">
+          <h2 className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white">
             Student Attendance Roster ({data.date})
           </h2>
-          <span className="text-xs text-slate-500 font-mono">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono font-bold">
             {data.stats.present} of {data.stats.total} Present
           </span>
         </div>
 
         {data.roster.length === 0 ? (
-          <div className="p-6">
+          <div className="p-6 sm:p-8">
             <EmptyState
               icon={Users}
               title="No students assigned yet"
@@ -171,27 +164,27 @@ export const InchargeDashboard: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
-              <thead className="bg-[#FAF7F0]/60 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-[#EAE2D2]">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-zinc-50/80 dark:bg-[#101014] text-zinc-500 dark:text-zinc-400 font-black uppercase tracking-wider text-[10px] border-b border-zinc-200 dark:border-[#26262e]">
                 <tr>
-                  <th className="px-4 py-2.5">Reg Number</th>
-                  <th className="px-4 py-2.5">Student Name</th>
-                  <th className="px-4 py-2.5">Status</th>
-                  <th className="px-4 py-2.5">Verified Time</th>
-                  <th className="px-4 py-2.5">Distance</th>
+                  <th className="px-5 py-3.5">Reg Number</th>
+                  <th className="px-5 py-3.5">Student Name</th>
+                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5">Verified Time</th>
+                  <th className="px-5 py-3.5">Distance</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#EAE2D2]/40">
+              <tbody className="divide-y divide-zinc-100 dark:divide-[#26262e]">
                 {data.roster.map((stu) => (
-                  <tr key={stu.studentId} className="hover:bg-[#FAF7F0]/70 transition">
-                    <td className="px-4 py-2.5 font-bold font-mono text-slate-800">
+                  <tr key={stu.studentId} className="hover:bg-zinc-50/70 dark:hover:bg-[#1a1a20]/60 transition">
+                    <td className="px-5 py-4 font-bold font-mono text-blue-600 dark:text-sky-400">
                       {stu.registerNumber}
                     </td>
-                    <td className="px-4 py-2.5 font-semibold text-slate-800">{stu.name}</td>
-                    <td className="px-4 py-2.5">
+                    <td className="px-5 py-4 font-bold text-zinc-900 dark:text-white">{stu.name}</td>
+                    <td className="px-5 py-4">
                       <StatusBadge status={stu.status} size="sm" />
                     </td>
-                    <td className="px-4 py-2.5 text-slate-500 font-mono">
+                    <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400 font-mono">
                       {stu.verifiedAt
                         ? new Date(stu.verifiedAt).toLocaleTimeString('en-US', {
                             timeZone: 'Asia/Kolkata',
@@ -201,7 +194,7 @@ export const InchargeDashboard: React.FC = () => {
                           })
                         : '—'}
                     </td>
-                    <td className="px-4 py-2.5 text-slate-500 font-mono">
+                    <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400 font-mono">
                       {stu.distanceMeters != null ? `${stu.distanceMeters}m` : '—'}
                     </td>
                   </tr>

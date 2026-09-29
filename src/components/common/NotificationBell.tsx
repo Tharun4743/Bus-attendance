@@ -22,7 +22,7 @@ export const NotificationBell: React.FC = () => {
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 15000); // refresh every 15s
+    const interval = setInterval(fetchNotifications, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -45,12 +45,12 @@ export const NotificationBell: React.FC = () => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition"
+        className="relative p-2 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-[#1a1a20] rounded-xl border border-zinc-200/60 dark:border-[#26262e] transition cursor-pointer"
         aria-label="Notifications"
       >
-        <Bell className="w-5 h-5" />
+        <Bell className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-rose-600 px-1 text-[9px] font-black text-white ring-2 ring-white dark:ring-[#141418]">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -59,12 +59,12 @@ export const NotificationBell: React.FC = () => {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setIsOpen(false)} />
-          <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white p-4 shadow-xl border border-slate-100 z-40">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
+          <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#1a1a20] p-4 shadow-xl border border-zinc-200 dark:border-[#26262e] z-40 transition-all">
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-[#26262e] pb-3 mb-2">
               <div className="flex items-center gap-2">
-                <h4 className="text-sm font-bold text-slate-800">Notifications</h4>
+                <h4 className="text-sm font-black text-zinc-900 dark:text-white">Notifications</h4>
                 {unreadCount > 0 && (
-                  <span className="text-xs bg-brand-100 text-brand-800 font-semibold px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-[#4ade80] border border-emerald-200 dark:border-emerald-500/30 px-2 py-0.5 rounded-full">
                     {unreadCount} new
                   </span>
                 )}
@@ -74,32 +74,34 @@ export const NotificationBell: React.FC = () => {
                   setIsOpen(false);
                   navigate('/admin/notifications');
                 }}
-                className="text-xs text-brand-600 font-medium hover:underline"
+                className="text-xs text-blue-600 dark:text-sky-400 font-bold hover:underline cursor-pointer"
               >
                 View all
               </button>
             </div>
 
-            <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
+            <div className="divide-y divide-zinc-100 dark:divide-[#26262e] max-h-72 overflow-y-auto">
               {notifications.length === 0 ? (
-                <p className="text-xs text-slate-500 text-center py-6">No notifications</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-6">No notifications</p>
               ) : (
                 notifications.map((n) => (
                   <div
                     key={n.id}
                     onClick={() => handleNotificationClick(n)}
                     className={`p-2.5 rounded-xl cursor-pointer transition text-left ${
-                      !n.read ? 'bg-brand-50/50 hover:bg-brand-50' : 'hover:bg-slate-50'
+                      !n.read
+                        ? 'bg-zinc-50 dark:bg-[#202028] hover:bg-zinc-100 dark:hover:bg-[#26262e]'
+                        : 'hover:bg-zinc-50 dark:hover:bg-[#141418]'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs font-semibold text-slate-800">{n.title}</p>
+                      <p className="text-xs font-bold text-zinc-900 dark:text-white">{n.title}</p>
                       {!n.read && (
-                        <span className="h-2 w-2 rounded-full bg-brand-500 shrink-0 mt-1" />
+                        <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0 mt-1" />
                       )}
                     </div>
-                    <p className="text-xs text-slate-600 mt-1 line-clamp-2">{n.message}</p>
-                    <p className="text-[10px] text-slate-400 mt-1.5">
+                    <p className="text-xs text-zinc-600 dark:text-zinc-300 mt-1 line-clamp-2">{n.message}</p>
+                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1.5 font-mono">
                       {new Date(n.createdAt).toLocaleTimeString('en-US', {
                         hour: '2-digit',
                         minute: '2-digit',

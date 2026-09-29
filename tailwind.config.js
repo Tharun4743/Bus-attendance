@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -7,17 +8,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        sandal: {
-          50: '#FDFCF9',
-          100: '#FAF7F0', // Primary Sandal White background
-          200: '#F4EFE4', // Sandal light card / border
-          300: '#EAE2D2', // Sandal divider / muted
-          400: '#DECFA4', // Sandal accent
-          500: '#C7B183', // Sandal warm tone
-          600: '#A38B57',
-          700: '#7F6B3E',
-          800: '#5C4C2B',
-          900: '#3D321A',
+        obsidian: {
+          canvas: '#0b0b0e',
+          card: '#141418',
+          subtle: '#101014',
+          elevated: '#1a1a20',
+          border: '#26262e',
+          hover: '#202028',
         },
         brand: {
           50: '#f0fdf4',
@@ -37,6 +34,10 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+      },
+      boxShadow: {
+        'xs': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        'obsidian': '0 4px 24px -2px rgba(0, 0, 0, 0.7), 0 0 0 1px #26262e',
       }
     },
   },

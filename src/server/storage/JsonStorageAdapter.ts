@@ -171,7 +171,15 @@ export class JsonStorageAdapter implements StorageAdapter {
     }
 
     const users = await this.getUsers();
-    return users.find((u) => u.email.toLowerCase() === clean) || null;
+    const byEmail = users.find((u) => u.email.toLowerCase() === clean);
+    if (byEmail) return byEmail;
+
+    const student = await this.getStudentByRegisterNumber(clean);
+    if (student) {
+      return users.find((u) => u.studentId === student.id || u.id === student.id || u.email.toLowerCase() === student.email.toLowerCase()) || null;
+    }
+
+    return null;
   }
 
   async getUserById(id: string): Promise<User | null> {

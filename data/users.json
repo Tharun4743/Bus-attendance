@@ -1,1 +1,71 @@
-[]
+[
+  {
+    "id": "ADMIN-1788560072628",
+    "name": "Tharun",
+    "email": "tharun@gmail.com",
+    "password": "474743",
+    "role": "ADMIN",
+    "active": true,
+    "approved": true,
+    "status": "APPROVED"
+  },
+  {
+    "id": "INC006",
+    "name": "Aarthi",
+    "email": "aarthi@college.edu",
+    "password": "aarthi123",
+    "role": "INCHARGE",
+    "assignedBusId": "BUS06",
+    "active": true,
+    "approved": true,
+    "status": "APPROVED"
+  },
+  {
+    "id": "USR-24IT001",
+    "studentId": "STU-24IT001",
+    "name": "Student 24IT001",
+    "email": "24it001@college.edu",
+    "password": "123456",
+    "role": "STUDENT",
+    "assignedBusId": "BUS06",
+    "status": "APPROVED",
+    "approved": true,
+    "active": true
+  },
+  {
+    "id": "USR-24CSE001",
+    "studentId": "STU-24CSE001",
+    "name": "Student 24CSE001",
+    "email": "24cse001@college.edu",
+    "password": "123456",
+    "role": "STUDENT",
+    "assignedBusId": "BUS06",
+    "status": "APPROVED",
+    "approved": true,
+    "active": true
+  },
+  {
+    "id": "USR-24ECE001",
+    "studentId": "STU-24ECE001",
+    "name": "Student 24ECE001",
+    "email": "24ece001@college.edu",
+    "password": "123456",
+    "role": "STUDENT",
+    "assignedBusId": "BUS06",
+    "status": "APPROVED",
+    "approved": true,
+    "active": true
+  },
+  {
+    "id": "USR-25IT001",
+    "studentId": "STU-25IT001",
+    "name": "Student 25IT001",
+    "email": "25it001@college.edu",
+    "password": "123456",
+    "role": "STUDENT",
+    "assignedBusId": "BUS06",
+    "status": "APPROVED",
+    "approved": true,
+    "active": true
+  }
+]

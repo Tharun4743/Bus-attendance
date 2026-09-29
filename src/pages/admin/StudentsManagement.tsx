@@ -3,6 +3,8 @@ import { api } from '../../services/api';
 import { Bus, Student } from '../../types';
 import { Modal } from '../../components/common/Modal';
 import { EmptyState } from '../../components/common/EmptyState';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
 import {
   Users,
   Search,
@@ -144,41 +146,43 @@ export const StudentsManagement: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Uniform Header Container */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-[#EAE2D2]">
+    <div className="space-y-4 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#141418] rounded-2xl p-5 sm:p-6 shadow-xs border border-zinc-200/90 dark:border-[#26262e] transition-all">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 bg-amber-100/70 px-2.5 py-0.5 rounded-full border border-amber-200 inline-block">
+          <Badge variant="blue" className="mb-2">
             STUDENT DIRECTORY
-          </span>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 mt-1 tracking-tight">
+          </Badge>
+          <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
             Student Management
           </h1>
-          <p className="text-xs text-amber-900/70 font-medium mt-0.5">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-1">
             Register students, manage active transport status, and assign buses.
           </p>
         </div>
 
-        <button
+        <Button
           onClick={handleOpenAddModal}
-          className="flex items-center gap-1.5 px-3.5 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-xs transition shadow-sm self-start sm:self-auto cursor-pointer"
+          variant="primary"
+          size="md"
+          className="self-start sm:self-auto"
         >
-          <Plus className="w-3.5 h-3.5" />
+          <Plus className="w-4 h-4" />
           <span>Add Student</span>
-        </button>
+        </Button>
       </div>
 
       {/* Search & Filters Bar */}
-      <div className="bg-white p-3 rounded-2xl border border-[#EAE2D2] shadow-sm flex flex-col sm:flex-row gap-2.5">
+      <div className="bg-white dark:bg-[#141418] p-4 sm:p-5 rounded-2xl border border-zinc-200/90 dark:border-[#26262e] shadow-xs flex flex-col sm:flex-row gap-3 transition-all">
         {/* Search */}
         <div className="relative flex-1">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search by name, register number or email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-[#EAE2D2] bg-[#FAF7F0]/40 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition"
+            className="w-full h-10 pl-10 pr-3.5 text-xs rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
           />
         </div>
 
@@ -186,7 +190,7 @@ export const StudentsManagement: React.FC = () => {
         <select
           value={selectedBus}
           onChange={(e) => setSelectedBus(e.target.value)}
-          className="px-2.5 py-1.5 text-xs rounded-xl border border-[#EAE2D2] bg-[#FAF7F0]/40 font-medium text-slate-700 outline-none"
+          className="h-10 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white outline-none"
         >
           <option value="ALL">All Buses</option>
           {buses.map((b) => (
@@ -200,7 +204,7 @@ export const StudentsManagement: React.FC = () => {
         <select
           value={selectedActive}
           onChange={(e) => setSelectedActive(e.target.value)}
-          className="px-2.5 py-1.5 text-xs rounded-xl border border-[#EAE2D2] bg-[#FAF7F0]/40 font-medium text-slate-700 outline-none"
+          className="h-10 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white outline-none"
         >
           <option value="ALL">All Statuses</option>
           <option value="true">Active Only</option>
@@ -209,14 +213,14 @@ export const StudentsManagement: React.FC = () => {
       </div>
 
       {/* Student List Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-[#EAE2D2] overflow-hidden">
+      <div className="bg-white dark:bg-[#141418] rounded-2xl shadow-xs border border-zinc-200/90 dark:border-[#26262e] overflow-hidden transition-all">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <div className="w-7 h-7 border-3 border-brand-600 border-t-transparent rounded-full animate-spin mb-2" />
-            <p className="text-xs text-slate-500">Loading student directory...</p>
+          <div className="flex flex-col items-center justify-center py-20 space-y-2">
+            <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Loading student directory...</p>
           </div>
         ) : students.length === 0 ? (
-          <div className="p-6">
+          <div className="p-6 sm:p-8">
             <EmptyState
               icon={Users}
               title="No students added yet"
@@ -227,71 +231,71 @@ export const StudentsManagement: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
-              <thead className="bg-[#FAF7F0] text-slate-600 font-bold uppercase tracking-wider text-[10px] border-b border-[#EAE2D2]">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-zinc-50/80 dark:bg-[#101014] text-zinc-500 dark:text-zinc-400 font-black uppercase tracking-wider text-[10px] border-b border-zinc-200 dark:border-[#26262e]">
                 <tr>
-                  <th className="px-4 py-3">Register Number</th>
-                  <th className="px-4 py-3">Student Name</th>
-                  <th className="px-4 py-3">Email / Phone</th>
-                  <th className="px-4 py-3">Assigned Bus</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-5 py-3.5">Register Number</th>
+                  <th className="px-5 py-3.5">Student Name</th>
+                  <th className="px-5 py-3.5">Email / Phone</th>
+                  <th className="px-5 py-3.5">Assigned Bus</th>
+                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#EAE2D2]/50">
+              <tbody className="divide-y divide-zinc-100 dark:divide-[#26262e]">
                 {students.map((stu) => (
-                  <tr key={stu.id} className="hover:bg-slate-50/70 transition">
-                    <td className="px-5 py-3.5 font-bold font-mono text-slate-800">
+                  <tr key={stu.id} className="hover:bg-zinc-50/70 dark:hover:bg-[#1a1a20]/60 transition">
+                    <td className="px-5 py-4 font-bold font-mono text-blue-600 dark:text-sky-400">
                       {stu.registerNumber}
                     </td>
-                    <td className="px-5 py-3.5 font-semibold text-slate-900">{stu.name}</td>
-                    <td className="px-5 py-3.5">
-                      <p className="text-slate-700">{stu.email}</p>
-                      {stu.phone && <p className="text-[10px] text-slate-400">{stu.phone}</p>}
+                    <td className="px-5 py-4 font-bold text-zinc-900 dark:text-white">{stu.name}</td>
+                    <td className="px-5 py-4">
+                      <p className="text-zinc-700 dark:text-zinc-300 font-medium">{stu.email}</p>
+                      {stu.phone && <p className="text-[10px] text-zinc-400">{stu.phone}</p>}
                     </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-1.5 font-semibold text-slate-700">
-                        <BusIcon className="w-3.5 h-3.5 text-brand-600" />
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-1.5 font-bold text-zinc-800 dark:text-zinc-200">
+                        <BusIcon className="w-3.5 h-3.5 text-blue-600 dark:text-sky-400" />
                         <span>{stu.bus ? stu.bus.busNumber : stu.busId}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-5 py-4">
                       {stu.active ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <Badge variant="emerald">
                           <CheckCircle className="w-3 h-3" /> Active
-                        </span>
+                        </Badge>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                        <Badge variant="zinc">
                           <XCircle className="w-3 h-3" /> Inactive
-                        </span>
+                        </Badge>
                       )}
                     </td>
-                    <td className="px-5 py-3.5 text-right">
+                    <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => handleToggleActive(stu)}
                           title={stu.active ? 'Deactivate' : 'Activate'}
-                          className={`p-1.5 rounded-lg border transition ${
+                          className={`p-1.5 rounded-xl border transition active:scale-95 cursor-pointer ${
                             stu.active
-                              ? 'text-amber-600 hover:bg-amber-50 border-amber-200'
-                              : 'text-emerald-600 hover:bg-emerald-50 border-emerald-200'
+                              ? 'text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 border-amber-200 dark:border-amber-900/40'
+                              : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/40'
                           }`}
                         >
-                          {stu.active ? <XCircle className="w-3.5 h-3.5" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                          {stu.active ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
                         </button>
                         <button
                           onClick={() => handleOpenEditModal(stu)}
                           title="Edit Student"
-                          className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 border border-slate-200 transition"
+                          className="p-1.5 rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-[#202028] border border-zinc-200 dark:border-[#26262e] transition active:scale-95 cursor-pointer"
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
+                          <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteStudent(stu.id)}
                           title="Delete Student"
-                          className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 border border-rose-200 transition"
+                          className="p-1.5 rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 transition active:scale-95 cursor-pointer"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -311,14 +315,14 @@ export const StudentsManagement: React.FC = () => {
       >
         <form onSubmit={handleSaveStudent} className="space-y-4">
           {formError && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-center gap-2 text-rose-700 text-xs font-medium">
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-500/15 border border-rose-200 dark:border-rose-500/30 flex items-center gap-2 text-rose-700 dark:text-[#fb7185] text-xs font-semibold">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{formError}</span>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
               Register Number *
             </label>
             <input
@@ -327,12 +331,12 @@ export const StudentsManagement: React.FC = () => {
               placeholder="e.g. 24IT001"
               value={regNo}
               onChange={(e) => setRegNo(e.target.value)}
-              className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none uppercase font-mono"
+              className="w-full h-10 px-3.5 text-xs rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none uppercase font-mono font-bold"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
               Student Full Name *
             </label>
             <input
@@ -341,13 +345,13 @@ export const StudentsManagement: React.FC = () => {
               placeholder="e.g. Tarun Kumar"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-[#EAE2D2] bg-[#FAF7F0] focus:bg-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30 outline-none font-medium"
+              className="w-full h-10 px-3.5 text-xs rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none font-bold"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
                 Email Address
               </label>
               <input
@@ -355,12 +359,12 @@ export const StudentsManagement: React.FC = () => {
                 placeholder="student@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-xl border border-[#EAE2D2] bg-[#FAF7F0] focus:bg-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30 outline-none font-medium"
+                className="w-full h-10 px-3.5 text-xs rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none font-medium"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
                 Phone Number
               </label>
               <input
@@ -368,20 +372,20 @@ export const StudentsManagement: React.FC = () => {
                 placeholder="9876543210"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-xl border border-[#EAE2D2] bg-[#FAF7F0] focus:bg-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30 outline-none font-medium"
+                className="w-full h-10 px-3.5 text-xs rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none font-medium"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
               Assigned Bus *
             </label>
             <select
               value={busId}
               onChange={(e) => setBusId(e.target.value)}
               required
-              className="w-full px-3 py-2 text-xs rounded-xl border border-[#EAE2D2] bg-[#FAF7F0] focus:bg-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30 outline-none font-medium"
+              className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none"
             >
               {buses.map((b) => (
                 <option key={b.id} value={b.id}>
@@ -391,34 +395,36 @@ export const StudentsManagement: React.FC = () => {
             </select>
           </div>
 
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex items-center gap-2.5 pt-2">
             <input
               type="checkbox"
               id="studentActive"
               checked={active}
               onChange={(e) => setActive(e.target.checked)}
-              className="rounded text-brand-600 focus:ring-brand-500 h-4 w-4"
+              className="rounded-lg text-emerald-600 focus:ring-emerald-500 h-4 w-4"
             />
-            <label htmlFor="studentActive" className="text-xs font-bold text-slate-700">
+            <label htmlFor="studentActive" className="text-xs font-bold text-zinc-800 dark:text-zinc-200 cursor-pointer">
               Active Transport Student
             </label>
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#EAE2D2]/60">
-            <button
+          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-zinc-100 dark:border-[#26262e]">
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => setIsModalOpen(false)}
-              className="px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-[#FAF7F0] rounded-xl transition"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={isSubmitting}
-              className="px-3.5 py-1.5 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-xl transition shadow-sm disabled:opacity-70"
+              variant="primary"
+              size="sm"
             >
               {isSubmitting ? 'Saving...' : editingStudent ? 'Update Student' : 'Save Student'}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>

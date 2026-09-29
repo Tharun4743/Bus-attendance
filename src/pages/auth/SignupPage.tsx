@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import {
   Bus as BusIcon,
   User as UserIcon,
@@ -63,46 +66,49 @@ export const SignupPage: React.FC = () => {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#FAF7F0] via-[#FDFBF7] to-[#F4EFE4] flex flex-col justify-center py-6 sm:py-10 px-4 text-slate-800">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#0b0b0e] flex flex-col justify-center py-8 sm:py-12 px-4 transition-colors relative">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white/95 border border-[#EAE2D2] rounded-2xl p-6 sm:p-8 shadow-xl shadow-stone-300/30 text-center space-y-4 animate-in zoom-in-95">
-            <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-200 shadow-sm">
-              <Clock className="w-6 h-6" />
+          <div className="bg-white dark:bg-[#141418] border border-zinc-200/90 dark:border-[#26262e] rounded-3xl p-6 sm:p-8 shadow-xl dark:shadow-[0_4px_24px_-2px_rgba(0,0,0,0.7),0_0_0_1px_#26262e] text-center space-y-4">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-[#fde047] flex items-center justify-center border border-amber-200 dark:border-amber-500/30 shadow-xs">
+              <Clock className="w-7 h-7" />
             </div>
 
             <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 bg-amber-100/70 border border-amber-200 px-2.5 py-0.5 rounded-full">
+              <Badge variant="amber" className="mb-2">
                 STATUS: PENDING APPROVAL
-              </span>
-              <h2 className="text-xl font-black text-slate-900 mt-2.5">
-                REGISTRATION SUBMITTED
+              </Badge>
+              <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white mt-1">
+                Registration Submitted
               </h2>
-              <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
                 Your account has been submitted for Admin approval. Once approved and assigned to your bus route, you can log in directly using your Register Number and Password.
               </p>
             </div>
 
-            <div className="bg-[#FAF7F0] p-4 rounded-xl border border-[#EAE2D2] text-xs text-left space-y-1.5 font-mono text-slate-700">
-              <div className="flex justify-between border-b border-[#EAE2D2] pb-1 font-sans">
-                <span className="text-slate-500 text-[11px] font-semibold">Full Name:</span>
-                <span className="font-bold text-slate-800">{name}</span>
+            <div className="bg-zinc-50 dark:bg-[#1a1a20] p-4 rounded-xl border border-zinc-200/80 dark:border-[#26262e] text-xs text-left space-y-2 font-mono">
+              <div className="flex justify-between border-b border-zinc-200 dark:border-[#26262e] pb-1.5 font-sans">
+                <span className="text-zinc-500 dark:text-zinc-400 text-xs font-medium">Full Name:</span>
+                <span className="font-bold text-zinc-900 dark:text-white">{name}</span>
               </div>
-              <div className="flex justify-between border-b border-[#EAE2D2] pb-1 font-sans">
-                <span className="text-slate-500 text-[11px] font-semibold">Register Number:</span>
-                <span className="font-bold text-brand-700 font-mono">{registerNumber.toUpperCase()}</span>
+              <div className="flex justify-between border-b border-zinc-200 dark:border-[#26262e] pb-1.5 font-sans">
+                <span className="text-zinc-500 dark:text-zinc-400 text-xs font-medium">Register Number:</span>
+                <span className="font-bold text-blue-600 dark:text-sky-400 font-mono">{registerNumber.toUpperCase()}</span>
               </div>
               <div className="flex justify-between font-sans pt-0.5">
-                <span className="text-slate-500 text-[11px] font-semibold">Login Username:</span>
-                <span className="font-bold text-slate-800 font-mono">{registerNumber.toUpperCase()}</span>
+                <span className="text-zinc-500 dark:text-zinc-400 text-xs font-medium">Login Username:</span>
+                <span className="font-bold text-zinc-900 dark:text-white font-mono">{registerNumber.toUpperCase()}</span>
               </div>
             </div>
 
             <Link
               to="/login"
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-sm transition"
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 text-white font-bold text-xs shadow-xs transition active:scale-[0.98]"
             >
               <span>RETURN TO LOGIN</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
@@ -111,128 +117,135 @@ export const SignupPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FAF7F0] via-[#FDFBF7] to-[#F4EFE4] flex flex-col justify-center py-6 sm:py-10 px-4 text-slate-800">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0b0e] flex flex-col justify-center py-8 sm:py-12 px-4 transition-colors relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-1">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-brand-600 shadow-md shadow-brand-600/25 text-white mb-1.5">
-          <BusIcon className="w-6 h-6" />
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-600 dark:bg-emerald-500 shadow-lg shadow-emerald-600/25 text-white mb-2">
+          <BusIcon className="w-8 h-8" />
         </div>
-        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+        <Badge variant="emerald" className="mb-1">
+          STUDENT REGISTRATION
+        </Badge>
+        <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
           Student Sign Up
         </h1>
-        <p className="text-xs text-amber-900/70 font-medium">
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
           Create your account in seconds with your Register Number
         </p>
       </div>
 
-      <div className="mt-4 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white/95 backdrop-blur-md border border-[#EAE2D2] rounded-2xl p-5 sm:p-7 shadow-xl shadow-stone-300/30 space-y-4">
+      <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white dark:bg-[#141418] border border-zinc-200/90 dark:border-[#26262e] rounded-3xl p-6 sm:p-8 shadow-xl dark:shadow-[0_4px_24px_-2px_rgba(0,0,0,0.7),0_0_0_1px_#26262e] space-y-5 transition-all">
           {error && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-900 text-xs font-semibold flex items-start gap-2 animate-in fade-in">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-500/15 border border-rose-200 dark:border-rose-500/30 text-rose-800 dark:text-[#fb7185] text-xs font-semibold flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-[#fb7185]" />
               <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-3.5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Full Name */}
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
                 Full Name <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
-                <UserIcon className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <UserIcon className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
                 <input
                   type="text"
                   required
                   placeholder="e.g. Tharun Kumar"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 text-xs rounded-xl bg-[#FAF7F0]/50 border border-[#EAE2D2] text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition"
+                  className="w-full h-10 pl-10 pr-4 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none font-bold"
                 />
               </div>
             </div>
 
             {/* Register Number */}
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
                 Register Number <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
-                <Hash className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <Hash className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
                 <input
                   type="text"
                   required
                   placeholder="e.g. 24IT001"
                   value={registerNumber}
                   onChange={(e) => setRegisterNumber(e.target.value.toUpperCase())}
-                  className="w-full pl-8 pr-3 py-2 text-xs rounded-xl bg-[#FAF7F0]/50 border border-[#EAE2D2] text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none font-mono uppercase transition tracking-wider"
+                  className="w-full h-10 pl-10 pr-4 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none font-mono uppercase font-bold tracking-wider"
                 />
               </div>
-              <p className="text-[10px] text-slate-500 mt-1">
+              <p className="text-[10px] text-zinc-400 mt-1">
                 This will be your primary login ID.
               </p>
             </div>
 
             {/* Password */}
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
                 Password <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
-                <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <Lock className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
                 <input
                   type="password"
                   required
                   placeholder="Create a password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 text-xs rounded-xl bg-[#FAF7F0]/50 border border-[#EAE2D2] text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition"
+                  className="w-full h-10 pl-10 pr-4 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
                 />
               </div>
             </div>
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
                 Confirm Password <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
-                <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <Lock className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
                 <input
                   type="password"
                   required
                   placeholder="Re-type password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 text-xs rounded-xl bg-[#FAF7F0]/50 border border-[#EAE2D2] text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition"
+                  className="w-full h-10 pl-10 pr-4 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
                 />
               </div>
             </div>
 
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-sm transition disabled:opacity-70 cursor-pointer"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Submitting Registration...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>REGISTER ACCOUNT</span>
-                  </>
-                )}
-              </button>
-            </div>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              variant="primary"
+              size="lg"
+              className="w-full mt-2"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Submitting Registration...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>REGISTER ACCOUNT</span>
+                </>
+              )}
+            </Button>
           </form>
 
-          <div className="pt-3 border-t border-[#EAE2D2] text-center text-[11px] text-slate-500">
+          <div className="pt-4 border-t border-zinc-100 dark:border-[#26262e] text-center text-xs text-zinc-500 dark:text-zinc-400">
             <span>Already registered? </span>
-            <Link to="/login" className="text-brand-700 font-bold hover:underline">
+            <Link to="/login" className="text-blue-600 dark:text-sky-400 font-bold hover:underline">
               Sign In here
             </Link>
           </div>

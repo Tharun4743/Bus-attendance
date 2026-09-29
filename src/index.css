@@ -1,45 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: light;
+  --bg-primary: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-subtle: #f1f5f9;
+  --text-primary: #09090b;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-hover: #94a3b8;
+}
+
+html.dark {
+  color-scheme: dark;
+  --bg-primary: #0b0b0e;
+  --bg-surface: #141418;
+  --bg-subtle: #101014;
+  --text-primary: #ffffff;
+  --text-secondary: #f8fafc;
+  --text-muted: #e2e8f0;
+  --border-color: #26262e;
+  --input-bg: #141418;
+  --input-border: #2e2e38;
+  --scrollbar-thumb: #2c2c36;
+  --scrollbar-hover: #3f3f4c;
+}
+
 @layer base {
+  * {
+    border-color: var(--border-color);
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
   html {
     scrollbar-gutter: stable;
     overflow-y: scroll;
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
   }
-
-  body {
-    @apply bg-[#FAF7F0] text-slate-800 antialiased min-h-screen font-sans;
-    background-color: #FAF7F0;
-    overflow-x: hidden;
-    overscroll-behavior-y: none;
+  body, #root {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+  input, select, textarea {
+    color: var(--text-primary);
+    background-color: var(--input-bg);
+    border-color: var(--input-border);
   }
 }
 
-/* Eliminate GPU layer flashing & scroll jitter */
-* {
-  -webkit-tap-highlight-color: transparent;
+/* Deep Obsidian Dark Overrides */
+html.dark .bg-white {
+  background-color: #141418 !important;
+}
+html.dark .border-zinc-200,
+html.dark .border-slate-200 {
+  border-color: #26262e !important;
+}
+html.dark .shadow-sm,
+html.dark .shadow-md,
+html.dark .shadow-lg {
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.7), 0 0 0 1px #26262e !important;
 }
 
-/* Custom scrollbars with stable gutter to prevent resize flickering */
+/* Map legacy sandal color tokens to theme variables for complete visual harmony */
+.bg-\[\#FAF7F0\] {
+  background-color: var(--bg-primary) !important;
+}
+.bg-\[\#FDFBF7\] {
+  background-color: var(--bg-primary) !important;
+}
+.bg-\[\#F4EFE4\] {
+  background-color: var(--bg-subtle) !important;
+}
+.border-\[\#EAE2D2\] {
+  border-color: var(--border-color) !important;
+}
+.border-\[\#F4EFE4\] {
+  border-color: var(--border-color) !important;
+}
+
+/* Custom 6px Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #F4EFE4;
+  background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #DECFA4;
+  background: var(--scrollbar-thumb);
   border-radius: 9999px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #C7B183;
+  background: var(--scrollbar-hover);
 }
