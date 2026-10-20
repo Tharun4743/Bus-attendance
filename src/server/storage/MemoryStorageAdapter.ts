@@ -239,7 +239,15 @@ export class MemoryStorageAdapter implements StorageAdapter {
   }
 
   async getBusByInchargeId(inchargeId: string): Promise<Bus | null> {
-    return this.buses.find((b) => b.inchargeId === inchargeId) || null;
+    const user = this.users.find((u) => u.id === inchargeId || u.email === inchargeId);
+    let bus = this.buses.find((b) => b.inchargeId === inchargeId);
+    if (!bus && user?.assignedBusId) {
+      bus = this.buses.find((b) => b.id === user.assignedBusId);
+    }
+    if (!bus) {
+      bus = this.buses.find((b) => b.id === inchargeId);
+    }
+    return bus || null;
   }
 
   async createBus(bus: Omit<Bus, 'id'> & { id?: string }): Promise<Bus> {
