@@ -16,7 +16,10 @@ import {
   XCircle,
   MapPin,
   Navigation,
+  Camera,
+  Fingerprint,
 } from 'lucide-react';
+import { MobileVerificationModal } from '../../components/attendance/MobileVerificationModal';
 
 export const StudentDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -30,6 +33,7 @@ export const StudentDashboard: React.FC = () => {
 
   // Verification State
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
+  const [isMobileModalOpen, setIsMobileModalOpen] = useState<boolean>(false);
   const [verificationError, setVerificationError] = useState<{
     type: 'LOCATION_UNAVAILABLE' | 'INVALID_LOCATION' | 'BUS_MISMATCH' | 'CLOSED' | 'GENERIC';
     message: string;
@@ -299,28 +303,40 @@ export const StudentDashboard: React.FC = () => {
               </div>
             )}
 
-            {/* 1-Tap Location Verification Button */}
-            <div className="pt-2">
+            {/* Mobile Zero-Hardware Verification Suite */}
+            <div className="pt-2 space-y-2.5">
               <button
                 type="button"
-                onClick={handleVerifyLocation}
-                disabled={isVerifying}
-                className="w-full flex items-center justify-center gap-2.5 py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm shadow-md transition-all active:scale-[0.98] disabled:opacity-60 cursor-pointer min-h-[48px]"
+                onClick={() => setIsMobileModalOpen(true)}
+                className="w-full flex items-center justify-center gap-2.5 py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm shadow-md transition-all active:scale-[0.98] cursor-pointer min-h-[48px]"
               >
-                {isVerifying ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Detecting GPS Location...</span>
-                  </>
-                ) : (
-                  <>
-                    <Navigation className="w-4 h-4 fill-white" />
-                    <span>VERIFY LOCATION & MARK PRESENT</span>
-                  </>
-                )}
+                <Camera className="w-4 h-4" />
+                <span>📸 VERIFY WITH MOBILE FACE & GPS</span>
               </button>
-              <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2">
-                Tap button to verify your GPS location within the bus route boundary.
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsMobileModalOpen(true)}
+                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#1a1a20] dark:hover:bg-[#23232c] border border-zinc-200 dark:border-[#2e2e38] text-zinc-800 dark:text-zinc-200 text-xs font-bold transition-all cursor-pointer"
+                >
+                  <Fingerprint className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Phone Biometric</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleVerifyLocation}
+                  disabled={isVerifying}
+                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#1a1a20] dark:hover:bg-[#23232c] border border-zinc-200 dark:border-[#2e2e38] text-zinc-800 dark:text-zinc-200 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <Navigation className="w-3.5 h-3.5 text-sky-500" />
+                  <span>Fast GPS Check</span>
+                </button>
+              </div>
+
+              <p className="text-[11px] text-zinc-400 dark:text-zinc-500 text-center">
+                100% Smartphone Verification • Front Camera Selfie or Fingerprint with GPS location
               </p>
             </div>
           </div>
@@ -374,6 +390,17 @@ export const StudentDashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Zero-Hardware Mobile Face & Biometric Verification Modal */}
+      <MobileVerificationModal
+        isOpen={isMobileModalOpen}
+        onClose={() => setIsMobileModalOpen(false)}
+        busId={student?.busId}
+        onSuccess={async () => {
+          setIsMobileModalOpen(false);
+          await fetchStudentData();
+        }}
+      />
     </div>
   );
 };

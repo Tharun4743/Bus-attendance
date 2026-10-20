@@ -1,6 +1,7 @@
 import {
   AttendanceRecord,
   AttendanceSettings,
+  AttendanceStatus,
   Bus,
   FinalReport,
   LocationVerificationRequest,
@@ -178,6 +179,32 @@ class ApiClient {
     });
   }
 
+  async getMobileBiometricChallenge(): Promise<{ challenge: string }> {
+    return this.request<{ challenge: string }>('/attendance/mobile/challenge');
+  }
+
+  async verifyMobile(req: {
+    busId?: string;
+    method: 'FACE_GPS' | 'PHONE_BIOMETRIC_GPS';
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+    selfieBase64?: string;
+    biometricPayload?: any;
+  }): Promise<{
+    status: AttendanceStatus;
+    message: string;
+    record?: AttendanceRecord;
+    distanceMeters?: number;
+    faceConfidence?: number;
+    selfieUrl?: string;
+  }> {
+    return this.request('/attendance/verify-mobile', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
+  }
+
   async getMyStatus(): Promise<{
     todayRecord: AttendanceRecord | null;
     student: Student | null;
@@ -350,6 +377,9 @@ class ApiClient {
       accuracyMeters: number | null;
       verifiedAt: string | null;
       verificationMethod: string | null;
+      selfieImageUrl?: string | null;
+      faceMatchConfidence?: number | null;
+      deviceBiometricPassed?: boolean | null;
     }>;
   }> {
     return this.request('/incharge/attendance');
