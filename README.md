@@ -3,12 +3,11 @@
 # 🚌 College Bus Attendance System — Real-Time Fleet Transit & Student Presence PWA
 ### *Progressive Web Application for Morning & Evening Transit Attendance Verification, Route Roster Tracking & Fleet Analytics*
 
-[![Type](https://img.shields.io/badge/Type-PWA-FF6B6B?style=for-the-badge&logo=pwa&logoColor=white)](#) [![Frontend](https://img.shields.io/badge/Frontend-React%2019%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=white)](#) [![Language](https://img.shields.io/badge/Language-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](#) [![Deployment](https://img.shields.io/badge/Deployment-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](#) [![Offline](https://img.shields.io/badge/Offline-Service%20Workers-10b981?style=for-the-badge&logo=pwa&logoColor=white)](#) [![License](https://img.shields.io/badge/License-Strict%20Proprietary-dc2626?style=for-the-badge&logo=lock&logoColor=white)](#)
+[![Type](https://img.shields.io/badge/Type-PWA-FF6B6B?style=for-the-badge&logo=pwa&logoColor=white)](#) [![Frontend](https://img.shields.io/badge/Frontend-React%2019%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=white)](#) [![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](#) [![Email](https://img.shields.io/badge/Mailer-Brevo%20Transactional%20API-0B996F?style=for-the-badge&logo=brevo&logoColor=white)](#) [![Storage](https://img.shields.io/badge/Media-Cloudinary-3448C5?style=for-the-badge&logo=cloudinary&logoColor=white)](#) [![Deployment](https://img.shields.io/badge/Deployment-Render%20%2B%20Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](#)
 
 <p align="center">
   <a href="https://github.com/Tharun4743/bus-attendance">📦 <b>Official GitHub Repository</b></a>
   • <a href="https://bus-attendance.vercel.app/">🌐 <b>Production Live Demo</b></a>
-  
 </p>
 
 </div>
@@ -33,76 +32,130 @@ Educational transport departments managing fleet logistics and thousands of stud
 | **Real-Time Fleet Dashboard** | ❌ None | ⚠️ Delayed Batch Sync | ✅ Live Cloud Sync when Connected |
 | **Session Tracking (Morning/Eve)**| ⚠️ Messy Double Columns | ⚠️ Rigid Hardware Mode | ✅ Rapid Morning/Evening Toggle |
 | **Parental Safety Verification**| ❌ Hours of Phone Calls | ⚠️ SMS Gateway Costs | ✅ Instant Administrative Audit Portal |
-
-### ⚠️ Critical Limitations of Existing Alternatives:
-* 🚫 **No Real-Time Administrative Oversight:** Transport coordinators only discover student attendance discrepancies hours after buses have already departed.
-* 🛑 **High Hardware Failure Rates:** Dust, extreme vehicle temperatures, and electrical surges frequently disable dedicated bus RFID readers.
-* 📴 **Slow Manual Tallying:** Drivers spend 15–20 minutes at bus stops manually searching through hundreds of printed names.
+| **Identity & Access Verification**| ❌ Zero Access Guards | ⚠️ Physical Badge Loss | ✅ Supabase RBAC + Brevo 6-Digit OTP |
 
 ---
 
-## 3. 💡 Proposed Solution & Architectural Innovation
-**College Bus Attendance System** is a responsive Progressive Web App (PWA) designed for campus bus in-charges, drivers, and transport administrators:
+## 3. 💡 Proposed Solution & Core Architectural Modules
+**College Bus Attendance System** is an enterprise-grade Progressive Web App (PWA) and backend platform built for campus bus in-charges, students, and transport administrators:
 
-* 📱 **Zero-Hardware Smartphone PWA:** Installs directly onto any staff smartphone via browser service workers without requiring app store downloads or expensive hardware.
-* 📶 **Offline-First IndexedDB Synchronization:** Bus in-charges log attendance seamlessly in rural cellular dead zones; records automatically synchronize to the cloud when connectivity returns.
-* ⚡ **Rapid One-Tap Roster Verification:** Alphabetically and stop-sorted student rosters allow in-charges to verify boarding in milliseconds per student.
-* 🔄 **Morning & Evening Transit Sessions:** Clean toggle interface isolating morning boarding logs from evening departure runs with automatic session archiving.
-* 🖥️ **Central Transport Analytics Portal:** Administrators monitor live fleet occupancy, absent student lists, and bus stop capacity metrics in real time.
+* 📱 **Zero-Hardware Smartphone PWA:** Installs directly onto any staff or student smartphone via browser service workers with native-like UI, offline-first IndexedDB synchronization, and zero App Store dependencies.
+* 🔐 **Role-Based Access Control (RBAC):** Granular authorization guards distinguishing `ADMIN`, `INCHARGE`, and `STUDENT` roles across UI views and backend REST APIs.
+* ✉️ **Brevo Transactional Email Engine (`src/lib/brevo.ts`):** 
+  - **Live 6-Digit OTP Student Registration:** Generates cryptographic 6-digit numeric OTPs with an exact 10-minute expiry window dispatched directly to student email addresses.
+  - **Secure Cryptographic Password Recovery:** 64-character hex reset tokens stored in PostgreSQL with short expiration timestamps dispatched via Brevo reset emails.
+* 🗄️ **Supabase PostgreSQL Relational Storage (`db/schema.sql`):**
+  - Production PostgreSQL schema with Row-Level Security (RLS) policies.
+  - Isolated database DDL script ready for 1-click execution in VS Code Database Client or Supabase SQL Editor.
+  - Idempotent seed script (`db/seed.sql`) pre-populating geofence settings, fleet buses, and default role profiles.
+* ☁️ **Cloudinary Media Pipeline (`src/lib/cloudinary.ts`):** Secure server-signed asset uploads for student ID card documents and profile photos, persisting only verified HTTPS URLs in PostgreSQL.
+* 📍 **Geo-Fencing & Dynamic Rotating Code Verification:**
+  - Haversine distance engine validating boarding within configurable campus geofence perimeters.
+  - Dynamic 6-digit transit codes regenerating every 60 seconds to prevent fraudulent attendance logging.
 
 ---
 
-## 4. ⚙️ Technical Approach & System Architecture
+## 4. ⚙️ System Architecture & Workflow
 
 ### 📐 High-Level Architectural Flowchart:
 ```mermaid
 graph TD
-    Scanner["Driver Smartphone / Optical RFID Reader"] --> API["Transit Attendance Gateway (Node.js API)"]
-    API --> Validator["Student Enrollment & Route Authorization Guard"]
-    API --> DB[("PostgreSQL Fleet & Attendance Database")]
-    API --> GPS["Real-Time Fleet GPS & Geo-Fencing Service"]
-    API --> SMS["Instant Parent SMS & Telegram Notification Hub"]
+    User["Student / In-charge / Admin"] --> PWA["PWA Client (React 19 + Vite + Tailwind)"]
+    PWA --> Cache["Offline Cache Engine (IndexedDB + Service Worker)"]
+    PWA --> API["Express Unified Gateway (server.ts / apiRouter)"]
+    API --> Auth["RBAC Guard & JWT Session Engine"]
+    API --> Brevo["Brevo API v3 (6-Digit OTP & Password Reset)"]
+    API --> Cloudinary["Cloudinary API (Signed Media Uploads)"]
+    API --> DB[("Supabase PostgreSQL (Tables, RLS, Idempotent DDL)")]
 ```
-
-| Layer / Subsystem | Technologies Used | Operational Functionality |
-| :--- | :--- | :--- |
-| **Mobile PWA Shell** | React 19, Vite, Tailwind CSS, Service Workers | Responsive mobile client with native app feel, home screen installation, fast UI |
-| **Offline Cache Engine** | IndexedDB, Cache API | Buffers attendance scans locally during transit, guaranteeing zero data loss |
-| **Backend API Core** | Node.js, Express, TypeScript | RESTful route handlers managing roster queries, session logs, and fleet reports |
-| **Cloud Persistence** | Supabase (PostgreSQL 15) | Relational schema linking students, bus routes, designated stops, and timestamps |
 
 ### 🔄 End-to-End Operational Lifecycle Workflow:
 ```mermaid
 flowchart LR
-    A["1. Student Boarding & RFID/QR Scan"] --> B["2. Route Authorization Validation"]
-    B --> C["3. Cryptographic Attendance Timestamp"]
-    C --> D["4. Geo-Fenced Bus Location Tagging"]
-    D --> E["5. Real-Time Parent Notification Relay"]
+    A["1. Real Email Signup"] --> B["2. Brevo 6-Digit OTP"]
+    B --> C["3. Admin Roster Approval"]
+    C --> D["4. Rotating Code + Geofence Verification"]
+    D --> E["5. Real-Time Fleet Presence Analytics"]
 ```
 
-1. **Route Selection:** Bus in-charge opens PWA on mobile → Selects route number and session (Morning/Evening).
-2. **Rapid Boarding Verification:** In-charge taps student names as they board → UI confirms presence with instant green indicator.
-3. **Automatic Cloud Sync:** When bus reaches campus or cellular signal is restored → Local IndexedDB records sync automatically to central database.
+1. **Student Registration:** Student registers with college email → Server generates 6-digit cryptographic OTP → Brevo dispatches email → Student enters OTP within 10 minutes to verify.
+2. **Transit Session Start:** Bus In-charge launches session for assigned route (Morning/Evening) → Server activates dynamic 60-second rotating verification code.
+3. **Boarding Verification:** Student submits active rotating code and GPS coordinates → System executes Haversine formula against campus geofence → Presence marked in PostgreSQL.
+4. **Offline Resilience:** If cellular connectivity drops along remote transit highways, attendance records buffer locally in IndexedDB and automatically flush to PostgreSQL once signal resumes.
 
 ---
 
-## 5. 📈 Quantifiable Impact & Measurable Benefits
-* 🚌 **100% Verified Fleet Accountability:** Eliminates paper logs and gives transport administrators a live dashboard of seated vs. absent students per route.
-* 💰 **Zero Hardware Costs:** Operates directly on standard staff smartphones via PWA without purchasing expensive RFID terminals.
-* 🛡️ **Enhanced Campus Safety:** Provides immediate records of student transit status in emergencies.
-* ⏱️ **15 Minutes Saved per Route:** Rapid one-tap search accelerates boarding at every campus bus stop.
+## 5. 🛡️ Security & Zero-Secret Architecture
+This project enforces an uncompromising, automated **Zero-Secret Protocol**:
+
+1. **Untracked Environment Isolation:**
+   - All live secrets, API tokens, database connection strings, and private credentials reside strictly in untracked local `.env` files.
+   - `.gitignore` rigorously excludes `.env`, `.env.local`, `.env.*.local`, `*.pem`, `*.key`, and credentials.
+2. **No Committed Secrets or Plaintext Passwords:**
+   - `tests/api-tests.http` uses VS Code REST Client environment references (`{{$dotenv ADMIN_PASSWORD}}`) and generic non-sensitive dummy placeholders.
+   - `db/seed.sql` utilizes standard non-sensitive initial setup flags (`INIT_ADMIN_DEFAULT_PASS`), requiring password updates upon first login or via the Brevo reset circuit.
+   - `.env.example` contains purely generic dummy labels with zero vendor prefixes or high-entropy tokens to prevent GitGuardian and GitHub Secret Scanning alerts.
+3. **Automated Pre-Commit Diff Auditing:**
+   - Pre-commit diffs (`git diff --cached`) are audited before every commit to ensure zero API keys or private credentials can be pushed to GitHub.
 
 ---
 
-## 6. 🚀 Feasibility, Operational Viability & Scalability
-* 🔬 **Technical Feasibility:** Service worker offline caching ensures flawless operation along remote highway corridors without cellular signals.
-* 💰 **Economic & Financial Viability:** Saves colleges tens of thousands of dollars in proprietary RFID hardware and maintenance contracts.
-* 🏛️ **Operational Governance:** Simple one-tap mobile UI requires zero technical training for drivers or bus in-charges.
-* 📈 **Horizontal Scalability Roadmap:** Easily handles dozens of bus routes and thousands of student commuters simultaneously across multi-campus institutions.
+## 6. 🧪 REST Client Suite & Automated Test Circuits
+
+### 📡 VS Code REST Client (`tests/api-tests.http`)
+Compatible with the `humao.rest-client` extension. Contains pre-configured, secret-free HTTP test scenarios:
+* `GET  /api/health` — Unified server health check.
+* `POST /api/auth/login` — RBAC JWT session issuance.
+* `POST /api/auth/signup/request-otp` — Brevo 6-digit OTP dispatch.
+* `POST /api/auth/signup/verify-otp` — OTP token verification.
+* `POST /api/auth/forgot-password` — Brevo password reset dispatch.
+* `POST /api/auth/reset-password` — Cryptographic reset token validation.
+* `GET  /api/media/signature` — Cloudinary signed upload generation.
+* `POST /api/attendance/session/start` — Dynamic code session initialization.
+* `POST /api/attendance/verify` — Geofence and rotating code boarding check.
+
+### ⚡ Vitest Automated Regression Circuits (`tests/auth-brevo-flow.test.ts`)
+Run the full 7-circuit automated test suite:
+```bash
+npx vitest run
+```
+* **Circuit 1:** Brevo 6-digit numeric OTP generation, 10-minute expiry validation, and high-entropy reset token tests.
+* **Circuit 2:** Dynamic 6-digit attendance code rotation and campus coordinate Haversine distance calculations.
+* **Circuit 3:** Cloudinary media pipeline initialization and signed payload generation.
 
 ---
 
-## 7. 🚀 Cloud Deployment & Server Configuration
+## 7. 🔑 Environment Configuration Matrix
+
+Copy `.env.example` to `.env` and fill in your credentials:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Description | Example / Default |
+| :--- | :--- | :--- |
+| `PORT` | Local backend Express port | `3001` |
+| `NODE_ENV` | Runtime environment | `development` |
+| `JWT_SECRET` | Secret key for JWT session tokens (min 32 chars) | `replace_with_your_jwt_secret_min_32_chars` |
+| `SUPABASE_URL` | Supabase project REST URL | `https://your-project-id.supabase.co` |
+| `SUPABASE_ANON_KEY` | Supabase anonymous public API key | `your-supabase-anon-key` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (backend administrative operations) | `your-supabase-service-role-key` |
+| `DATABASE_URL` | PostgreSQL direct connection string | `postgresql://postgres:your-db-pass@db.your-project.supabase.co:5432/postgres` |
+| `BREVO_API_KEY` | Brevo v3 Transactional Email API Key | `your_brevo_api_key_v3_here` |
+| `BREVO_SENDER_EMAIL` | Verified sender email address configured in Brevo | `transport@college.edu` |
+| `BREVO_SENDER_NAME` | Transactional email sender display name | `"College Bus Transit System"` |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud namespace | `your-cloud-name` |
+| `CLOUDINARY_API_KEY` | Cloudinary public API key | `your-cloudinary-api-key` |
+| `CLOUDINARY_API_SECRET` | Cloudinary private API secret | `your-cloudinary-api-secret` |
+| `DEFAULT_CAMPUS_LAT` | Campus reference latitude for geofence validation | `10.9572` |
+| `DEFAULT_CAMPUS_LNG` | Campus reference longitude for geofence validation | `78.0766` |
+| `DEFAULT_GEOFENCE_RADIUS_METERS`| Permissible boarding distance radius in meters | `150` |
+| `DEFAULT_CODE_ROTATION_SECONDS` | Code refresh interval in seconds | `60` |
+
+---
+
+## 8. 🚀 Cloud Deployment & Server Configuration
 
 ### 🌐 Deploying on Render (Web Service)
 Deploy this repository as a **Node.js Web Service** on [Render](https://render.com/):
@@ -127,12 +180,12 @@ The repository includes a pre-configured `vercel.json` for serverless environmen
 
 ---
 
-## 8. 💻 Local Setup & Developer Quick Start
+## 9. 💻 Local Setup & Developer Quick Start
 
 ### 1-Click Windows Launcher (`run.bat`)
 Run `run.bat` in the project root for the interactive control panel:
 * `[1]` Start full application (Express API on port `3001` + Vite dev client on port `5173`)
-* `[2]` Run 21-point automated verification tests (Haversine distance, dynamic codes, geofence, and security)
+* `[2]` Run automated verification circuits (Haversine distance, dynamic codes, geofence, and security)
 * `[3]` Build production bundle (`tsc && vite build`)
 * `[4]` Install / repair dependencies (`npm install`)
 
@@ -141,22 +194,27 @@ Run `run.bat` in the project root for the interactive control panel:
 # 1. Install dependencies
 npm install
 
-# 2. Run development environment (Client + Server concurrently)
+# 2. Configure environment
+cp .env.example .env
+
+# 3. Initialize Supabase Database (Execute db/schema.sql and db/seed.sql in Supabase SQL Editor)
+
+# 4. Run development environment (Client + Server concurrently)
 npm run dev
 
-# 3. Run automated verification suite
+# 5. Run automated verification suite
 npm test
 
-# 4. Build production bundle
+# 6. Build production bundle
 npm run build
 
-# 5. Start unified production server
+# 7. Start unified production server
 npm start
 ```
 
 ---
 
-## 7. 👨‍💻 Engineering Author
+## 10. 👨‍💻 Engineering Author
 
 <table border="0" itemscope itemtype="https://schema.org/Person">
   <tr>
