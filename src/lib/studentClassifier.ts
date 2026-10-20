@@ -124,10 +124,11 @@ export class StudentClassifierEngine {
       if (sum > maxLogit) maxLogit = sum;
     }
 
+    const temperature = 1.6;
     let sumExp = 0;
     const probs = new Float32Array(numClasses);
     for (let c = 0; c < numClasses; c++) {
-      probs[c] = Math.exp(logits[c] - maxLogit);
+      probs[c] = Math.exp((logits[c] - maxLogit) / temperature);
       sumExp += probs[c];
     }
     for (let c = 0; c < numClasses; c++) probs[c] /= sumExp;
