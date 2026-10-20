@@ -92,6 +92,22 @@ describe('⚡ Mobile Zero-Hardware Attendance Verification Circuits', () => {
       expect(result.matched).toBe(false);
       expect(result.reason).toContain('Invalid 128-dimensional biometric descriptor');
     });
+
+    it('loads trained neural network model from public/models and detects impostor vectors', async () => {
+      const { studentClassifierEngine } = await import('../src/lib/studentClassifier');
+      const loaded = await studentClassifierEngine.loadModel();
+      expect(loaded).toBe(true);
+
+      // Random vector simulates an unknown impostor / friend not in the training set
+      const randomImpostorVector = new Array(128).fill(0).map(() => Math.random() * 2 - 1);
+      const prediction = studentClassifierEngine.predict(randomImpostorVector);
+
+      expect(prediction).not.toBeNull();
+      if (prediction) {
+        expect(prediction.impostorProbability).toBeGreaterThan(50);
+        expect(prediction.matched).toBe(false);
+      }
+    });
   });
 
   describe('Circuit 2: Smartphone-Native Biometric Engine (WebAuthn)', () => {

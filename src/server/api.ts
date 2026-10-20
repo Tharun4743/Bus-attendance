@@ -12,6 +12,10 @@ import { cloudinaryPipeline } from '../lib/cloudinary';
 import { faceVerificationEngine } from '../lib/faceVerification';
 import { mobileBiometricEngine } from '../lib/webauthn';
 import { calculateDistance } from './attendance/haversine';
+import { studentClassifierEngine } from '../lib/studentClassifier';
+
+// Preload trained neural network model weights from public/models
+studentClassifierEngine.loadModel().catch((err) => console.warn('[StudentClassifier] Initial load warning:', err));
 
 export const apiRouter = Router();
 const storage = getStorage();
@@ -874,6 +878,19 @@ apiRouter.post(
             });
           }
 
+          // 1. Evaluate with trained neural network model in public/models
+          if (studentClassifierEngine.isModelReady()) {
+            const pred = studentClassifierEngine.predict(faceDescriptor);
+            if (pred && !pred.matched && pred.impostorProbability > 75) {
+              console.log(`❌ [Trained-Model-Impostor] Neural network classified input as IMPOSTOR (${pred.impostorProbability}% confidence). REJECTED.`);
+              return res.status(400).json({
+                status: 'FACE_MISMATCH',
+                message: `Neural network rejected face (${pred.impostorProbability}% impostor probability). Impostor or friend's face detected.`,
+                confidence: 0,
+              });
+            }
+          }
+
           const bioResult = faceVerificationEngine.compareBiometricDescriptors(faceDescriptor, student.faceDescriptor);
           if (!bioResult.matched) {
             console.log(`❌ [Face-Mismatch] Student ${student.registerNumber} biometric distance=${bioResult.distance}. REJECTED.`);
@@ -885,7 +902,14 @@ apiRouter.post(
             });
           }
           faceConfidence = bioResult.confidence;
-          console.log(`✅ [Face-Matched] Student ${student.registerNumber} biometric verified (${faceConfidence}% match, distance ${bioResult.distance}).`);
+          console.log(`✅ [Face-Matched] Student ${student.registerNumber} biometric verified (${faceConfidence}% match, distance ${bioResult.distance}, cosine ${bioResult.cosineSimilarity}).`);
+
+          // Adaptive Baseline Learning: smooth profile vector on clear authentic matches
+          if (bioResult.adaptiveDescriptor) {
+            storage.updateStudent(student.id, {
+              faceDescriptor: bioResult.adaptiveDescriptor,
+            }).catch((err: any) => console.warn('[Face-Adaptive] Failed to update baseline descriptor:', err));
+          }
         } else {
           // Fallback if student was enrolled before descriptor support
           const faceResult = faceVerificationEngine.verifyFaceMatch(selfieBase64, student.profilePhotoUrl);

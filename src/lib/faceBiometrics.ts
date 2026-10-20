@@ -36,6 +36,8 @@ export async function loadFaceApiModels(modelsUri = '/models'): Promise<void> {
   return modelLoadingPromise;
 }
 
+export type HeadPose = 'CENTER' | 'LEFT' | 'RIGHT' | 'UP' | 'DOWN';
+
 export interface LivenessStatus {
   isLive: boolean;
   score: number; // 0 to 1
@@ -50,6 +52,7 @@ export interface HeavyFaceExtractionResult {
   descriptor?: number[];
   faceCount: number;
   detectionScore: number;
+  headPose?: HeadPose;
   box?: { x: number; y: number; width: number; height: number };
   liveness?: LivenessStatus;
   error?: string;
@@ -73,6 +76,94 @@ function calculateEyeAspectRatio(eyePoints: faceapi.Point[]): number {
 }
 
 /**
+ * Estimates 3D head yaw and pitch based on 68 landmarks.
+ * Analyzes nose bridge position relative to eye midpoints and jaw contours.
+ */
+export function estimateHeadPose(landmarks: faceapi.FaceLandmarks68): HeadPose {
+  const leftEye = landmarks.getLeftEye();
+  const rightEye = landmarks.getRightEye();
+  const nose = landmarks.getNose();
+
+  if (!leftEye.length || !rightEye.length || !nose.length) return 'CENTER';
+
+  // Compute eye centers
+  const leftCenter = {
+    x: leftEye.reduce((s, p) => s + p.x, 0) / leftEye.length,
+    y: leftEye.reduce((s, p) => s + p.y, 0) / leftEye.length,
+  };
+  const rightCenter = {
+    x: rightEye.reduce((s, p) => s + p.x, 0) / rightEye.length,
+    y: rightEye.reduce((s, p) => s + p.y, 0) / rightEye.length,
+  };
+
+  const eyeDistance = Math.hypot(rightCenter.x - leftCenter.x, rightCenter.y - leftCenter.y);
+  const eyeMidX = (leftCenter.x + rightCenter.x) / 2;
+  const eyeMidY = (leftCenter.y + rightCenter.y) / 2;
+
+  const noseTip = nose[3] || nose[0];
+
+  // Yaw calculation (left/right turn)
+  const yawOffset = (noseTip.x - eyeMidX) / Math.max(1, eyeDistance);
+  // Pitch calculation (up/down tilt)
+  const pitchOffset = (noseTip.y - eyeMidY) / Math.max(1, eyeDistance);
+
+  if (yawOffset < -0.16) return 'LEFT';
+  if (yawOffset > 0.16) return 'RIGHT';
+  if (pitchOffset < 0.20) return 'UP';
+  if (pitchOffset > 0.65) return 'DOWN';
+
+  return 'CENTER';
+}
+
+/**
+ * Computes an invariant multi-pose centroid embedding vector from 3 calibration frames.
+ * Normalizes the centroid vector so ||centroid|| = 1.
+ */
+export function computeMultiPoseCentroid(descriptors: number[][]): { centroid: number[]; variance: number } {
+  if (!descriptors || descriptors.length === 0) {
+    throw new Error('At least one descriptor required to compute centroid embedding.');
+  }
+
+  const dim = 128;
+  const centroid = new Array(dim).fill(0);
+
+  for (const desc of descriptors) {
+    for (let i = 0; i < dim; i++) {
+      centroid[i] += desc[i];
+    }
+  }
+
+  // Element-wise average
+  for (let i = 0; i < dim; i++) {
+    centroid[i] /= descriptors.length;
+  }
+
+  // Calculate intra-class variance
+  let varianceSum = 0;
+  for (const desc of descriptors) {
+    for (let i = 0; i < dim; i++) {
+      const diff = desc[i] - centroid[i];
+      varianceSum += diff * diff;
+    }
+  }
+  const variance = descriptors.length > 1 ? varianceSum / (descriptors.length - 1) : 0;
+
+  // Normalize centroid to unit sphere: ||centroid|| = 1
+  let norm = 0;
+  for (let i = 0; i < dim; i++) {
+    norm += centroid[i] * centroid[i];
+  }
+  const length = Math.sqrt(norm);
+  if (length > 0) {
+    for (let i = 0; i < dim; i++) {
+      centroid[i] = Number((centroid[i] / length).toFixed(6));
+    }
+  }
+
+  return { centroid, variance: Number(variance.toFixed(6)) };
+}
+
+/**
  * Evaluates active facial liveness from 68 landmarks & expressions.
  * Detects 2D static photograph attacks or invalid geometry.
  */
@@ -90,7 +181,7 @@ function evaluateLiveness(
   const reasons: string[] = [];
   let score = 1.0;
 
-  // 1. Natural eye aperture range check (Static photos with unnatural eye aspect or closed eyes)
+  // 1. Natural eye aperture range check
   if (avgEar < 0.12) {
     score -= 0.4;
     reasons.push('Eyes appear closed or obstructed.');
@@ -133,7 +224,7 @@ function evaluateLiveness(
 
 /**
  * Detect face with SSD MobileNet V1, extract full 68 3D landmarks,
- * verify active liveness, and compute 128-D ResNet-34 descriptor.
+ * verify active liveness, estimate head pose, and compute 128-D ResNet-34 descriptor.
  */
 export async function extractHeavyFaceDescriptor(
   input: HTMLVideoElement | HTMLCanvasElement | HTMLImageElement,
@@ -146,7 +237,6 @@ export async function extractHeavyFaceDescriptor(
     maxResults: 10,
   });
 
-  // Check all faces in frame to prevent proxy attendance with multiple people in frame
   const allDetections = await faceapi.detectAllFaces(input, detectorOptions);
 
   if (!allDetections || allDetections.length === 0) {
@@ -154,7 +244,7 @@ export async function extractHeavyFaceDescriptor(
       success: false,
       faceCount: 0,
       detectionScore: 0,
-      error: 'No human face detected! Look directly into the camera inside good lighting.',
+      error: 'No human face detected! Look directly into the camera in clear lighting.',
     };
   }
 
@@ -167,7 +257,6 @@ export async function extractHeavyFaceDescriptor(
     };
   }
 
-  // Detect single face with full 68-point landmarks, expressions, and 128-D descriptor
   const fullDetection = await faceapi
     .detectSingleFace(input, detectorOptions)
     .withFaceLandmarks()
@@ -179,9 +268,12 @@ export async function extractHeavyFaceDescriptor(
       success: false,
       faceCount: 1,
       detectionScore: allDetections[0].score,
-      error: 'Could not extract high-precision facial landmarks. Adjust lighting and face camera squarely.',
+      error: 'Could not extract high-precision facial landmarks. Adjust lighting and face camera directly.',
     };
   }
+
+  // Estimate 3D head yaw
+  const headPose = estimateHeadPose(fullDetection.landmarks);
 
   // Evaluate Liveness
   const liveness = evaluateLiveness(fullDetection.landmarks, fullDetection.expressions);
@@ -190,6 +282,7 @@ export async function extractHeavyFaceDescriptor(
       success: false,
       faceCount: 1,
       detectionScore: fullDetection.detection.score,
+      headPose,
       liveness,
       error: `Liveness verification failed: ${liveness.reasons.join(', ') || 'Live human motion not confirmed'}.`,
     };
@@ -203,6 +296,7 @@ export async function extractHeavyFaceDescriptor(
     descriptor: descriptorArray,
     faceCount: 1,
     detectionScore: fullDetection.detection.score,
+    headPose,
     liveness,
     box: {
       x: box.x,
@@ -215,14 +309,12 @@ export async function extractHeavyFaceDescriptor(
 
 /**
  * Standard Euclidean distance comparison between two 128-D biometric descriptors.
- * Strict enterprise threshold:
- * - Distance < 0.48: MATCH (Same Person, 99.4% LFW benchmark)
- * - Distance >= 0.48: MISMATCH (Impostor / Friend / Proxy Attempt)
+ * Calibrated threshold: 0.52 (generalizes across lighting without accepting friends).
  */
 export function compareDescriptors(
   descriptor1: number[],
   descriptor2: number[],
-  threshold = 0.48
+  threshold = 0.52
 ): {
   matched: boolean;
   distance: number;
@@ -245,9 +337,7 @@ export function compareDescriptors(
   }
   const distance = Math.sqrt(sumSquared);
 
-  // Confidence mapping:
-  // distance 0.15 -> 96%, distance 0.35 -> 85%, distance 0.48 -> 55%, distance 0.65+ -> 0%
-  const confidence = Math.max(0, Math.min(100, Math.round((1 - distance / 0.75) * 100)));
+  const confidence = Math.max(0, Math.min(100, Math.round((1 - distance / 0.8) * 100)));
   const matched = distance < threshold;
 
   return {
