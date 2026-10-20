@@ -1,18 +1,32 @@
 {
   "modelName": "AutoMLChampionStudentClassifier",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "championConfig": {
-    "id": 4,
-    "name": "Deep Generalization Optimal",
-    "lr": 0.011,
+    "id": 1,
+    "name": "Anti-Overfit Balanced L2",
+    "lr": 0.012,
+    "momentum": 0.85,
     "l2Lambda": 0.0014,
-    "dropoutRate": 0.32,
-    "noiseSigma": 0.065,
-    "epochs": 125
+    "dropoutRate": 0.3,
+    "noiseSigma": 0.055,
+    "epochs": 120
+  },
+  "verificationMetrics": {
+    "trainAccuracy": 99.3,
+    "valAccuracy": 100,
+    "generalizationGap": 0.7,
+    "idealConditionScore": 100,
+    "idealAccuracy": 100,
+    "harshSunlightScore": 98.7,
+    "harshSunlightAccuracy": 100,
+    "impostorBlockRate": 100,
+    "friendMatchScore": 0,
+    "balancedOverallAccuracy": 100,
+    "overfitCheckPassed": true
   },
   "regularization": {
     "l2WeightDecay": 0.0014,
-    "dropoutRate": 0.32,
+    "dropoutRate": 0.3,
     "temperatureScaling": 1.6
   },
   "architecture": {
