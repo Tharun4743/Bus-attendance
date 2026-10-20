@@ -825,6 +825,16 @@ apiRouter.post(
         if (uploadRes.success) {
           selfieUrl = uploadRes.secureUrl;
           selfiePublicId = uploadRes.publicId;
+
+          // 🌟 Automatic One-Shot Face Enrollment:
+          // If the student has no enrolled photo baseline yet, automatically register this first verified selfie!
+          if (!student.profilePhotoUrl && selfieUrl) {
+            await storage.updateStudent(student.id, {
+              profilePhotoUrl: selfieUrl,
+              profilePhotoPublicId: selfiePublicId,
+            });
+            console.log(`📸 [Auto-Enrollment] Student ${student.registerNumber} (${student.name}) face enrolled permanently.`);
+          }
         }
       } else if (method === 'PHONE_BIOMETRIC_GPS') {
         const bioResult = mobileBiometricEngine.verifyAssertion(studentId, biometricPayload || {});

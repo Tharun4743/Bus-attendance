@@ -1,42 +1,46 @@
 @echo off
 setlocal enabledelayedexpansion
-title College Bus Attendance System Launcher
+title College Bus Attendance System — Unified Launcher
 color 0B
 
 echo ===============================================================================
-echo                COLLEGE BUS ATTENDANCE SYSTEM - LAUNCHER
+echo            🚌 COLLEGE BUS ATTENDANCE MANAGEMENT SYSTEM — LAUNCHER
 echo ===============================================================================
+echo.
+echo   SYSTEM ROLES:
+echo   -----------------------------------------------------------------------------
+echo   [1] ADMIN     : tharun@gmail.com    | Role: SuperAdmin (/admin/dashboard)
+echo   [2] IN-CHARGE : aarthi@college.edu  | Role: Bus In-Charge (/incharge/dashboard)
+echo   [3] STUDENT   : 24it001@college.edu | Role: Student Commuter (/student/dashboard)
+echo   -----------------------------------------------------------------------------
 echo.
 
 :: 1. Check if Node.js is installed
 where node >nul 2>nul
 if %errorlevel% neq 0 (
     color 0C
-    echo [ERROR] Node.js is not installed or not in your PATH!
-    echo Please download and install Node.js from: https://nodejs.org/
+    echo [ERROR] Node.js is not installed or not found in your PATH!
+    echo Please install Node.js from https://nodejs.org/ and re-run.
     echo.
     pause
     exit /b 1
 )
 
-:: 2. Check if npm is installed
-where npm >nul 2>nul
-if %errorlevel% neq 0 (
-    color 0C
-    echo [ERROR] npm is not installed or not in your PATH!
-    echo Please install npm or repair your Node.js installation.
+:: 2. Check for .env file
+if not exist ".env" (
+    echo [*] .env file not found. Creating from .env.example...
+    copy ".env.example" ".env" >nul
+    echo [OK] Default .env created.
     echo.
-    pause
-    exit /b 1
 )
 
 :: 3. Check for node_modules
 if not exist "node_modules\" (
-    echo [*] Node modules missing. Installing dependencies...
+    echo [*] Dependencies not found. Running npm install...
     call npm install
     if %errorlevel% neq 0 (
         color 0C
-        echo [ERROR] Failed to install npm dependencies.
+        echo [ERROR] npm install failed.
         pause
         exit /b 1
     )
@@ -45,32 +49,27 @@ if not exist "node_modules\" (
 )
 
 :MENU
-cls
-color 0B
 echo ===============================================================================
-echo                COLLEGE BUS ATTENDANCE SYSTEM - CONTROL PANEL
-echo ===============================================================================
-echo.
-echo   [1] Start Application (Express API + Vite Web Client + Auto Open Browser)
-echo   [2] Run Automated Verification Tests (Haversine, Moving Bus, Security)
+echo   CHOOSE AN ACTION:
+echo   [1] Start Application (API + Vite Frontend + Auto-Open Browser) [DEFAULT]
+echo   [2] Run Vitest Regression Tests (Mobile Verification + Brevo Mailer)
 echo   [3] Build Production Bundle (Vite + TypeScript)
-echo   [4] Install / Repair Dependencies (npm install)
+echo   [4] Install / Clean Reinstall Dependencies
 echo   [5] Exit
-echo.
 echo ===============================================================================
-set /p choice="Please enter your choice (1-5) [Default is 1]: "
+echo.
 
-if "%choice%"=="" set choice=1
+set "choice=1"
+set /p choice="Enter choice (1-5) [Press ENTER for Default 1]: "
+
 if "%choice%"=="1" goto START_APP
 if "%choice%"=="2" goto RUN_TESTS
 if "%choice%"=="3" goto BUILD_APP
 if "%choice%"=="4" goto INSTALL_DEPS
 if "%choice%"=="5" goto EXIT_APP
 
-echo.
-echo [!] Invalid selection. Please choose 1, 2, 3, 4, or 5.
-timeout /t 2 >nul
-goto MENU
+echo [!] Invalid option. Starting Application...
+timeout /t 1 >nul
 
 :START_APP
 cls
@@ -79,17 +78,19 @@ echo ===========================================================================
 echo                 STARTING BUS ATTENDANCE SYSTEM (DEV MODE)
 echo ===============================================================================
 echo.
-echo   - Backend API : http://localhost:3001/api
-echo   - Web Client  : http://localhost:5173
+echo   🌐 Web Application : http://localhost:5173
+echo   🔌 REST API Server : http://localhost:3001/api
 echo.
-echo   Launching default web browser in 3 seconds...
+echo   Ready for local & mobile testing.
+echo   Launching web browser in 3 seconds...
+echo   (Press Ctrl+C at any time in this window to stop the server)
 echo ===============================================================================
 echo.
 
-:: Open browser after 3 seconds in background
+:: Automatically open browser after 3 seconds
 start "" cmd /c "timeout /t 3 >nul && start http://localhost:5173"
 
-:: Start the application
+:: Launch concurrently both server.ts and vite
 call npm run dev
 pause
 goto MENU
@@ -98,26 +99,28 @@ goto MENU
 cls
 color 0E
 echo ===============================================================================
-echo                     RUNNING AUTOMATED TEST SUITE
+echo                    RUNNING VITEST REGRESSION TEST CIRCUITS
 echo ===============================================================================
 echo.
-call npm test
+call npx vitest run
 echo.
-echo Press any key to return to the menu...
+echo Press any key to return to menu...
 pause >nul
+cls
 goto MENU
 
 :BUILD_APP
 cls
 color 0D
 echo ===============================================================================
-echo                    BUILDING PRODUCTION BUNDLE
+echo                    BUILDING PRODUCTION BUNDLE (TSC + VITE)
 echo ===============================================================================
 echo.
 call npm run build
 echo.
-echo Press any key to return to the menu...
+echo Press any key to return to menu...
 pause >nul
+cls
 goto MENU
 
 :INSTALL_DEPS
@@ -131,6 +134,7 @@ call npm install
 echo.
 echo [OK] Complete. Press any key to return to menu...
 pause >nul
+cls
 goto MENU
 
 :EXIT_APP
