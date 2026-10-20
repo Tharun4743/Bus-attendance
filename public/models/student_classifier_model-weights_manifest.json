@@ -1,23 +1,25 @@
 {
-  "modelName": "AutoMLChampionStudentClassifier",
-  "version": "3.1.0",
+  "modelName": "RigorousNonOverfittingStudentClassifier",
+  "version": "4.0.0",
   "championConfig": {
     "id": 1,
-    "name": "Anti-Overfit Balanced L2",
-    "lr": 0.012,
-    "momentum": 0.85,
-    "l2Lambda": 0.0014,
-    "dropoutRate": 0.3,
-    "noiseSigma": 0.055,
-    "epochs": 120
+    "name": "Balanced Invariance Regularizer",
+    "lr": 0.018,
+    "momentum": 0.86,
+    "l2Lambda": 0.0015,
+    "dropoutRate": 0.25,
+    "labelSmoothing": 0.04,
+    "hidden1": 64,
+    "hidden2": 32,
+    "epochs": 135
   },
   "verificationMetrics": {
-    "trainAccuracy": 99.3,
-    "valAccuracy": 100,
-    "generalizationGap": 0.7,
-    "idealConditionScore": 100,
+    "trainAccuracy": 97.7,
+    "valAccuracy": 97.9,
+    "generalizationGap": 0.2,
+    "idealConditionScore": 99,
     "idealAccuracy": 100,
-    "harshSunlightScore": 98.7,
+    "harshSunlightScore": 97,
     "harshSunlightAccuracy": 100,
     "impostorBlockRate": 100,
     "friendMatchScore": 0,
@@ -25,9 +27,10 @@
     "overfitCheckPassed": true
   },
   "regularization": {
-    "l2WeightDecay": 0.0014,
-    "dropoutRate": 0.3,
-    "temperatureScaling": 1.6
+    "l2WeightDecay": 0.0015,
+    "dropoutRate": 0.25,
+    "labelSmoothing": 0.04,
+    "temperatureScaling": 1.5
   },
   "architecture": {
     "inputDimension": 128,

@@ -48,6 +48,11 @@ export class StudentClassifierEngine {
       this.classes = manifest.architecture.classes;
       const numClasses = this.classes.length;
 
+      if (manifest.architecture.hiddenLayers && manifest.architecture.hiddenLayers.length === 2) {
+        this.hidden1 = manifest.architecture.hiddenLayers[0];
+        this.hidden2 = manifest.architecture.hiddenLayers[1];
+      }
+
       const binBuffer = await fs.readFile(binPath);
       const floatView = new Float32Array(
         binBuffer.buffer,
