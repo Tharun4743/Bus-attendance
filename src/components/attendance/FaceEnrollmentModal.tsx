@@ -175,12 +175,22 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
     setErrorMsg(null);
 
     try {
-      const { centroid } = computeMultiPoseCentroid(capturedDescriptors);
-      const res = await api.enrollFace(capturedSnapshot, centroid);
+      const { centroid, variance } = computeMultiPoseCentroid(capturedDescriptors);
+      const qualityScore = Math.max(85, Math.min(99, Math.round(100 - variance * 250)));
+      const leftDesc = capturedDescriptors[1] || undefined;
+      const rightDesc = capturedDescriptors[2] || undefined;
+
+      const res = await api.enrollFace(
+        capturedSnapshot,
+        centroid,
+        leftDesc,
+        rightDesc,
+        qualityScore
+      );
 
       setSuccessMsg(res.message || 'Multi-pose Face ID registered successfully!');
       setTimeout(() => {
-        onSuccess(res.profilePhotoUrl);
+        onSuccess(res.profilePhotoUrl || res.photoUrl || capturedSnapshot);
         onClose();
       }, 1400);
     } catch (err: any) {

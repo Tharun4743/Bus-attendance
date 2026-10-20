@@ -208,11 +208,20 @@ class ApiClient {
 
   async enrollFace(
     selfieBase64: string,
-    faceDescriptor?: number[]
-  ): Promise<{ success: boolean; message: string; profilePhotoUrl: string }> {
+    faceDescriptor?: number[],
+    faceDescriptorLeft?: number[],
+    faceDescriptorRight?: number[],
+    faceEnrollmentQuality?: number
+  ): Promise<{ success: boolean; message: string; profilePhotoUrl: string; photoUrl?: string; student?: Student }> {
     return this.request('/attendance/enroll-face', {
       method: 'POST',
-      body: JSON.stringify({ selfieBase64, faceDescriptor }),
+      body: JSON.stringify({
+        selfieBase64,
+        faceDescriptor,
+        faceDescriptorLeft,
+        faceDescriptorRight,
+        faceEnrollmentQuality,
+      }),
     });
   }
 

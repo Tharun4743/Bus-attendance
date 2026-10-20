@@ -4,6 +4,8 @@
  * Zero local/base64 asset storage; stores secure HTTPS URLs and Public IDs only.
  */
 
+import crypto from 'crypto';
+
 export interface CloudinaryUploadResult {
   success: boolean;
   secureUrl?: string;
@@ -14,14 +16,14 @@ export interface CloudinaryUploadResult {
 }
 
 export class CloudinaryPipeline {
-  private cloudName: string;
-  private apiKey: string;
-  private apiSecret: string;
-
-  constructor() {
-    this.cloudName = process.env.CLOUDINARY_CLOUD_NAME || '';
-    this.apiKey = process.env.CLOUDINARY_API_KEY || '';
-    this.apiSecret = process.env.CLOUDINARY_API_SECRET || '';
+  private get cloudName(): string {
+    return process.env.CLOUDINARY_CLOUD_NAME || '';
+  }
+  private get apiKey(): string {
+    return process.env.CLOUDINARY_API_KEY || '';
+  }
+  private get apiSecret(): string {
+    return process.env.CLOUDINARY_API_SECRET || '';
   }
 
   public isConfigured(): boolean {
@@ -31,7 +33,7 @@ export class CloudinaryPipeline {
   /**
    * Generates a signed upload signature for direct browser HTTPS upload to Cloudinary.
    */
-  public generateUploadSignature(folder: string = 'bus_attendance/id_cards'): {
+  public generateUploadSignature(folder: string = 'bus-attendance/id_cards'): {
     timestamp: number;
     signature: string;
     apiKey: string;
@@ -43,8 +45,6 @@ export class CloudinaryPipeline {
     }
 
     const timestamp = Math.round(Date.now() / 1000);
-    // In node/edge runtime, use crypto to create sha1 signature
-    const crypto = require('crypto');
     const paramsToSign = `folder=${folder}&timestamp=${timestamp}${this.apiSecret}`;
     const signature = crypto.createHash('sha1').update(paramsToSign).digest('hex');
 
@@ -80,7 +80,6 @@ export class CloudinaryPipeline {
       formData.append('api_key', this.apiKey);
 
       const timestamp = Math.round(Date.now() / 1000);
-      const crypto = await import('crypto');
       const paramsToSign = `folder=${folder}&timestamp=${timestamp}${this.apiSecret}`;
       const signature = crypto.createHash('sha1').update(paramsToSign).digest('hex');
 

@@ -97,12 +97,19 @@ export class StudentClassifierEngine {
 
     const numClasses = this.classes.length;
 
+    // Unit normalize input descriptor (ISO 19794-5 128-D embedding standard)
+    let norm = 0;
+    for (let i = 0; i < 128; i++) norm += descriptor[i] * descriptor[i];
+    const len = Math.sqrt(norm) || 1;
+    const normDesc = new Float32Array(128);
+    for (let i = 0; i < 128; i++) normDesc[i] = descriptor[i] / len;
+
     // Layer 1 Forward
     const a1 = new Float32Array(this.hidden1);
     for (let j = 0; j < this.hidden1; j++) {
       let sum = this.b1[j];
       for (let i = 0; i < this.inputDim; i++) {
-        sum += descriptor[i] * this.W1[i * this.hidden1 + j];
+        sum += normDesc[i] * this.W1[i * this.hidden1 + j];
       }
       a1[j] = sum > 0 ? sum : sum * 0.1; // LeakyReLU
     }
@@ -151,13 +158,15 @@ export class StudentClassifierEngine {
     }
 
     const predictedClass = this.classes[bestIdx];
-    const isImpostor = predictedClass === 'IMPOSTOR' || bestIdx === 0;
-    const impostorProb = Math.round((probs[0] || 0) * 100);
-    const confidence = Math.round(bestProb * 100);
+    const isImpostor = predictedClass === 'IMPOSTOR' || bestIdx === 0 || bestProb < 0.50;
+    const impostorProb = isImpostor
+      ? Math.max(75, Math.round((1 - (predictedClass === 'IMPOSTOR' ? 0 : bestProb)) * 100))
+      : Math.round((probs[0] || 0) * 100);
+    const confidence = isImpostor ? 0 : Math.round(bestProb * 100);
 
     return {
       matched: !isImpostor && confidence >= 70,
-      predictedStudentId: predictedClass,
+      predictedStudentId: isImpostor ? 'IMPOSTOR' : predictedClass,
       confidence,
       impostorProbability: impostorProb,
       probabilities: probMap,

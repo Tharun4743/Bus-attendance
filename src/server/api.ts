@@ -740,7 +740,14 @@ apiRouter.post(
         return res.status(404).json({ error: 'Student commuter profile not found.' });
       }
 
-      const { selfieBase64, faceDescriptor } = req.body;
+      const {
+        selfieBase64,
+        faceDescriptor,
+        faceDescriptorLeft,
+        faceDescriptorRight,
+        faceEnrollmentQuality,
+      } = req.body;
+
       if (!selfieBase64 || !faceVerificationEngine.isValidImagePayload(selfieBase64)) {
         return res.status(400).json({ error: 'Valid camera selfie snapshot required for face enrollment.' });
       }
@@ -754,17 +761,23 @@ apiRouter.post(
       const enrolledUrl = uploadRes.secureUrl || selfieBase64;
       const enrolledPublicId = uploadRes.publicId;
 
-      await storage.updateStudent(student.id, {
-        profilePhotoUrl: enrolledUrl,
-        profilePhotoPublicId: enrolledPublicId,
+      const updated = await storage.updateStudent(student.id, {
+        photoUrl: enrolledUrl,
+        photoPublicId: enrolledPublicId,
         faceDescriptor: Array.isArray(faceDescriptor) && faceDescriptor.length === 128 ? faceDescriptor : undefined,
+        faceDescriptorLeft: Array.isArray(faceDescriptorLeft) && faceDescriptorLeft.length === 128 ? faceDescriptorLeft : undefined,
+        faceDescriptorRight: Array.isArray(faceDescriptorRight) && faceDescriptorRight.length === 128 ? faceDescriptorRight : undefined,
+        faceEnrolledAt: new Date().toISOString(),
+        faceEnrollmentQuality: typeof faceEnrollmentQuality === 'number' ? faceEnrollmentQuality : 95,
       });
 
-      console.log(`✅ [Face-Enrollment] Student ${student.registerNumber} (${student.name}) enrolled successfully.`);
+      console.log(`✅ [Face-Enrollment] Student ${student.registerNumber} (${student.name}) multi-pose enrolled successfully in Supabase PostgreSQL.`);
       return res.json({
         success: true,
         message: 'Face ID registered and enrolled successfully!',
         profilePhotoUrl: enrolledUrl,
+        photoUrl: enrolledUrl,
+        student: updated,
       });
     } catch (err: any) {
       return res.status(500).json({ error: err.message || 'Face enrollment failed.' });

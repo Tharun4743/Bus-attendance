@@ -23,10 +23,13 @@ async function runAccuracyBenchmark() {
   console.log('📊 UNSEEN HOLDOUT BIOMETRIC ACCURACY & SCORE BENCHMARK');
   console.log('================================================================\n');
 
-  // Load students and trained neural model
-  const studentsPath = path.resolve(process.cwd(), 'data/students.json');
-  const raw = await fs.readFile(studentsPath, 'utf-8');
-  const students: Student[] = JSON.parse(raw);
+  // Load students from live Supabase PostgreSQL
+  const dotenv = await import('dotenv');
+  dotenv.config();
+  const { getStorage } = await import('../src/server/storage/index.js');
+  const storage = getStorage();
+  const students = await storage.getStudents();
+  console.log(`📡 Loaded ${students.length} students from Supabase PostgreSQL.`);
 
   const modelLoaded = await studentClassifierEngine.loadModel();
   console.log(`🧠 Neural Classifier Loaded from public/models: ${modelLoaded ? 'YES' : 'NO'}\n`);
