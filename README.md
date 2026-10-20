@@ -3,60 +3,79 @@
 # 🚌 College Bus Attendance System — Real-Time Transit & Biometric Presence PWA
 ### *Progressive Web Application for Morning & Evening Transit Attendance Verification, 3-Angle Facial Biometrics, Geofencing & Fleet Analytics*
 
-[![Type](https://img.shields.io/badge/Type-PWA-FF6B6B?style=for-the-badge&logo=pwa&logoColor=white)](#) [![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=white)](#) [![Backend](https://img.shields.io/badge/Backend-Node.js%20%2B%20Express-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](#) [![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](#) [![Email](https://img.shields.io/badge/Mailer-Brevo%20Transactional%20API-0B996F?style=for-the-badge&logo=brevo&logoColor=white)](#) [![Media](https://img.shields.io/badge/Media-Cloudinary-3448C5?style=for-the-badge&logo=cloudinary&logoColor=white)](#)
+[![Type](https://img.shields.io/badge/Type-PWA-FF6B6B?style=for-the-badge&logo=pwa&logoColor=white)](#) [![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=white)](#) [![Backend](https://img.shields.io/badge/Backend-Node.js%20%2B%20Express-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](#) [![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](#) [![Email](https://img.shields.io/badge/Mailer-Brevo%20Transactional%20API-0B996F?style=for-the-badge&logo=brevo&logoColor=white)](#) [![Media](https://img.shields.io/badge/Media-Cloudinary-3448C5?style=for-the-badge&logo=cloudinary&logoColor=white)](#) [![Status](https://img.shields.io/badge/Deployment-Local%20Development%20Only-yellow?style=for-the-badge&logo=git&logoColor=black)](#)
 
 <p align="center">
   <a href="https://github.com/Tharun4743/Bus-attendance">📦 <b>Official GitHub Repository</b></a>
-  • <span>💻 <b>Local Production Ready</b></span>
+  • <span>🛠️ <b>Status: Local Development & Testing Only (Not Deployed)</b></span>
 </p>
 
 </div>
 
 ---
 
-## 1. 📌 Problem Statement & Context
-Educational transport departments managing fleet logistics and thousands of student bus commuters face severe operational friction:
+> [!IMPORTANT]
+> ### ⚠️ Project Deployment Status: Local Development Only (Not Deployed)
+> **Please Note:** This application is **currently NOT deployed to any public cloud platform or production web host** (such as Vercel, Render, AWS, Netlify, or Heroku). 
+> 
+> * The system runs locally on developer/operator machines (`npm run dev`: Vite frontend on port `5173` + Express API on port `3001`).
+> * The backend connects to live cloud APIs for data persistence and communications:
+>   * **Supabase PostgreSQL** via direct connection pooler (`pg.Pool`) for all tables, relational data, and biometric embeddings.
+>   * **Brevo API v3** for real 6-digit OTP email verification and secure password reset links.
+>   * **Cloudinary** for secure facial image upload and CDN image hosting.
+> * There are **no public web URLs** active for this project at this time.
 
-* 📋 **Fragile Paper Rosters:** Bus in-charges verify student boarding using physical paper rosters that tear, get soaked in rain, or are lost in transit.
-* ❓ **Real-Time Safety Blind Spots:** Transport managers have zero live visibility into whether a student boarded the morning bus or missed their evening return route, generating immense parental anxiety.
-* 📴 **Rural Cellular Dead Zones:** Campus bus routes frequently traverse remote rural highways where poor mobile connectivity breaks standard web applications.
-* 💸 **Exorbitant Hardware Costs:** On-bus RFID terminals require expensive hardware ($500+ per bus) that frequently malfunctions due to mechanical vibration, dust, and electrical instability.
-* 👥 **Proxy Attendance & Buddy Punching:** Traditional roll calls permit friends to answer on behalf of absent students.
+---
+
+## 1. 📌 Problem Statement & Context
+Educational transport departments managing fleet logistics and hundreds of student bus commuters face daily operational friction:
+
+* 📋 **Fragile Paper Rosters:** Bus in-charges verify student boarding using paper rosters that tear, get soaked in rain, or are easily misplaced in transit.
+* ❓ **Real-Time Safety Blind Spots:** Transport managers have zero live visibility into whether a student boarded the morning bus or missed their evening return route, generating parental anxiety.
+* 📴 **Intermittent Cellular Zones:** Campus bus routes often pass through rural highway corridors where poor mobile connectivity can break standard web applications.
+* 💸 **Expensive Hardware Terminals:** Fixed on-bus RFID scanners require expensive initial investment ($500+ per vehicle) and frequently break down due to bus vibrations, dust, and electrical instability.
+* 👥 **Proxy Attendance & Buddy Punching:** Traditional roll calls allow peers to answer on behalf of absent friends.
 
 ---
 
 ## 2. 🔍 Solution Comparison
 | Operational Dimension | Paper Rosters & WhatsApp | On-Bus RFID Terminals | 🚌 Bus Attendance System |
 | :--- | :---: | :---: | :---: |
-| **Hardware Equipment Cost** | ❌ None (Manual Paper) | 💸 High ($500+ per Bus) | ✅ Zero (Runs on Staff/Student Smartphones) |
-| **Identity Verification** | ❌ Zero Access Guards | ⚠️ Badge Swapping Possible | ✅ 3-Pose Biometric Face ID + TouchID |
-| **Proxy Attendance Prevention**| ❌ Trivial Buddy Punching | ⚠️ Swapping RFID Cards | ✅ 100% Impostor Block Rate (Platt Sigmoid) |
-| **Real-Time Fleet Dashboard** | ❌ None | ⚠️ Delayed Batch Sync | ✅ Live Cloud Sync with PostgreSQL |
-| **Session Tracking (Morning/Eve)**| ⚠️ Messy Double Columns | ⚠️ Rigid Hardware Mode | ✅ Rapid Morning/Evening Toggle |
-| **Geographic Validation** | ❌ None | ⚠️ Static Terminal Only | ✅ Haversine GPS Geofencing + 60s Dynamic Codes |
+| **Hardware Equipment Cost** | ❌ None (Manual Paper) | 💸 High ($500+ per Bus) | ✅ Zero (Runs in standard web browser on existing smartphones/PCs) |
+| **Identity Verification** | ❌ None | ⚠️ Badge Swapping Possible | ✅ 3-Pose Biometric Facial Calibration (Front, Left 15°, Right 15°) |
+| **Proxy Attendance Prevention**| ❌ Trivial Buddy Punching | ⚠️ Swapping RFID Cards | ✅ Continuous Platt Sigmoid Calibrated Verification ($d_0 = 0.52, \alpha = 12.5$) |
+| **Real-Time Fleet Dashboard** | ❌ None | ⚠️ Delayed Batch Sync | ✅ Live Cloud Sync with Supabase PostgreSQL |
+| **Session Tracking (Morning/Eve)**| ⚠️ Messy Double Columns | ⚠️ Rigid Hardware Mode | ✅ Rapid Morning/Evening Transit Session Toggle |
+| **Geographic Validation** | ❌ None | ⚠️ Static Terminal Only | ✅ Haversine GPS Geofencing + 60s Rotating Verification Codes |
 
 ---
 
-## 3. 💡 Core Architectural Modules & Innovations
+## 3. 💡 Core Architectural Modules
 
 ### 1. 🧬 3-Pose First-Time Biometric Face ID Calibration
-- **Mandatory First-Time Boarding Gate:** Students must complete a one-time 3-angle calibration (Front Center, Left $15^\circ$, Right $15^\circ$) before they can mark transit attendance.
-- **Intra-Class Variance Quality Scoring:** Analyzes biometric variance across poses to produce an enrollment quality score ($\ge 85\%$).
-- **Cloudinary Visual Proof:** The high-resolution reference portrait is securely uploaded to Cloudinary (`bus-attendance/profiles/[student_id]`), saving only verified HTTPS URLs in PostgreSQL.
-- **Continuous Platt Sigmoid Calibration:** Replaces fragile piecewise thresholding with continuous mathematical score calibration ($d_0 = 0.52, \alpha = 12.5$), delivering 100% balanced accuracy and 0.0% false acceptance rate.
+* **Mandatory Boarding Gate:** Un-enrolled students must complete a one-time 3-angle facial calibration (Front Center, Left $15^\circ$, Right $15^\circ$) via web camera before transit attendance can be marked.
+* **Intra-Class Variance Quality Scoring:** Analyzes biometric variance across poses to enforce an enrollment quality score threshold ($\ge 85\%$).
+* **Cloudinary Visual Proof:** The high-resolution reference portrait is securely uploaded to Cloudinary (`bus-attendance/profiles/[student_id]`), saving only the verified HTTPS URL in PostgreSQL.
+* **Continuous Platt Sigmoid Calibration:** Replaces fragile piecewise thresholding with continuous mathematical score calibration ($d_0 = 0.52, \alpha = 12.5$), preventing overfitting and providing smooth confidence scoring.
 
 ### 2. 🗄️ Native Supabase PostgreSQL Engine (`PostgresStorageAdapter.ts`)
-- **Direct Connection Pooling:** Direct SSL connection pool via `pg.Pool` to Supabase PostgreSQL, delivering low-latency queries (< 20ms).
-- **Zero Local JSON Reliance:** Replaced legacy JSON file storage with 100% native PostgreSQL tables, foreign keys, and Row-Level Security (RLS) policies.
-- **Deterministic Memory Adapter (`MemoryStorageAdapter.ts`):** In-memory storage implementation for lightning-fast, zero-disk automated regression testing.
+* **Direct Connection Pooling:** Direct SSL connection pool via `pg.Pool` to Supabase PostgreSQL for responsive queries.
+* **Zero Local JSON Reliance:** All entities (users, buses, attendance sessions, attendance records, settings) are stored in PostgreSQL tables (`db/schema.sql`).
+* **Deterministic Memory Adapter (`MemoryStorageAdapter.ts`):** Fast in-memory storage implementation used for zero-disk automated regression testing.
 
 ### 3. ✉️ Brevo Transactional Email Engine (`src/lib/brevo.ts`)
-- **Live 6-Digit OTP Student Registration:** Generates cryptographic 6-digit numeric OTPs with an exact 10-minute expiry window dispatched directly via the official Brevo REST API v3.
-- **Cryptographic Password Recovery:** 64-character hex reset tokens stored in PostgreSQL with short expiration timestamps dispatched via Brevo reset emails.
+* **Live 6-Digit OTP Student Registration:** Generates cryptographic 6-digit numeric OTPs with an exact 10-minute expiry window dispatched directly via the official Brevo REST API v3.
+* **Cryptographic Password Recovery:** 64-character hex reset tokens stored in PostgreSQL with short expiration timestamps dispatched via Brevo reset emails.
 
 ### 4. 📍 Geofencing & Dynamic Rotating Code Verification
-- **Haversine Distance Engine:** Validates that commuters are physically within the configurable campus or bus geofence radius ($\le 150\text{m}$).
-- **Rotating TOTP Codes:** Generates dynamic 6-digit verification codes that rotate every 60 seconds on the in-charge dashboard to prevent off-bus attendance fraud.
+* **Haversine Distance Engine:** Validates that commuters are physically within the configurable campus or bus stop radius ($\le 150\text{m}$).
+* **Rotating Dynamic Codes:** Generates dynamic 6-digit verification codes that rotate every 60 seconds on the operator/in-charge screen to prevent off-bus attendance fraud.
+
+### 5. 👥 Role-Based Access Control (RBAC)
+* **SuperAdmin / Admin:** Fleet management, route creation, commuter approval, real-time presence audit logs, and system settings.
+* **Operator / Bus In-Charge:** Session opening (Morning/Evening), live 60-second code display, student roster presence checklists, and geofence verification.
+* **Student Commuter:** 3-pose facial enrollment, self-attendance marking (camera selfie + dynamic code + GPS), and transit history.
+* **Parent:** Read-only visibility into commuter boarding timestamp, route, and transit status.
 
 ---
 
@@ -76,21 +95,21 @@ graph TD
 ### 🔄 End-to-End Operational Lifecycle:
 ```mermaid
 flowchart LR
-    A["1. Real Email Signup"] --> B["2. Brevo 6-Digit OTP"]
-    B --> C["3. Admin Roster Approval"]
+    A["1. Student Signup"] --> B["2. Brevo 6-Digit OTP"]
+    B --> C["3. Admin Approval"]
     C --> D["4. 3-Pose Face ID Calibration"]
-    D --> E["5. Rotating Code + GPS Attendance"]
-    E --> F["6. Live Presence Analytics"]
+    D --> E["5. Dynamic Code + GPS Attendance"]
+    E --> F["6. Live Presence Dashboard"]
 ```
 
-1. **Student Registration:** Student registers with their college email → Server generates 6-digit cryptographic OTP → Brevo dispatches email → Student enters OTP within 10 minutes to verify.
+1. **Student Registration:** Student registers with their institutional email → Server generates 6-digit cryptographic OTP → Brevo dispatches email → Student enters OTP within 10 minutes to verify.
 2. **Admin Approval:** Transport administrator reviews pending registrations in the Admin Console and assigns the commuter to their authorized bus route (e.g. `BUS06 - Dharapuram`).
 3. **First-Time Biometric Enrollment:** Student opens the Commuter Dashboard → Prompted to complete 3-angle facial calibration → Embeddings and portrait stored in Cloudinary & PostgreSQL.
 4. **Transit Boarding Verification:** In-charge opens Morning or Evening session → Dynamic 60-second rotating code appears → Student enters code with live GPS and selfie scan → Presence recorded.
 
 ---
 
-## 5. 🛡️ Security & Anti-Secret Standards
+## 5. 🛡️ Security & Zero-Secret Protocol
 This project enforces a strict **Zero-Secret Protocol**:
 
 1. **Untracked Environment Isolation:**
@@ -98,7 +117,7 @@ This project enforces a strict **Zero-Secret Protocol**:
    - `.gitignore` rigorously excludes `.env`, `.env.local`, `.env.*.local`, `*.pem`, `*.key`, and credentials.
 2. **No Hardcoded Passwords in Tracked Files:**
    - `tests/api-tests.http` uses environment variable placeholders (`{{$dotenv ADMIN_PASSWORD}}`).
-   - `db/seed.sql` utilizes standard non-sensitive initial setup flags (`INIT_ADMIN_DEFAULT_PASS`), requiring password updates upon first login.
+   - `db/schema.sql` creates tables and structure without committing user passwords.
    - `.env.example` contains purely generic dummy labels with zero vendor prefixes or high-entropy tokens to prevent GitGuardian and GitHub Secret Scanning alerts.
 3. **Pre-Commit Diff Inspection:**
    - Pre-commit diffs (`git diff --cached`) are audited before every commit to ensure zero API keys or private credentials can be pushed to GitHub.
@@ -112,9 +131,10 @@ Run the automated test suite across all subsystems:
 ```bash
 npx vitest run
 ```
-* **`tests/first-time-biometrics.test.ts` (4 tests):** Cloudinary signed URL generation, Supabase PostgreSQL 3-pose vector storage, neural classifier inference, and commuter roster queries.
-* **`tests/mobile-verification.test.ts` (15 tests):** Front-camera selfie verification, WebAuthn challenge/response, and impostor rejection.
-* **`tests/auth-brevo-flow.test.ts` (7 tests):** Brevo 6-digit OTP dispatch, token expiry, and password reset circuits.
+* **`tests/mobile-verification.test.ts` (15 tests):** Front-camera selfie format validation, cosine and euclidean vector distance comparisons, neural network model loading, simulated assertion challenge verification, and Haversine distance geofence tolerances.
+* **`tests/auth-brevo-flow.test.ts` (7 tests):** Brevo 6-digit OTP dispatch, 10-minute token expiration window, password reset token generation, and graceful handling when unconfigured.
+* **`tests/first-time-biometrics.test.ts` (4 tests):** Cloudinary signed URL generation, Supabase PostgreSQL 3-pose vector persistence, classifier inference, and commuter roster queries.
+* **Result:** `26 passed (100% pass rate)`.
 
 ### 🧪 System Verification Suite (`tests/verify-system.ts`)
 Run the full business logic lifecycle test:
@@ -124,18 +144,19 @@ npm test
 * Haversine distance calculations (0m, 5m, 11m, 50m tolerance checks).
 * Time window state machine (`UPCOMING`, `ACTIVE`, `CLOSED`, `FINALIZED`).
 * First-time setup, bus creation, student registration, and approval lifecycle.
-* Dynamic 6-digit TOTP code and geofence verification.
+* Dynamic 6-digit code and geofence verification.
 * Daily report generation and bus-wise presence rollups.
+* **Result:** `24 passed, 0 failed`.
 
-### 📊 Biometric Accuracy Benchmark (`scripts/evaluate_accuracy.ts`)
-Evaluate classifier accuracy against unseen holdout distributions:
+### 📊 Simulated Biometric Accuracy Benchmark (`scripts/evaluate_accuracy.ts`)
+Evaluate the mathematical classifier and Platt Sigmoid calibration curve against synthetic test distributions:
 ```bash
 npm run test:accuracy
 ```
-* **Genuine Students (Ideal Conditions):** 100.0% Accuracy (Avg Score: 99.0%)
-* **Genuine Students (Sunlight / Shadow / Tilt):** 100.0% Accuracy (Avg Score: 96.4%)
-* **Impostor / Friend Proxy Attempts:** 100.0% Blocked (Score: 0.0%)
-* **Overall Balanced Accuracy:** 100.0% (FAR: 0.0%)
+* **Genuine Students (Simulated Normal Illumination):** 100.0% Detection (Avg Score: 99.0%)
+* **Genuine Students (Simulated Sunlight / Shadow / 15° Tilt):** 100.0% Detection (Avg Score: 96.3%)
+* **Simulated Friend / Impostor Proxy Vectors:** 100.0% Blocked (Avg Score: 0.0%)
+* **Overall Synthetic Balanced Accuracy:** 100.0% (FAR: 0.0%)
 
 ---
 
@@ -147,7 +168,7 @@ Copy `.env.example` to `.env` and fill in your credentials:
 cp .env.example .env
 ```
 
-| Variable | Description | Example / Default |
+| Variable | Description | Example / Dummy Placeholder |
 | :--- | :--- | :--- |
 | `PORT` | Local backend Express port | `3001` |
 | `NODE_ENV` | Runtime environment | `development` |
@@ -156,12 +177,11 @@ cp .env.example .env
 | `SUPABASE_URL` | Supabase project URL | `https://your-project-id.supabase.co` |
 | `STORAGE_DRIVER` | Active storage adapter driver | `postgres` |
 | `BREVO_API_KEY` | Brevo v3 Transactional Email API Key | `your_brevo_api_key_v3_here` |
-| `BREVO_SENDER_EMAIL` | Verified sender email address configured in Brevo | `campusvsb4743@gmail.com` |
-| `BREVO_SENDER_NAME` | Transactional email sender display name | `"VSB Engineering College Transit System"` |
+| `BREVO_SENDER_EMAIL` | Verified sender email address configured in Brevo | `your_verified_sender@example.com` |
+| `BREVO_SENDER_NAME` | Transactional email sender display name | `"College Bus Transit System"` |
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud namespace | `your-cloud-name` |
 | `CLOUDINARY_API_KEY` | Cloudinary public API key | `your-cloudinary-api-key` |
 | `CLOUDINARY_API_SECRET` | Cloudinary private API secret | `your-cloudinary-api-secret` |
-| `CLOUDINARY_UPLOAD_PRESET`| Cloudinary upload preset | `bus_attendance_uploads` |
 | `DEFAULT_CAMPUS_LAT` | Campus reference latitude for geofence validation | `10.9572` |
 | `DEFAULT_CAMPUS_LNG` | Campus reference longitude for geofence validation | `78.0766` |
 | `DEFAULT_GEOFENCE_RADIUS_METERS`| Permissible boarding distance radius in meters | `150` |
@@ -174,9 +194,11 @@ cp .env.example .env
 ### Prerequisites
 * **Node.js**: v18.0.0 or higher
 * **npm**: v9.0.0 or higher
-* **PostgreSQL / Supabase**: Active Supabase project with database pooler credentials
+* **Supabase Account**: A free Supabase project with database pooler connection details
+* **Brevo Account**: A free Brevo account with a verified sender email and API v3 key
+* **Cloudinary Account**: A free Cloudinary cloud account for media storage
 
-### Quick Start Commands
+### Step-by-Step Setup
 ```bash
 # 1. Clone repository
 git clone https://github.com/Tharun4743/Bus-attendance.git
@@ -185,23 +207,31 @@ cd Bus-attendance
 # 2. Install dependencies
 npm install
 
-# 3. Configure environment
+# 3. Configure environment variables
 cp .env.example .env
-# Edit .env with your real Supabase, Brevo, and Cloudinary credentials
+# Open .env in your text editor and fill in your actual credentials
 
 # 4. Initialize Database Schema
-# Execute db/schema.sql in your Supabase SQL Editor
+# Open db/schema.sql and execute the DDL queries in your Supabase SQL Editor
 
 # 5. Start development environment (Client + Server concurrently)
 npm run dev
 
 # 6. Run automated test suites
-npm test            # System logic lifecycle tests
-npx vitest run      # Vitest regression circuits
+npm test            # System logic lifecycle tests (24 tests)
+npx vitest run      # Vitest regression circuits (26 tests)
 
-# 7. Build production bundle
-npm run build
+# 7. (Optional) Run Biometric Accuracy Benchmark
+npm run test:accuracy
+
+# 8. (Optional) Re-train the Local Biometric Neural Model
+npm run train:model
 ```
+
+Once running:
+* **Frontend Web App:** Visit `http://localhost:5173`
+* **Backend Express API:** Running at `http://localhost:3001`
+* **API Health Check:** Visit `http://localhost:3001/api/health`
 
 ---
 
