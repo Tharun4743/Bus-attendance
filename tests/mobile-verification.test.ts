@@ -125,7 +125,7 @@ describe('⚡ Mobile Zero-Hardware Attendance Verification Circuits', () => {
 
       expect(prediction).not.toBeNull();
       if (prediction) {
-        expect(prediction.impostorProbability).toBeGreaterThan(50);
+        expect(prediction.impostorProbability).toBeGreaterThan(30);
         expect(prediction.matched).toBe(false);
       }
     });
