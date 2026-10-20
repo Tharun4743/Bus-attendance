@@ -3,27 +3,13 @@
 # 🚌 College Bus Attendance System — Real-Time Transit & Biometric Presence PWA
 ### *Progressive Web Application for Morning & Evening Transit Attendance Verification, 3-Angle Facial Biometrics, Geofencing & Fleet Analytics*
 
-[![Type](https://img.shields.io/badge/Type-PWA-FF6B6B?style=for-the-badge&logo=pwa&logoColor=white)](#) [![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=white)](#) [![Backend](https://img.shields.io/badge/Backend-Node.js%20%2B%20Express-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](#) [![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](#) [![Email](https://img.shields.io/badge/Mailer-Brevo%20Transactional%20API-0B996F?style=for-the-badge&logo=brevo&logoColor=white)](#) [![Media](https://img.shields.io/badge/Media-Cloudinary-3448C5?style=for-the-badge&logo=cloudinary&logoColor=white)](#) [![Status](https://img.shields.io/badge/Deployment-Local%20Development%20Only-yellow?style=for-the-badge&logo=git&logoColor=black)](#)
+[![Type](https://img.shields.io/badge/Type-PWA-FF6B6B?style=for-the-badge&logo=pwa&logoColor=white)](#) [![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=white)](#) [![Backend](https://img.shields.io/badge/Backend-Node.js%20%2B%20Express-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](#) [![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](#) [![Email](https://img.shields.io/badge/Mailer-Brevo%20Transactional%20API-0B996F?style=for-the-badge&logo=brevo&logoColor=white)](#) [![Media](https://img.shields.io/badge/Media-Cloudinary-3448C5?style=for-the-badge&logo=cloudinary&logoColor=white)](#)
 
 <p align="center">
   <a href="https://github.com/Tharun4743/Bus-attendance">📦 <b>Official GitHub Repository</b></a>
-  • <span>🛠️ <b>Status: Local Development & Testing Only (Not Deployed)</b></span>
 </p>
 
 </div>
-
----
-
-> [!IMPORTANT]
-> ### ⚠️ Project Deployment Status: Local Development Only (Not Deployed)
-> **Please Note:** This application is **currently NOT deployed to any public cloud platform or production web host** (such as Vercel, Render, AWS, Netlify, or Heroku). 
-> 
-> * The system runs locally on developer/operator machines (`npm run dev`: Vite frontend on port `5173` + Express API on port `3001`).
-> * The backend connects to live cloud APIs for data persistence and communications:
->   * **Supabase PostgreSQL** via direct connection pooler (`pg.Pool`) for all tables, relational data, and biometric embeddings.
->   * **Brevo API v3** for real 6-digit OTP email verification and secure password reset links.
->   * **Cloudinary** for secure facial image upload and CDN image hosting.
-> * There are **no public web URLs** active for this project at this time.
 
 ---
 

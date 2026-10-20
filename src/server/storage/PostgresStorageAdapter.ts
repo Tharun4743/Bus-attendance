@@ -514,7 +514,25 @@ export class PostgresStorageAdapter implements StorageAdapter {
   }
 
   async getBusByInchargeId(inchargeId: string): Promise<Bus | null> {
-    const res = await this.pool.query(`SELECT * FROM public.buses WHERE incharge_id = $1 LIMIT 1;`, [inchargeId]);
+    // 1. Direct match on buses.incharge_id
+    let res = await this.pool.query(`SELECT * FROM public.buses WHERE incharge_id = $1 LIMIT 1;`, [inchargeId]);
+
+    // 2. Relational match via public.users where assigned_bus_id is set
+    if (res.rows.length === 0) {
+      res = await this.pool.query(
+        `SELECT b.* FROM public.buses b
+         JOIN public.users u ON u.assigned_bus_id = b.id
+         WHERE u.id::text = $1 OR u.email = $1 OR b.incharge_id = u.email OR b.incharge_id = u.id::text
+         LIMIT 1;`,
+        [inchargeId]
+      );
+    }
+
+    // 3. Fallback: match by bus ID directly if inchargeId is a bus ID
+    if (res.rows.length === 0) {
+      res = await this.pool.query(`SELECT * FROM public.buses WHERE id = $1 LIMIT 1;`, [inchargeId]);
+    }
+
     if (res.rows.length === 0) return null;
     const b = res.rows[0];
     return {

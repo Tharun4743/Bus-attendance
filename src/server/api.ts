@@ -1535,7 +1535,13 @@ apiRouter.get(
   async (req: AuthRequest, res: Response) => {
     try {
       const inchargeId = req.user!.id;
-      const bus = await storage.getBusByInchargeId(inchargeId);
+      let bus = await storage.getBusByInchargeId(inchargeId);
+      if (!bus && req.user!.assignedBusId) {
+        bus = await storage.getBusById(req.user!.assignedBusId);
+      }
+      if (!bus && req.user!.email) {
+        bus = await storage.getBusByInchargeId(req.user!.email);
+      }
 
       if (!bus) {
         return res.status(404).json({ error: 'No bus assigned to your incharge account.' });
