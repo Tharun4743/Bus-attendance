@@ -9,7 +9,7 @@ import { PwaNotificationPrompt } from '../../components/common/PwaNotificationPr
 import { StatCard } from '../../components/ui/StatCard';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { Bus as BusIcon, Users, CheckCircle, XCircle, RefreshCw, Percent } from 'lucide-react';
+import { Bus as BusIcon, Users, CheckCircle, XCircle, RefreshCw, Percent, Camera, Fingerprint, Key } from 'lucide-react';
 
 export const InchargeDashboard: React.FC = () => {
   const [data, setData] = useState<{
@@ -26,6 +26,9 @@ export const InchargeDashboard: React.FC = () => {
       accuracyMeters: number | null;
       verifiedAt: string | null;
       verificationMethod: string | null;
+      selfieImageUrl?: string | null;
+      faceMatchConfidence?: number | null;
+      deviceBiometricPassed?: boolean | null;
     }>;
   } | null>(null);
 
@@ -170,6 +173,7 @@ export const InchargeDashboard: React.FC = () => {
                   <th className="px-5 py-3.5">Reg Number</th>
                   <th className="px-5 py-3.5">Student Name</th>
                   <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5">Verification Mode</th>
                   <th className="px-5 py-3.5">Verified Time</th>
                   <th className="px-5 py-3.5">Distance</th>
                 </tr>
@@ -183,6 +187,43 @@ export const InchargeDashboard: React.FC = () => {
                     <td className="px-5 py-4 font-bold text-zinc-900 dark:text-white">{stu.name}</td>
                     <td className="px-5 py-4">
                       <StatusBadge status={stu.status} size="sm" />
+                    </td>
+                    <td className="px-5 py-4">
+                      {stu.verificationMethod === 'FACE_GPS' ? (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800">
+                            <Camera className="w-3 h-3" />
+                            Face + GPS
+                          </span>
+                          {stu.faceMatchConfidence != null && (
+                            <span className="text-[10px] text-zinc-400 font-mono">
+                              ({stu.faceMatchConfidence}%)
+                            </span>
+                          )}
+                          {stu.selfieImageUrl && (
+                            <a
+                              href={stu.selfieImageUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[10px] text-sky-600 hover:underline font-mono"
+                            >
+                              [Selfie]
+                            </a>
+                          )}
+                        </div>
+                      ) : stu.verificationMethod === 'PHONE_BIOMETRIC_GPS' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
+                          <Fingerprint className="w-3 h-3" />
+                          Phone Biometric + GPS
+                        </span>
+                      ) : stu.verificationMethod === 'DYNAMIC_CODE_GPS' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800">
+                          <Key className="w-3 h-3" />
+                          Code + GPS
+                        </span>
+                      ) : (
+                        <span className="text-zinc-400 font-mono">—</span>
+                      )}
                     </td>
                     <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400 font-mono">
                       {stu.verifiedAt

@@ -9,6 +9,9 @@ import { generateDynamic6DigitCode } from './attendance/codeGenerator';
 import crypto from 'crypto';
 import { brevoMailer } from '../lib/brevo';
 import { cloudinaryPipeline } from '../lib/cloudinary';
+import { faceVerificationEngine } from '../lib/faceVerification';
+import { mobileBiometricEngine } from '../lib/webauthn';
+import { calculateDistance } from './attendance/haversine';
 
 export const apiRouter = Router();
 const storage = getStorage();
@@ -701,6 +704,183 @@ const handleVerifyAttendance = async (req: AuthRequest, res: Response) => {
 apiRouter.post('/attendance/verify', requireAuth(['STUDENT']), handleVerifyAttendance);
 apiRouter.post('/attendance/verify-location', requireAuth(['STUDENT']), handleVerifyAttendance);
 
+// --------------------------------------------------------------------------
+// 📱 MOBILE ZERO-HARDWARE ATTENDANCE (FACE + GPS or BIOMETRIC + GPS)
+// --------------------------------------------------------------------------
+apiRouter.get(
+  '/attendance/mobile/challenge',
+  requireAuth(['STUDENT']),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const studentId = req.user!.studentId || req.user!.id;
+      const challenge = mobileBiometricEngine.generateChallenge(studentId);
+      return res.json({ challenge });
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Failed to generate biometric challenge.' });
+    }
+  }
+);
+
+apiRouter.post(
+  '/attendance/verify-mobile',
+  requireAuth(['STUDENT']),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const studentId = req.user!.studentId || req.user!.id;
+      const student = await storage.getStudentById(studentId);
+      if (!student) {
+        return res.status(404).json({
+          status: 'BUS_MISMATCH',
+          message: 'Student commuter profile not found.',
+        });
+      }
+
+      const { busId, method, latitude, longitude, accuracy, selfieBase64, biometricPayload } = req.body;
+
+      const targetBusId = busId || student.busId;
+      if (student.busId && targetBusId !== student.busId) {
+        return res.status(400).json({
+          status: 'BUS_MISMATCH',
+          message: `Bus mismatch: You are assigned to Bus ${student.busId}, not ${targetBusId}.`,
+        });
+      }
+
+      // 1. Session Active Guard: In-charge must have opened attendance for this bus
+      const activeSession = await storage.getActiveSession(targetBusId);
+      if (!activeSession || activeSession.status !== 'ACTIVE') {
+        return res.status(400).json({
+          status: 'SESSION_CLOSED',
+          message: `The bus in-charge has not opened transit attendance for Bus ${targetBusId} yet. Please wait until session begins.`,
+        });
+      }
+
+      // 2. Validate Smartphone GPS Coordinates
+      if (latitude === undefined || longitude === undefined) {
+        return res.status(400).json({
+          status: 'LOCATION_UNAVAILABLE',
+          message: 'GPS coordinates required. Please enable location services on your smartphone.',
+        });
+      }
+
+      const numLat = Number(latitude);
+      const numLng = Number(longitude);
+      const numAcc = accuracy !== undefined ? Number(accuracy) : 15;
+
+      const maxAcc = activeSession.maxGpsAccuracyMeters || 80;
+      if (numAcc > maxAcc) {
+        return res.status(400).json({
+          status: 'LOCATION_UNAVAILABLE',
+          message: `GPS accuracy too low (±${Math.round(numAcc)}m > ±${maxAcc}m limit). Move to an open area with clear sky and retry.`,
+        });
+      }
+
+      // 3. Geofence Perimeter Calculation (Haversine Formula)
+      const settings = await storage.getSettings();
+      const targetLat = activeSession.location?.latitude ?? settings.location?.latitude ?? 10.9572;
+      const targetLng = activeSession.location?.longitude ?? settings.location?.longitude ?? 78.0766;
+      const radiusMeters = activeSession.radiusMeters || settings.location?.radiusMeters || 150;
+
+      const distance = calculateDistance(numLat, numLng, targetLat, targetLng);
+      if (distance > radiusMeters) {
+        return res.status(400).json({
+          status: 'INVALID_LOCATION',
+          message: `Outside bus attendance boundary (${Math.round(distance)}m away; max allowable is ${radiusMeters}m). You must be physically at the bus boarding point.`,
+          distanceMeters: distance,
+        });
+      }
+
+      // 4. Verification Factor Check (Face Verification or Phone Biometric)
+      let selfieUrl: string | undefined;
+      let selfiePublicId: string | undefined;
+      let faceConfidence: number | undefined;
+      let deviceBiometricPassed = false;
+
+      if (method === 'FACE_GPS') {
+        if (!selfieBase64) {
+          return res.status(400).json({
+            status: 'FACE_MISMATCH',
+            message: 'Front camera selfie snapshot required for face verification.',
+          });
+        }
+
+        const faceResult = faceVerificationEngine.verifyFaceMatch(selfieBase64, student.profilePhotoUrl);
+        if (!faceResult.matched) {
+          return res.status(400).json({
+            status: 'FACE_MISMATCH',
+            message: faceResult.reason || 'Face verification failed. Please align your face inside the circle and retry.',
+            confidence: faceResult.confidence,
+          });
+        }
+        faceConfidence = faceResult.confidence;
+
+        // Archive visual presence proof to Cloudinary
+        const uploadRes = await cloudinaryPipeline.uploadMedia(
+          selfieBase64,
+          `bus-attendance/selfies/${studentId}`
+        );
+        if (uploadRes.success) {
+          selfieUrl = uploadRes.secureUrl;
+          selfiePublicId = uploadRes.publicId;
+        }
+      } else if (method === 'PHONE_BIOMETRIC_GPS') {
+        const bioResult = mobileBiometricEngine.verifyAssertion(studentId, biometricPayload || {});
+        if (!bioResult.verified) {
+          return res.status(400).json({
+            status: 'BIOMETRIC_FAILED',
+            message: bioResult.message || 'Phone biometric verification (Fingerprint/FaceID) failed.',
+          });
+        }
+        deviceBiometricPassed = true;
+      } else {
+        return res.status(400).json({
+          status: 'GENERIC',
+          message: 'Invalid verification method. Expected FACE_GPS or PHONE_BIOMETRIC_GPS.',
+        });
+      }
+
+      // 5. Commit Verified Presence Record to PostgreSQL
+      const todayDate = getISTDateString();
+      const nowIso = new Date().toISOString();
+
+      const record = await storage.createAttendance({
+        id: crypto.randomUUID(),
+        studentId,
+        busId: targetBusId,
+        attendanceDate: todayDate,
+        sessionType: activeSession.sessionType,
+        attendanceMode: activeSession.attendanceMode,
+        sessionId: activeSession.id,
+        status: 'PRESENT',
+        latitude: numLat,
+        longitude: numLng,
+        accuracyMeters: numAcc,
+        distanceMeters: distance,
+        selfieImageUrl: selfieUrl,
+        selfiePublicId,
+        faceMatchConfidence: faceConfidence,
+        deviceBiometricPassed,
+        capturedAt: nowIso,
+        verifiedAt: nowIso,
+        verificationMethod: method,
+      });
+
+      return res.json({
+        status: 'PRESENT',
+        message: 'Attendance verified and logged successfully on mobile!',
+        record,
+        distanceMeters: distance,
+        faceConfidence,
+        selfieUrl,
+      });
+    } catch (err: any) {
+      return res.status(500).json({
+        status: 'GENERIC',
+        message: err.message || 'Mobile attendance verification failed.',
+      });
+    }
+  }
+);
+
 apiRouter.get(
   '/attendance/my-status',
   requireAuth(['STUDENT']),
@@ -1250,6 +1430,9 @@ apiRouter.get(
           accuracyMeters: record?.accuracyMeters ?? null,
           verifiedAt: record?.verifiedAt ?? null,
           verificationMethod: record?.verificationMethod ?? null,
+          selfieImageUrl: record?.selfieImageUrl ?? null,
+          faceMatchConfidence: record?.faceMatchConfidence ?? null,
+          deviceBiometricPassed: record?.deviceBiometricPassed ?? null,
         };
       });
 

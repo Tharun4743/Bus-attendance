@@ -30,6 +30,8 @@ export interface Student {
   approved: boolean;
   active: boolean;
   rejectionReason?: string;
+  profilePhotoUrl?: string;
+  profilePhotoPublicId?: string;
   approvedAt?: string;
   approvedBy?: string;
   createdAt: string;
@@ -47,10 +49,14 @@ export interface Bus {
 export type AttendanceStatus =
   | 'PRESENT'
   | 'NOT_PRESENT'
+  | 'PENDING'
+  | 'SESSION_CLOSED'
+  | 'BUS_MISMATCH'
+  | 'FACE_MISMATCH'
+  | 'BIOMETRIC_FAILED'
   | 'LOCATION_UNAVAILABLE'
   | 'INVALID_LOCATION'
-  | 'INVALID_CODE'
-  | 'BUS_MISMATCH';
+  | 'INVALID_CODE';
 
 export type SessionStatus = 'UPCOMING' | 'ACTIVE' | 'CLOSED' | 'FINALIZED';
 
@@ -68,9 +74,13 @@ export interface AttendanceRecord {
   longitude: number | null;
   accuracyMeters: number | null;
   distanceMeters: number | null;
+  selfieImageUrl?: string;
+  selfiePublicId?: string;
+  faceMatchConfidence?: number;
+  deviceBiometricPassed?: boolean;
   capturedAt: string;
   verifiedAt: string;
-  verificationMethod: 'DYNAMIC_CODE' | 'DYNAMIC_CODE_GPS' | 'GPS_GEOFENCE' | 'ADMIN_OVERRIDE' | 'TRAVELLING_BUS_GPS';
+  verificationMethod: 'FACE_GPS' | 'PHONE_BIOMETRIC_GPS' | 'DYNAMIC_CODE' | 'DYNAMIC_CODE_GPS' | 'GPS_GEOFENCE' | 'ADMIN_OVERRIDE' | 'TRAVELLING_BUS_GPS';
   overrideReason?: string;
   overrideBy?: string;
 }

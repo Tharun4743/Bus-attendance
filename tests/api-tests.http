@@ -105,3 +105,23 @@ Content-Type: application/json
   "longitude": 77.5946,
   "accuracyMeters": 15
 }
+
+### 13. Mobile: Request Biometric WebAuthn Challenge
+GET {{baseUrl}}/attendance/mobile/challenge
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 14. Mobile: Verify Attendance via Face + GPS or Smartphone Biometrics
+POST {{baseUrl}}/attendance/verify-mobile
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "busId": "BUS01",
+  "method": "FACE_GPS",
+  "latitude": 12.9716,
+  "longitude": 77.5946,
+  "accuracyMeters": 12,
+  "selfieImage": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+}
+
