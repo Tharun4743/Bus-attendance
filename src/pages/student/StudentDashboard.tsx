@@ -68,7 +68,16 @@ export const StudentDashboard: React.FC = () => {
   }
 
   const isPresent = todayRecord?.status === 'PRESENT';
-  const isFaceEnrolled = Boolean(student?.profilePhotoUrl);
+  const userKey = student?.id || user?.id || user?.studentId || '';
+  const cachedEnrollment = userKey ? localStorage.getItem(`face_enrolled_${userKey}`) === 'true' : false;
+  const isFaceEnrolled = Boolean(student?.profilePhotoUrl || cachedEnrollment);
+
+  useEffect(() => {
+    if (student?.profilePhotoUrl && userKey) {
+      localStorage.setItem(`face_enrolled_${userKey}`, 'true');
+    }
+  }, [student?.profilePhotoUrl, userKey]);
+
   const activeSession = sessionInfo?.activeSession;
   const isTargetBusActive =
     activeSession &&
@@ -434,7 +443,9 @@ export const StudentDashboard: React.FC = () => {
         onClose={() => setIsEnrollModalOpen(false)}
         studentName={student?.name || user?.name}
         registerNumber={student?.registerNumber || user?.studentId || ''}
-        onSuccess={() => {
+        onSuccess={(photoUrl) => {
+          if (userKey) localStorage.setItem(`face_enrolled_${userKey}`, 'true');
+          setStudent((prev) => (prev ? { ...prev, profilePhotoUrl: photoUrl } : prev));
           setIsEnrollModalOpen(false);
           fetchStudentData();
         }}

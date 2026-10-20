@@ -261,7 +261,22 @@ export class JsonStorageAdapter implements StorageAdapter {
 
   async getStudentById(id: string): Promise<Student | null> {
     const students = await this.getStudents();
-    return students.find((s) => s.id === id) || null;
+    const clean = id.trim().toLowerCase();
+    const cleanNoPrefix = clean.replace(/^(usr-|stu-)/, '');
+    return (
+      students.find((s) => {
+        const sId = s.id.toLowerCase();
+        const sReg = s.registerNumber.toLowerCase();
+        const sEmail = s.email.toLowerCase();
+        return (
+          sId === clean ||
+          sReg === clean ||
+          sEmail === clean ||
+          sId.replace(/^(usr-|stu-)/, '') === cleanNoPrefix ||
+          sReg === cleanNoPrefix
+        );
+      }) || null
+    );
   }
 
   async getStudentByRegisterNumber(regNo: string): Promise<Student | null> {
@@ -476,7 +491,20 @@ export class JsonStorageAdapter implements StorageAdapter {
 
   async updateStudent(id: string, updates: Partial<Student>): Promise<Student | null> {
     const students = await this.getStudents();
-    const index = students.findIndex((s) => s.id === id);
+    const clean = id.trim().toLowerCase();
+    const cleanNoPrefix = clean.replace(/^(usr-|stu-)/, '');
+    const index = students.findIndex((s) => {
+      const sId = s.id.toLowerCase();
+      const sReg = s.registerNumber.toLowerCase();
+      const sEmail = s.email.toLowerCase();
+      return (
+        sId === clean ||
+        sReg === clean ||
+        sEmail === clean ||
+        sId.replace(/^(usr-|stu-)/, '') === cleanNoPrefix ||
+        sReg === cleanNoPrefix
+      );
+    });
     if (index === -1) return null;
 
     students[index] = {

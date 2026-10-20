@@ -728,7 +728,10 @@ apiRouter.post(
   async (req: AuthRequest, res: Response) => {
     try {
       const studentId = req.user!.studentId || req.user!.id;
-      const student = await storage.getStudentById(studentId);
+      let student = await storage.getStudentById(studentId);
+      if (!student && req.user!.email) {
+        student = await storage.getStudentById(req.user!.email);
+      }
       if (!student) {
         return res.status(404).json({ error: 'Student commuter profile not found.' });
       }
@@ -809,15 +812,7 @@ apiRouter.post(
       const numLng = Number(longitude);
       const numAcc = accuracy !== undefined ? Number(accuracy) : 15;
 
-      const maxAcc = activeSession.maxGpsAccuracyMeters || 80;
-      if (numAcc > maxAcc) {
-        return res.status(400).json({
-          status: 'LOCATION_UNAVAILABLE',
-          message: `GPS accuracy too low (±${Math.round(numAcc)}m > ±${maxAcc}m limit). Move to an open area with clear sky and retry.`,
-        });
-      }
-
-      // 3. Geofence Perimeter Calculation (Haversine Formula)
+      // 2. Geofence Perimeter Calculation (Haversine Formula)
       const settings = await storage.getSettings();
       const envLat = process.env.DEFAULT_CAMPUS_LAT ? Number(process.env.DEFAULT_CAMPUS_LAT) : 12.9716;
       const envLng = process.env.DEFAULT_CAMPUS_LNG ? Number(process.env.DEFAULT_CAMPUS_LNG) : 77.5946;
@@ -828,6 +823,17 @@ apiRouter.post(
       const radiusMeters = activeSession.radiusMeters || settings.location?.radiusMeters || envRadius;
 
       const distance = calculateDistance(numLat, numLng, targetLat, targetLng);
+
+      // Realistic mobile GPS accuracy tolerance:
+      // Accepts sensor variance up to ±1500m (cellular/indoor Wi-Fi) if physical coordinates are within geofence!
+      const maxAcc = Math.max(activeSession.maxGpsAccuracyMeters || 1500, 1500);
+      if (numAcc > maxAcc && distance > radiusMeters) {
+        return res.status(400).json({
+          status: 'LOCATION_UNAVAILABLE',
+          message: `GPS accuracy too low (±${Math.round(numAcc)}m > ±${maxAcc}m limit). Move to an open area with clear sky and retry.`,
+        });
+      }
+
       if (distance > radiusMeters) {
         return res.status(400).json({
           status: 'INVALID_LOCATION',
@@ -942,7 +948,10 @@ apiRouter.get(
   async (req: AuthRequest, res: Response) => {
     try {
       const studentId = req.user!.studentId || req.user!.id;
-      const student = await storage.getStudentById(studentId);
+      let student = await storage.getStudentById(studentId);
+      if (!student && req.user!.email) {
+        student = await storage.getStudentById(req.user!.email);
+      }
       const bus = student?.busId ? await storage.getBusById(student.busId) : null;
       const todayDate = getISTDateString();
 

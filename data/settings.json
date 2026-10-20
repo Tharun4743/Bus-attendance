@@ -9,7 +9,7 @@
     "latitude": 13.0827,
     "longitude": 80.2707,
     "radiusMeters": 10,
-    "maxGpsAccuracyMeters": 20
+    "maxGpsAccuracyMeters": 1500
   },
   "simulation": {
     "enabled": false,
