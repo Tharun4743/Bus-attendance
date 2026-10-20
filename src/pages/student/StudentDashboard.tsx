@@ -53,6 +53,16 @@ export const StudentDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const userKey = student?.id || user?.id || user?.studentId || '';
+  const cachedEnrollment = userKey ? localStorage.getItem(`face_enrolled_${userKey}`) === 'true' : false;
+  const isFaceEnrolled = Boolean(student?.profilePhotoUrl || cachedEnrollment);
+
+  useEffect(() => {
+    if (student?.profilePhotoUrl && userKey) {
+      localStorage.setItem(`face_enrolled_${userKey}`, 'true');
+    }
+  }, [student?.profilePhotoUrl, userKey]);
+
   const handleRefresh = () => {
     setIsRefreshing(true);
     fetchStudentData();
@@ -68,15 +78,6 @@ export const StudentDashboard: React.FC = () => {
   }
 
   const isPresent = todayRecord?.status === 'PRESENT';
-  const userKey = student?.id || user?.id || user?.studentId || '';
-  const cachedEnrollment = userKey ? localStorage.getItem(`face_enrolled_${userKey}`) === 'true' : false;
-  const isFaceEnrolled = Boolean(student?.profilePhotoUrl || cachedEnrollment);
-
-  useEffect(() => {
-    if (student?.profilePhotoUrl && userKey) {
-      localStorage.setItem(`face_enrolled_${userKey}`, 'true');
-    }
-  }, [student?.profilePhotoUrl, userKey]);
 
   const activeSession = sessionInfo?.activeSession;
   const isTargetBusActive =
