@@ -7,12 +7,18 @@ node_modules/
 dist/
 build/
 
-# Environment
+# Environment & Secrets
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*.local
+*.pem
+*.key
+credentials.json
+id_rsa
+*.pfx
 
 # Logs
 npm-debug.log*
