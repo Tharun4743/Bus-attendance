@@ -27,23 +27,48 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch Network-First for dynamic APIs, Cache-First for static assets
+// Fetch Network-First for dynamic APIs, Cache-First for static assets, bypass Vite dev requests
 self.addEventListener('fetch', (event) => {
-  if (event.request.url.includes('/api/')) {
-    return; // Don't cache dynamic API requests
+  const url = event.request.url;
+
+  // Never intercept Vite internal modules, source files, or backend API endpoints
+  if (
+    url.includes('/@vite') ||
+    url.includes('/@react-refresh') ||
+    url.includes('/@fs') ||
+    url.includes('/__vite') ||
+    url.includes('/api/') ||
+    url.includes('/src/') ||
+    url.includes('node_modules') ||
+    event.request.method !== 'GET'
+  ) {
+    return; // Pass through cleanly to network
   }
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      return (
-        cachedResponse ||
-        fetch(event.request).catch(() => {
-          if (event.request.mode === 'navigate') {
-            return caches.match('/index.html');
-          }
-        })
-      );
-    })
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && event.request.url.startsWith('http')) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(async () => {
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+        if (event.request.mode === 'navigate') {
+          const fallback = await caches.match('/index.html');
+          if (fallback) return fallback;
+        }
+        return new Response('Offline or Network Error', {
+          status: 503,
+          statusText: 'Service Unavailable',
+          headers: new Headers({ 'Content-Type': 'text/plain' })
+        });
+      })
   );
 });
 
