@@ -46,17 +46,17 @@ describe('⚡ Mobile Zero-Hardware Attendance Verification Circuits', () => {
       expect(result.reason).toContain('insufficient pixel data');
     });
 
-    it('handles student without registered baseline portrait gracefully with provisional enrollment', () => {
+    it('strictly rejects verification if student has not registered their face baseline', () => {
       const result = faceVerificationEngine.verifyFaceMatch(validLiveSelfie, undefined);
-      expect(result.matched).toBe(true);
-      expect(result.confidence).toBe(0.88);
-      expect(result.reason).toContain('Face framing confirmed');
+      expect(result.matched).toBe(false);
+      expect(result.confidence).toBe(0);
+      expect(result.reason).toContain('Face not registered');
     });
 
-    it('calculates match confidence score for identical portraits', () => {
+    it('calculates match confidence percentage score for identical portraits', () => {
       const result = faceVerificationEngine.verifyFaceMatch(validLiveSelfie, validLiveSelfie);
       expect(result.matched).toBe(true);
-      expect(result.confidence).toBeGreaterThanOrEqual(0.65);
+      expect(result.confidence).toBeGreaterThanOrEqual(65);
     });
   });
 

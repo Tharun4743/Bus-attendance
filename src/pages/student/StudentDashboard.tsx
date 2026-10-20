@@ -14,8 +14,10 @@ import {
   Calendar,
   Radio,
   RefreshCw,
+  ShieldCheck,
 } from 'lucide-react';
 import { MobileVerificationModal } from '../../components/attendance/MobileVerificationModal';
+import { FaceEnrollmentModal } from '../../components/attendance/FaceEnrollmentModal';
 
 export const StudentDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -27,6 +29,7 @@ export const StudentDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isMobileModalOpen, setIsMobileModalOpen] = useState<boolean>(false);
+  const [isEnrollModalOpen, setIsEnrollModalOpen] = useState<boolean>(false);
 
   const fetchStudentData = async () => {
     try {
@@ -65,6 +68,7 @@ export const StudentDashboard: React.FC = () => {
   }
 
   const isPresent = todayRecord?.status === 'PRESENT';
+  const isFaceEnrolled = Boolean(student?.profilePhotoUrl);
   const activeSession = sessionInfo?.activeSession;
   const isTargetBusActive =
     activeSession &&
@@ -96,13 +100,66 @@ export const StudentDashboard: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+          {/* Face ID Status Badge or Registration Trigger */}
+          {isFaceEnrolled ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+              <ShieldCheck className="w-4 h-4 text-emerald-500" />
+              <span>Face ID Registered</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsEnrollModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-white text-xs font-black uppercase tracking-wider shadow-sm transition-all cursor-pointer"
+            >
+              <Camera className="w-4 h-4" />
+              <span>Register Face ID</span>
+            </button>
+          )}
+
           <Button onClick={handleRefresh} disabled={isRefreshing} variant="secondary" size="sm">
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </Button>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* 1.5 MANDATORY FACE REGISTRATION GATE (Shown if student hasn't enrolled)   */}
+      {/* ========================================================================= */}
+      {!isFaceEnrolled && !isPresent && (
+        <div className="p-5 sm:p-6 rounded-2xl bg-amber-500/10 border-2 border-dashed border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="w-12 h-12 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20">
+              <Camera className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500 text-white">
+                  ACTION REQUIRED
+                </span>
+                <span className="text-xs font-bold text-amber-700 dark:text-amber-400">
+                  Face ID Not Registered
+                </span>
+              </div>
+              <h3 className="text-base font-black text-zinc-900 dark:text-white mt-1">
+                Register Your Baseline Face Photo First
+              </h3>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 max-w-xl">
+                You cannot mark bus attendance without enrolling your face. Take a one-time selfie to register your biometric portrait.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsEnrollModalOpen(true)}
+            className="w-full sm:w-auto px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20 transition-all cursor-pointer shrink-0"
+          >
+            📸 Register Face ID Now
+          </button>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 2. REAL-TIME BOARDING PASS & VERIFICATION SUITE                           */}
@@ -365,6 +422,20 @@ export const StudentDashboard: React.FC = () => {
         busId={student?.busId || 'BUS06'}
         onSuccess={() => {
           setIsMobileModalOpen(false);
+          fetchStudentData();
+        }}
+      />
+
+      {/* ========================================================================= */}
+      {/* 5. MODAL FACIAL ENROLLMENT (One-Time Biometric Registration)               */}
+      {/* ========================================================================= */}
+      <FaceEnrollmentModal
+        isOpen={isEnrollModalOpen}
+        onClose={() => setIsEnrollModalOpen(false)}
+        studentName={student?.name || user?.name}
+        registerNumber={student?.registerNumber || user?.studentId || ''}
+        onSuccess={() => {
+          setIsEnrollModalOpen(false);
           fetchStudentData();
         }}
       />

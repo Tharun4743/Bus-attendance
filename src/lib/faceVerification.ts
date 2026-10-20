@@ -57,21 +57,22 @@ export class FaceVerificationEngine {
       
       const similarity = this.calculateHashSimilarity(liveHash, enrolledHash);
       const matched = similarity >= this.minConfidenceThreshold;
+      const confidencePercentage = Math.round(similarity * 100);
 
       return {
         matched,
-        confidence: Math.round(similarity * 100) / 100,
-        reason: matched ? 'Face verified successfully against student profile.' : 'Face did not match registered profile portrait.',
+        confidence: confidencePercentage,
+        reason: matched
+          ? 'Face verified successfully against registered student profile.'
+          : 'Face did not match registered profile portrait. Retake in good lighting.',
       };
     }
 
-    // For first-time check-in without pre-enrolled portrait baseline,
-    // validate facial framing geometry (aspect ratio and luminance)
-    const confidence = 0.88;
+    // STRICT REJECTION: Student has not enrolled their face portrait yet!
     return {
-      matched: true,
-      confidence,
-      reason: 'Face framing confirmed via mobile camera.',
+      matched: false,
+      confidence: 0,
+      reason: 'Face not registered! You must enroll your face photo in your profile before marking attendance.',
     };
   }
 

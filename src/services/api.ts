@@ -205,6 +205,13 @@ class ApiClient {
     });
   }
 
+  async enrollFace(selfieBase64: string): Promise<{ success: boolean; message: string; profilePhotoUrl: string }> {
+    return this.request('/attendance/enroll-face', {
+      method: 'POST',
+      body: JSON.stringify({ selfieBase64 }),
+    });
+  }
+
   async getMyStatus(): Promise<{
     todayRecord: AttendanceRecord | null;
     student: Student | null;

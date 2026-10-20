@@ -722,6 +722,48 @@ apiRouter.get(
 );
 
 apiRouter.post(
+  '/attendance/enroll-face',
+  requireAuth(['STUDENT']),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const studentId = req.user!.studentId || req.user!.id;
+      const student = await storage.getStudentById(studentId);
+      if (!student) {
+        return res.status(404).json({ error: 'Student commuter profile not found.' });
+      }
+
+      const { selfieBase64 } = req.body;
+      if (!selfieBase64 || !faceVerificationEngine.isValidImagePayload(selfieBase64)) {
+        return res.status(400).json({ error: 'Valid camera selfie snapshot required for face enrollment.' });
+      }
+
+      // Upload reference baseline photo to Cloudinary
+      const uploadRes = await cloudinaryPipeline.uploadMedia(
+        selfieBase64,
+        `bus-attendance/profiles/${studentId}`
+      );
+
+      const enrolledUrl = uploadRes.secureUrl || selfieBase64;
+      const enrolledPublicId = uploadRes.publicId;
+
+      await storage.updateStudent(student.id, {
+        profilePhotoUrl: enrolledUrl,
+        profilePhotoPublicId: enrolledPublicId,
+      });
+
+      console.log(`✅ [Face-Enrollment] Student ${student.registerNumber} (${student.name}) enrolled successfully.`);
+      return res.json({
+        success: true,
+        message: 'Face ID registered and enrolled successfully!',
+        profilePhotoUrl: enrolledUrl,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || 'Face enrollment failed.' });
+    }
+  }
+);
+
+apiRouter.post(
   '/attendance/verify-mobile',
   requireAuth(['STUDENT']),
   async (req: AuthRequest, res: Response) => {
@@ -800,6 +842,14 @@ apiRouter.post(
       let deviceBiometricPassed = false;
 
       if (method === 'FACE_GPS') {
+        // STRICT CHECK: Student must have enrolled their face baseline first!
+        if (!student.profilePhotoUrl) {
+          return res.status(400).json({
+            status: 'FACE_NOT_ENROLLED',
+            message: 'Your face is not registered yet! Please enroll your face photo in your profile before marking attendance.',
+          });
+        }
+
         if (!selfieBase64) {
           return res.status(400).json({
             status: 'FACE_MISMATCH',
@@ -825,16 +875,6 @@ apiRouter.post(
         if (uploadRes.success) {
           selfieUrl = uploadRes.secureUrl;
           selfiePublicId = uploadRes.publicId;
-
-          // 🌟 Automatic One-Shot Face Enrollment:
-          // If the student has no enrolled photo baseline yet, automatically register this first verified selfie!
-          if (!student.profilePhotoUrl && selfieUrl) {
-            await storage.updateStudent(student.id, {
-              profilePhotoUrl: selfieUrl,
-              profilePhotoPublicId: selfiePublicId,
-            });
-            console.log(`📸 [Auto-Enrollment] Student ${student.registerNumber} (${student.name}) face enrolled permanently.`);
-          }
         }
       } else if (method === 'PHONE_BIOMETRIC_GPS') {
         const bioResult = mobileBiometricEngine.verifyAssertion(studentId, biometricPayload || {});
