@@ -1,15 +1,21 @@
 import { StorageAdapter } from './StorageAdapter';
 import { SupabaseStorageAdapter } from './SupabaseStorageAdapter';
+import { ProductionStorageAdapter } from './ProductionStorageAdapter';
 
 let instance: StorageAdapter | null = null;
 
 /**
- * Authoritative Storage Provider:
- * 100% PostgreSQL via Supabase PostgREST client with Row-Level Security.
+ * Storage Provider Factory:
+ * Defaults to ProductionStorageAdapter (persisted in ./data/*.json).
+ * Set STORAGE_DRIVER=supabase in .env when Supabase API keys are active.
  */
 export function getStorage(): StorageAdapter {
   if (!instance) {
-    instance = new SupabaseStorageAdapter();
+    if (process.env.STORAGE_DRIVER === 'supabase') {
+      instance = new SupabaseStorageAdapter();
+    } else {
+      instance = new ProductionStorageAdapter();
+    }
   }
   return instance;
 }
