@@ -43,7 +43,7 @@ export const Navbar: React.FC = () => {
     <header className="sticky top-0 z-40 bg-white/90 dark:bg-[#141418]/90 backdrop-blur-md border-b border-zinc-200/90 dark:border-[#26262e] transition-colors duration-200">
       <div className="max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
-          {/* Brand Logo */}
+          {/* Brand Logo & Logo Slot */}
           <Link
             to={
               role === 'ADMIN'
@@ -54,6 +54,7 @@ export const Navbar: React.FC = () => {
             }
             className="flex items-center gap-2.5 group"
           >
+            <div id="app-logo-slot" className="logo-container hidden sm:block empty:hidden" aria-label="Company Logo Slot"></div>
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-600 dark:bg-emerald-500 flex items-center justify-center text-white shadow-xs shrink-0 group-hover:scale-105 transition-transform">
               <Bus className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
             </div>

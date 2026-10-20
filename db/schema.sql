@@ -1,0 +1,267 @@
+-- ============================================================================
+-- 🚌 COLLEGE BUS ATTENDANCE MANAGEMENT SYSTEM — DATABASE SCHEMA
+-- Target Engine: PostgreSQL 15+ / Supabase
+-- Features: 3-Tier RBAC, Geofencing, Dynamic Verification Codes, RLS Policies
+-- Single-Click Execution Compatible with VSCode Database Client & Supabase Studio
+-- ============================================================================
+
+-- Enable UUID extension if not enabled
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- ============================================================================
+-- 1. ENUMS & DOMAINS
+-- ============================================================================
+DO $$ BEGIN
+    CREATE TYPE user_role AS ENUM ('ADMIN', 'INCHARGE', 'STUDENT');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE approval_status AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE session_type AS ENUM ('MORNING', 'EVENING');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE session_status AS ENUM ('UPCOMING', 'ACTIVE', 'CLOSED', 'FINALIZED');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE attendance_status AS ENUM (
+        'PRESENT',
+        'NOT_PRESENT',
+        'LOCATION_UNAVAILABLE',
+        'INVALID_LOCATION',
+        'INVALID_CODE',
+        'BUS_MISMATCH'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+-- ============================================================================
+-- 2. USERS TABLE (Core RBAC Authentication Entity)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    name TEXT NOT NULL,
+    role user_role NOT NULL DEFAULT 'STUDENT',
+    assigned_bus_id TEXT,
+    student_id TEXT,
+    status approval_status NOT NULL DEFAULT 'APPROVED',
+    active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- ============================================================================
+-- 3. BUSES TABLE (Campus Transit Fleet & Routes)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.buses (
+    id TEXT PRIMARY KEY,
+    bus_number TEXT NOT NULL UNIQUE,
+    route_name TEXT NOT NULL,
+    incharge_id TEXT,
+    capacity INTEGER NOT NULL DEFAULT 60,
+    active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- ============================================================================
+-- 4. STUDENTS TABLE (Commuter Roster & Verification State)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.students (
+    id TEXT PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    register_number TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT,
+    bus_id TEXT REFERENCES public.buses(id) ON DELETE SET NULL,
+    preferred_bus_id TEXT,
+    status approval_status NOT NULL DEFAULT 'PENDING',
+    approved BOOLEAN NOT NULL DEFAULT false,
+    active BOOLEAN NOT NULL DEFAULT true,
+    rejection_reason TEXT,
+    id_card_url TEXT,
+    id_card_public_id TEXT,
+    approved_at TIMESTAMPTZ,
+    approved_by TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- ============================================================================
+-- 5. ACTIVE_SESSIONS TABLE (Transit Attendance Windows & Dynamic Codes)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.active_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_type session_type NOT NULL,
+    attendance_mode TEXT NOT NULL DEFAULT 'GROUND',
+    verification_method TEXT NOT NULL DEFAULT 'CODE_GPS',
+    bus_id TEXT NOT NULL,
+    status session_status NOT NULL DEFAULT 'ACTIVE',
+    started_by TEXT NOT NULL,
+    current_code VARCHAR(10) NOT NULL,
+    code_issued_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    code_expires_at TIMESTAMPTZ NOT NULL,
+    radius_meters NUMERIC NOT NULL DEFAULT 150,
+    max_gps_accuracy_meters NUMERIC NOT NULL DEFAULT 80,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    location_name TEXT,
+    started_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    ended_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- ============================================================================
+-- 6. ATTENDANCE_RECORDS TABLE (Student Boarding Logs & GPS Audits)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.attendance_records (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id UUID REFERENCES public.active_sessions(id) ON DELETE CASCADE,
+    student_id TEXT NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
+    bus_id TEXT NOT NULL,
+    attendance_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    session_type session_type NOT NULL,
+    attendance_mode TEXT DEFAULT 'GROUND',
+    status attendance_status NOT NULL DEFAULT 'PRESENT',
+    code_used VARCHAR(10),
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    accuracy_meters NUMERIC,
+    distance_meters NUMERIC,
+    captured_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    verified_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    verification_method TEXT NOT NULL DEFAULT 'DYNAMIC_CODE_GPS',
+    override_reason TEXT,
+    override_by TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    CONSTRAINT unique_student_session_attendance UNIQUE (student_id, attendance_date, session_type)
+);
+
+-- ============================================================================
+-- 7. OTP_VERIFICATIONS TABLE (Brevo 6-Digit Email OTP Handshake)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.otp_verifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT NOT NULL,
+    otp_code VARCHAR(6) NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    verified BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- ============================================================================
+-- 8. PASSWORD_RESETS TABLE (Cryptographic Token Password Recovery)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.password_resets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT NOT NULL,
+    token TEXT UNIQUE NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- ============================================================================
+-- 9. GEOFENCE_SETTINGS TABLE (Transit Parameters)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.geofence_settings (
+    id TEXT PRIMARY KEY DEFAULT 'default',
+    campus_latitude DOUBLE PRECISION NOT NULL DEFAULT 12.9716,
+    campus_longitude DOUBLE PRECISION NOT NULL DEFAULT 77.5946,
+    radius_meters NUMERIC NOT NULL DEFAULT 150,
+    code_rotation_seconds INTEGER NOT NULL DEFAULT 60,
+    max_gps_accuracy_meters NUMERIC NOT NULL DEFAULT 80,
+    enforce_gps BOOLEAN NOT NULL DEFAULT true,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- ============================================================================
+-- 10. NOTIFICATIONS TABLE (System Broadcasts & Commuter Alerts)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    target_role user_role,
+    target_bus_id TEXT,
+    target_student_id TEXT,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    read BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- ============================================================================
+-- 11. DAILY_REPORTS TABLE (Archived Transit Presence Analytics)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.daily_reports (
+    id TEXT PRIMARY KEY,
+    date DATE NOT NULL,
+    session_type session_type NOT NULL,
+    total_students INTEGER NOT NULL DEFAULT 0,
+    present INTEGER NOT NULL DEFAULT 0,
+    not_present INTEGER NOT NULL DEFAULT 0,
+    percentage NUMERIC NOT NULL DEFAULT 0,
+    bus_wise JSONB NOT NULL DEFAULT '[]'::jsonb,
+    student_wise JSONB NOT NULL DEFAULT '[]'::jsonb,
+    generated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    CONSTRAINT unique_daily_report_date_session UNIQUE (date, session_type)
+);
+
+-- ============================================================================
+-- 11. INDEXES FOR HIGH-THROUGHPUT QUERIES
+-- ============================================================================
+CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
+CREATE INDEX IF NOT EXISTS idx_students_reg_no ON public.students(register_number);
+CREATE INDEX IF NOT EXISTS idx_students_bus_id ON public.students(bus_id);
+CREATE INDEX IF NOT EXISTS idx_students_status ON public.students(status);
+CREATE INDEX IF NOT EXISTS idx_attendance_date_bus ON public.attendance_records(attendance_date, bus_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_student ON public.attendance_records(student_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_status_bus ON public.active_sessions(status, bus_id);
+CREATE INDEX IF NOT EXISTS idx_otp_email ON public.otp_verifications(email, expires_at);
+CREATE INDEX IF NOT EXISTS idx_password_resets_token ON public.password_resets(token);
+
+-- ============================================================================
+-- 12. ROW-LEVEL SECURITY (RLS) POLICIES
+-- ============================================================================
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.buses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.active_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.attendance_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.geofence_settings ENABLE ROW LEVEL SECURITY;
+
+-- Service Role (Full Access for Backend API Worker)
+DROP POLICY IF EXISTS "Service role full access users" ON public.users;
+CREATE POLICY "Service role full access users" ON public.users FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Service role full access students" ON public.students;
+CREATE POLICY "Service role full access students" ON public.students FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Service role full access buses" ON public.buses;
+CREATE POLICY "Service role full access buses" ON public.buses FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Service role full access active_sessions" ON public.active_sessions;
+CREATE POLICY "Service role full access active_sessions" ON public.active_sessions FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Service role full access attendance_records" ON public.attendance_records;
+CREATE POLICY "Service role full access attendance_records" ON public.attendance_records FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Service role full access geofence_settings" ON public.geofence_settings;
+CREATE POLICY "Service role full access geofence_settings" ON public.geofence_settings FOR ALL USING (true);

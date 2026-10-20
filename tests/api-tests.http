@@ -1,0 +1,107 @@
+### ==========================================================================
+### 🚌 BUS ATTENDANCE MANAGEMENT SYSTEM — REST CLIENT SUITE
+### VSCode REST Client Extension (`humao.rest-client`) Compatible
+### Base URL: http://localhost:3001/api
+### ==========================================================================
+
+@baseUrl = http://localhost:3001/api
+@authToken = {{loginAdmin.response.body.token}}
+
+### 1. Health & Setup Check
+GET {{baseUrl}}/health
+Accept: application/json
+
+### 2. Setup Status Check
+GET {{baseUrl}}/auth/setup-status
+Accept: application/json
+
+### 3. Login Admin (Sets @authToken)
+# @name loginAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "tharunkumark4743@gmail.com",
+  "password": "{{$dotenv ADMIN_PASSWORD}}"
+}
+
+### 4. Brevo Transactional Email: Request 6-Digit OTP Signup
+# @name requestOtp
+POST {{baseUrl}}/auth/signup/request-otp
+Content-Type: application/json
+
+{
+  "name": "Tharun Kumar",
+  "registerNumber": "24IT101",
+  "email": "campusvsb4743@gmail.com",
+  "phone": "+91 9876543210",
+  "password": "{{$dotenv STUDENT_PASSWORD}}",
+  "preferredBusId": "BUS06"
+}
+
+### 5. Brevo Transactional Email: Verify 6-Digit OTP
+POST {{baseUrl}}/auth/signup/verify-otp
+Content-Type: application/json
+
+{
+  "email": "campusvsb4743@gmail.com",
+  "otp": "123456"
+}
+
+### 6. Brevo Transactional Email: Request Password Reset
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "tharunkumark4743@gmail.com"
+}
+
+### 7. Reset Password with Cryptographic Token
+POST {{baseUrl}}/auth/reset-password
+Content-Type: application/json
+
+{
+  "token": "example-crypto-reset-token-here",
+  "newPassword": "your-new-password-here"
+}
+
+### 8. Cloudinary Media: Get Signed Upload Signature
+GET {{baseUrl}}/media/signature
+Accept: application/json
+
+### 9. Admin: Get Fleet Buses Roster
+GET {{baseUrl}}/admin/buses
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 10. Admin: Get Pending Student Approvals
+GET {{baseUrl}}/admin/approvals
+Authorization: Bearer {{authToken}}
+Accept: application/json
+
+### 11. Incharge: Start Morning Attendance Session (Dynamic Rotating Code)
+POST {{baseUrl}}/attendance/session/start
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "busId": "BUS01",
+  "sessionType": "MORNING",
+  "attendanceMode": "GROUND",
+  "verificationMethod": "CODE_GPS",
+  "latitude": 12.9716,
+  "longitude": 77.5946
+}
+
+### 12. Student: Verify Boarding with Dynamic Code and Geolocation
+POST {{baseUrl}}/attendance/verify
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "code": "582103",
+  "busId": "BUS01",
+  "latitude": 12.9716,
+  "longitude": 77.5946,
+  "accuracyMeters": 15
+}
