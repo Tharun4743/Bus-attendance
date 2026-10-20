@@ -21,8 +21,10 @@ export class FaceVerificationEngine {
     if (!base64Data || typeof base64Data !== 'string') return false;
     return (
       base64Data.startsWith('data:image/jpeg;base64,') ||
+      base64Data.startsWith('data:image/jpg;base64,') ||
       base64Data.startsWith('data:image/png;base64,') ||
-      base64Data.startsWith('data:image/webp;base64,')
+      base64Data.startsWith('data:image/webp;base64,') ||
+      (base64Data.startsWith('data:image/') && base64Data.includes(';base64,'))
     );
   }
 

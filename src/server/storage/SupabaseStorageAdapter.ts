@@ -190,6 +190,8 @@ export class SupabaseStorageAdapter implements StorageAdapter {
       rejectionReason: s.rejection_reason,
       approvedAt: s.approved_at,
       approvedBy: s.approved_by,
+      profilePhotoUrl: s.profile_photo_url,
+      profilePhotoPublicId: s.profile_photo_public_id,
       createdAt: s.created_at,
       updatedAt: s.updated_at,
     }));
@@ -211,7 +213,13 @@ export class SupabaseStorageAdapter implements StorageAdapter {
   }
 
   async getStudentById(id: string): Promise<Student | null> {
-    const { data, error } = await this.client.from('students').select('*').eq('id', id).maybeSingle();
+    const clean = id.trim();
+    const cleanNoPrefix = clean.replace(/^(usr-|stu-)/i, '');
+    const { data, error } = await this.client
+      .from('students')
+      .select('*')
+      .or(`id.eq.${clean},register_number.ilike.${clean},email.ilike.${clean},register_number.ilike.${cleanNoPrefix}`)
+      .maybeSingle();
     if (error || !data) return null;
     return {
       id: data.id,
@@ -228,6 +236,8 @@ export class SupabaseStorageAdapter implements StorageAdapter {
       rejectionReason: data.rejection_reason,
       approvedAt: data.approved_at,
       approvedBy: data.approved_by,
+      profilePhotoUrl: data.profile_photo_url,
+      profilePhotoPublicId: data.profile_photo_public_id,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
@@ -254,6 +264,8 @@ export class SupabaseStorageAdapter implements StorageAdapter {
       approved: data.approved,
       active: data.active,
       rejectionReason: data.rejection_reason,
+      profilePhotoUrl: data.profile_photo_url,
+      profilePhotoPublicId: data.profile_photo_public_id,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
@@ -484,8 +496,17 @@ export class SupabaseStorageAdapter implements StorageAdapter {
     if (updates.busId !== undefined) mapped.bus_id = updates.busId;
     if (updates.active !== undefined) mapped.active = updates.active;
     if (updates.status) mapped.status = updates.status;
+    if (updates.profilePhotoUrl !== undefined) mapped.profile_photo_url = updates.profilePhotoUrl;
+    if (updates.profilePhotoPublicId !== undefined) mapped.profile_photo_public_id = updates.profilePhotoPublicId;
 
-    const { data, error } = await this.client.from('students').update(mapped).eq('id', id).select().maybeSingle();
+    const clean = id.trim();
+    const cleanNoPrefix = clean.replace(/^(usr-|stu-)/i, '');
+    const { data, error } = await this.client
+      .from('students')
+      .update(mapped)
+      .or(`id.eq.${clean},register_number.ilike.${clean},email.ilike.${clean},register_number.ilike.${cleanNoPrefix}`)
+      .select()
+      .maybeSingle();
     if (error || !data) return null;
     return {
       id: data.id,
@@ -499,6 +520,8 @@ export class SupabaseStorageAdapter implements StorageAdapter {
       status: data.status,
       approved: data.approved,
       active: data.active,
+      profilePhotoUrl: data.profile_photo_url,
+      profilePhotoPublicId: data.profile_photo_public_id,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
