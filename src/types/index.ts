@@ -32,6 +32,7 @@ export interface Student {
   rejectionReason?: string;
   profilePhotoUrl?: string;
   profilePhotoPublicId?: string;
+  faceDescriptor?: number[];
   approvedAt?: string;
   approvedBy?: string;
   createdAt: string;

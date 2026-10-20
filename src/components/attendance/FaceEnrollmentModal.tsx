@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Camera, X, CheckCircle2, AlertTriangle, RefreshCw, Sparkles, ShieldCheck } from 'lucide-react';
 import { api } from '../../services/api';
 
+import { extractFaceDescriptor, loadFaceApiModels } from '../../lib/faceBiometrics';
+
 interface FaceEnrollmentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -18,9 +20,11 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
   registerNumber,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [statusText, setStatusText] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [capturedSnapshot, setCapturedSnapshot] = useState<string | null>(null);
+  const [capturedDescriptor, setCapturedDescriptor] = useState<number[] | null>(null);
 
   // Camera stream state
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -33,6 +37,10 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
       setErrorMsg(null);
       setSuccessMsg(null);
       setCapturedSnapshot(null);
+      setCapturedDescriptor(null);
+      setStatusText(null);
+      // Preload face models in background
+      loadFaceApiModels().catch((e) => console.warn('[FaceAPI] Preload error:', e));
       startCamera();
     } else {
       stopCamera();
@@ -75,7 +83,7 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
     setIsCameraActive(false);
   };
 
-  const takeSnapshot = () => {
+  const takeSnapshot = async () => {
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -91,13 +99,34 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     const base64 = canvas.toDataURL('image/jpeg', 0.85);
-    setCapturedSnapshot(base64);
-    stopCamera();
+
+    setIsLoading(true);
+    setStatusText('Detecting face & extracting biometric landmarks...');
+    setErrorMsg(null);
+
+    try {
+      const bioResult = await extractFaceDescriptor(canvas);
+      if (!bioResult.success || !bioResult.descriptor) {
+        setErrorMsg(bioResult.error || 'No human face detected. Please face the camera directly in good lighting.');
+        return;
+      }
+
+      setCapturedSnapshot(base64);
+      setCapturedDescriptor(bioResult.descriptor);
+      stopCamera();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Face detection failed. Ensure good lighting and retry.');
+    } finally {
+      setIsLoading(false);
+      setStatusText(null);
+    }
   };
 
   const retakeSnapshot = () => {
     setCapturedSnapshot(null);
+    setCapturedDescriptor(null);
     setErrorMsg(null);
+    setStatusText(null);
     startCamera();
   };
 
@@ -108,10 +137,11 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
     }
 
     setIsLoading(true);
+    setStatusText('Encrypting & registering biometric profile...');
     setErrorMsg(null);
 
     try {
-      const res = await api.enrollFace(capturedSnapshot);
+      const res = await api.enrollFace(capturedSnapshot, capturedDescriptor || undefined);
       setSuccessMsg(res.message || 'Face ID registered successfully!');
       setTimeout(() => {
         onSuccess(res.profilePhotoUrl);
@@ -121,6 +151,7 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
       setErrorMsg(err.message || 'Face enrollment failed. Please try again with clear lighting.');
     } finally {
       setIsLoading(false);
+      setStatusText(null);
     }
   };
 
@@ -198,6 +229,13 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
           </div>
 
           {/* Status Notifications */}
+          {statusText && (
+            <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/40 text-xs text-blue-600 dark:text-blue-400 flex items-center gap-2">
+              <RefreshCw className="w-4 h-4 shrink-0 animate-spin" />
+              <span>{statusText}</span>
+            </div>
+          )}
+
           {errorMsg && (
             <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/40 text-xs text-red-600 dark:text-red-400 flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />

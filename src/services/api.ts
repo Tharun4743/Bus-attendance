@@ -190,6 +190,7 @@ class ApiClient {
     longitude: number;
     accuracy?: number;
     selfieBase64?: string;
+    faceDescriptor?: number[];
     biometricPayload?: any;
   }): Promise<{
     status: AttendanceStatus;
@@ -205,10 +206,13 @@ class ApiClient {
     });
   }
 
-  async enrollFace(selfieBase64: string): Promise<{ success: boolean; message: string; profilePhotoUrl: string }> {
+  async enrollFace(
+    selfieBase64: string,
+    faceDescriptor?: number[]
+  ): Promise<{ success: boolean; message: string; profilePhotoUrl: string }> {
     return this.request('/attendance/enroll-face', {
       method: 'POST',
-      body: JSON.stringify({ selfieBase64 }),
+      body: JSON.stringify({ selfieBase64, faceDescriptor }),
     });
   }
 
