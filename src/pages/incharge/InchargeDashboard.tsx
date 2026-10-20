@@ -15,7 +15,6 @@ import {
   Camera,
   Fingerprint,
   Key,
-  Play,
   Square,
   Search,
   Download,
@@ -24,6 +23,7 @@ import {
   Radio,
   X,
 } from 'lucide-react';
+import { InchargeMapPickerModal } from '../../components/incharge/InchargeMapPickerModal';
 
 export const InchargeDashboard: React.FC = () => {
   const [data, setData] = useState<{
@@ -48,12 +48,12 @@ export const InchargeDashboard: React.FC = () => {
 
   // Active Session & Controls
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
-  const [isStarting, setIsStarting] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [sessionType, setSessionType] = useState<'MORNING' | 'EVENING'>('MORNING');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PRESENT' | 'NOT_PRESENT'>('ALL');
   const [previewSelfie, setPreviewSelfie] = useState<{ url: string; name: string; reg: string; confidence?: number | null } | null>(null);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -97,56 +97,6 @@ export const InchargeDashboard: React.FC = () => {
     }, 6000);
     return () => clearInterval(interval);
   }, []);
-
-  // Start Live Transit Attendance Session
-  const handleStartSession = async () => {
-    if (!data?.bus) return;
-    setIsStarting(true);
-    try {
-      // Capture live in-charge GPS if available
-      let lat = 10.9572;
-      let lng = 78.0766;
-      if (navigator.geolocation) {
-        try {
-          const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-          });
-          lat = pos.coords.latitude;
-          lng = pos.coords.longitude;
-        } catch {
-          // Use default coordinates
-        }
-      }
-
-      const res = await fetch('/api/admin/attendance/start', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('bus_token')}`,
-        },
-        body: JSON.stringify({
-          sessionType,
-          attendanceMode: 'TRAVELLING',
-          verificationMethod: 'FACE_GPS',
-          busId: data.bus.id,
-          latitude: lat,
-          longitude: lng,
-          radiusMeters: 100,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to start session.');
-      }
-
-      await refreshAll();
-    } catch (err: any) {
-      alert(err.message || 'Error starting attendance session.');
-    } finally {
-      setIsStarting(false);
-    }
-  };
 
   // End Live Session
   const handleEndSession = async () => {
@@ -339,14 +289,13 @@ export const InchargeDashboard: React.FC = () => {
               </select>
 
               <Button
-                onClick={handleStartSession}
-                disabled={isStarting}
+                onClick={() => setIsMapModalOpen(true)}
                 variant="primary"
                 size="md"
-                className="font-black bg-emerald-600 hover:bg-emerald-500 shadow-md"
+                className="font-black bg-amber-500 hover:bg-amber-400 active:scale-95 text-white shadow-md shadow-amber-500/20"
               >
-                <Play className="w-4 h-4 fill-current" />
-                <span>{isStarting ? 'Initiating...' : 'Start Transit Attendance'}</span>
+                <MapPin className="w-4 h-4 fill-current" />
+                <span>Select Location on Map & Start</span>
               </Button>
             </div>
           </div>
@@ -571,6 +520,19 @@ export const InchargeDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 5. INTERACTIVE MAP LOCATION PICKER MODAL                                  */}
+      {/* ========================================================================= */}
+      {data?.bus && (
+        <InchargeMapPickerModal
+          isOpen={isMapModalOpen}
+          onClose={() => setIsMapModalOpen(false)}
+          bus={data.bus}
+          initialSessionType={sessionType}
+          onSessionStarted={refreshAll}
+        />
       )}
     </div>
   );
