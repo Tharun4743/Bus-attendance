@@ -32,7 +32,15 @@ export interface Student {
   rejectionReason?: string;
   profilePhotoUrl?: string;
   profilePhotoPublicId?: string;
+  photoUrl?: string;
+  photoPublicId?: string;
+  idCardUrl?: string;
+  idCardPublicId?: string;
   faceDescriptor?: number[];
+  faceDescriptorLeft?: number[];
+  faceDescriptorRight?: number[];
+  faceEnrolledAt?: string;
+  faceEnrollmentQuality?: number;
   approvedAt?: string;
   approvedBy?: string;
   createdAt: string;
@@ -44,6 +52,7 @@ export interface Bus {
   busNumber: string;
   routeName: string;
   inchargeId: string;
+  capacity?: number;
   active: boolean;
 }
 

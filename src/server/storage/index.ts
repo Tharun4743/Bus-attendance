@@ -1,24 +1,19 @@
 import { StorageAdapter } from './StorageAdapter';
-import { SupabaseStorageAdapter } from './SupabaseStorageAdapter';
-import { ProductionStorageAdapter } from './ProductionStorageAdapter';
+import { PostgresStorageAdapter } from './PostgresStorageAdapter';
 
 let instance: StorageAdapter | null = null;
 
 /**
  * Storage Provider Factory:
- * Defaults to ProductionStorageAdapter (persisted in ./data/*.json).
- * Set STORAGE_DRIVER=supabase in .env when Supabase API keys are active.
+ * ALWAYS stores and queries from Supabase PostgreSQL via PostgresStorageAdapter.
+ * Zero reliance on local JSON files.
  */
 export function getStorage(): StorageAdapter {
   if (!instance) {
-    if (process.env.STORAGE_DRIVER === 'supabase') {
-      instance = new SupabaseStorageAdapter();
-    } else {
-      instance = new ProductionStorageAdapter();
-    }
+    instance = new PostgresStorageAdapter();
   }
   return instance;
 }
 
 export * from './StorageAdapter';
-export * from './SupabaseStorageAdapter';
+export * from './PostgresStorageAdapter';

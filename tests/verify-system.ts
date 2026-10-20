@@ -2,11 +2,8 @@ import { calculateDistance } from '../src/server/attendance/haversine';
 import { evaluateSessionStatus } from '../src/server/attendance/session';
 import { AttendanceVerifier } from '../src/server/attendance/verifier';
 import { ReportGenerator } from '../src/server/reports/generator';
-import { JsonStorageAdapter } from '../src/server/storage/JsonStorageAdapter';
+import { MemoryStorageAdapter } from '../src/server/storage/MemoryStorageAdapter';
 import { AttendanceSettings, User } from '../src/types';
-import path from 'path';
-import fs from 'fs/promises';
-import os from 'os';
 
 async function runSystemTests() {
   console.log('================================================================');
@@ -26,18 +23,8 @@ async function runSystemTests() {
     }
   }
 
-  const testDir = path.join(os.tmpdir(), `bus_attendance_test_${Date.now()}`);
-  await fs.mkdir(testDir, { recursive: true });
-  const storage = new JsonStorageAdapter(testDir);
-
-  // Clean slate initialization in isolated test directory
-  await fs.writeFile(path.join(testDir, 'users.json'), '[]', 'utf-8');
-  await fs.writeFile(path.join(testDir, 'buses.json'), '[]', 'utf-8');
-  await fs.writeFile(path.join(testDir, 'students.json'), '[]', 'utf-8');
-  await fs.writeFile(path.join(testDir, 'attendance.json'), '[]', 'utf-8');
-  await fs.writeFile(path.join(testDir, 'notifications.json'), '[]', 'utf-8');
-  await fs.writeFile(path.join(testDir, 'reports.json'), '[]', 'utf-8');
-  await fs.writeFile(path.join(testDir, 'active_session.json'), 'null', 'utf-8');
+  // Pure in-memory storage adapter for deterministic, zero-disk testing
+  const storage = new MemoryStorageAdapter();
 
   // 1. Haversine Formula Tests
   console.log('--- 1. HAVERSINE DISTANCE VERIFICATION ---');
@@ -236,11 +223,6 @@ async function runSystemTests() {
   assert(report.present === 1, `Daily report reflects real present count (1 student present)`);
   assert(report.notPresent === 0, `Daily report reflects real notPresent count (0 not present)`);
   assert(report.busWise.length === 1 && report.busWise[0].busId === 'BUS06', 'Report contains BUS06 summary');
-
-  // Clean up isolated test directory
-  try {
-    await fs.rm(testDir, { recursive: true, force: true });
-  } catch {}
 
   console.log('\n================================================================');
   console.log(`📊 TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);

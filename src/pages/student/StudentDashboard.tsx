@@ -53,15 +53,25 @@ export const StudentDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const [hasAutoOpenedModal, setHasAutoOpenedModal] = useState(false);
+
   const userKey = student?.id || user?.id || user?.studentId || '';
   const cachedEnrollment = userKey ? localStorage.getItem(`face_enrolled_${userKey}`) === 'true' : false;
-  const isFaceEnrolled = Boolean(student?.profilePhotoUrl || cachedEnrollment);
+  const isFaceEnrolled = Boolean(student?.faceDescriptor || student?.profilePhotoUrl || student?.photoUrl || cachedEnrollment);
 
   useEffect(() => {
     if (student?.profilePhotoUrl && userKey) {
       localStorage.setItem(`face_enrolled_${userKey}`, 'true');
     }
   }, [student?.profilePhotoUrl, userKey]);
+
+  // Auto-prompt first-time biometric enrollment if profile has no face descriptor
+  useEffect(() => {
+    if (!isLoading && student && !isFaceEnrolled && !hasAutoOpenedModal) {
+      setIsEnrollModalOpen(true);
+      setHasAutoOpenedModal(true);
+    }
+  }, [isLoading, student, isFaceEnrolled, hasAutoOpenedModal]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -298,20 +308,40 @@ export const StudentDashboard: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
               <button
                 type="button"
-                onClick={() => setIsMobileModalOpen(true)}
-                className="flex items-center justify-center gap-3 py-4 px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-black text-sm shadow-lg shadow-emerald-600/20 transition-all cursor-pointer min-h-[56px]"
+                onClick={() => {
+                  if (!isFaceEnrolled) {
+                    setIsEnrollModalOpen(true);
+                  } else {
+                    setIsMobileModalOpen(true);
+                  }
+                }}
+                className={`flex items-center justify-center gap-3 py-4 px-5 rounded-2xl font-black text-sm shadow-lg transition-all cursor-pointer min-h-[56px] ${
+                  isFaceEnrolled
+                    ? 'bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white shadow-emerald-600/20'
+                    : 'bg-amber-500 hover:bg-amber-400 active:scale-[0.98] text-white shadow-amber-500/20 animate-pulse'
+                }`}
               >
                 <Camera className="w-5 h-5" />
-                <span>📸 VERIFY WITH MOBILE FACE & GPS</span>
+                <span>{isFaceEnrolled ? '📸 VERIFY WITH MOBILE FACE & GPS' : '📸 FIRST-TIME FACE ID SCAN REQUIRED'}</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setIsMobileModalOpen(true)}
-                className="flex items-center justify-center gap-3 py-4 px-5 rounded-2xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#1a1a22] dark:hover:bg-[#22222c] active:scale-[0.98] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white font-bold text-sm shadow-xs transition-all cursor-pointer min-h-[56px]"
+                onClick={() => {
+                  if (!isFaceEnrolled) {
+                    setIsEnrollModalOpen(true);
+                  } else {
+                    setIsMobileModalOpen(true);
+                  }
+                }}
+                className={`flex items-center justify-center gap-3 py-4 px-5 rounded-2xl border font-bold text-sm shadow-xs transition-all cursor-pointer min-h-[56px] ${
+                  isFaceEnrolled
+                    ? 'bg-zinc-100 hover:bg-zinc-200 dark:bg-[#1a1a22] dark:hover:bg-[#22222c] active:scale-[0.98] border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white'
+                    : 'bg-zinc-50 dark:bg-zinc-900/40 border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-400 cursor-pointer opacity-80'
+                }`}
               >
-                <Fingerprint className="w-5 h-5 text-emerald-500" />
-                <span>👆 Use Phone TouchID / Biometrics</span>
+                <Fingerprint className={`w-5 h-5 ${isFaceEnrolled ? 'text-emerald-500' : 'text-amber-500'}`} />
+                <span>{isFaceEnrolled ? '👆 Use Phone TouchID / Biometrics' : '🔒 Locked (Face ID Required First)'}</span>
               </button>
             </div>
 
@@ -446,7 +476,7 @@ export const StudentDashboard: React.FC = () => {
         registerNumber={student?.registerNumber || user?.studentId || ''}
         onSuccess={(photoUrl) => {
           if (userKey) localStorage.setItem(`face_enrolled_${userKey}`, 'true');
-          setStudent((prev) => (prev ? { ...prev, profilePhotoUrl: photoUrl } : prev));
+          setStudent((prev) => (prev ? { ...prev, profilePhotoUrl: photoUrl, photoUrl, faceDescriptor: [1] } : prev));
           setIsEnrollModalOpen(false);
           fetchStudentData();
         }}

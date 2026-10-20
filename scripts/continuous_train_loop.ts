@@ -899,9 +899,12 @@ export class ContinuousNeuralTrainingLoop {
 }
 
 async function run() {
-  const studentsPath = path.resolve(process.cwd(), 'data/students.json');
-  const raw = await fs.readFile(studentsPath, 'utf-8');
-  const students: Student[] = JSON.parse(raw);
+  const dotenv = await import('dotenv');
+  dotenv.config();
+  const { getStorage } = await import('../src/server/storage/index.js');
+  const storage = getStorage();
+  const students = await storage.getStudents();
+  console.log(`📡 Loaded ${students.length} students from live Supabase PostgreSQL.`);
 
   const engine = new ContinuousNeuralTrainingLoop();
   const champion = await engine.runUntilTargetAchieved(students);
