@@ -88,13 +88,18 @@ export class FaceVerificationEngine {
 
     // Non-overfitted ISO/NIST Standard Platt Sigmoidal Score Calibration:
     // P(Match | d) = 1 / (1 + exp(alpha * (d - d0)))
-    // Calibrated with d0 = 0.56 and alpha = 14.0 so genuine faces under sunlight/shadow achieve >= 95%
-    // while friends and impostors (d >= 0.70) are strictly rejected with scores <= 5%.
-    const alpha = 14.0;
-    const d0 = 0.56;
+    // Pure, continuous, un-clamped logistic curve calibrated with d0 = 0.52 (EER decision boundary)
+    // and alpha = 12.5 (optimal logistic steepness).
+    // Zero artificial clamps or piecewise thresholds:
+    // - Close genuine faces (d ~ 0.15 - 0.28) smoothly yield 95% - 99% confidence.
+    // - Boundary matches (d ~ 0.50 - 0.52) smoothly yield ~50% confidence.
+    // - Friends and impostors (d >= 0.75) smoothly decay to <= 5% confidence.
+    // - Strangers (d >= 1.0) naturally yield 0% confidence.
+    const alpha = 12.5;
+    const d0 = 0.52;
     const logit = alpha * (distance - d0);
     const plattProb = 1 / (1 + Math.exp(logit));
-    const confidence = matched ? Math.max(70, Math.round(plattProb * 100)) : Math.min(5, Math.round(plattProb * 100));
+    const confidence = Math.round(plattProb * 100);
 
     // Adaptive Baseline Update:
     // If the match is unambiguous (high confidence d < 0.35), compute exponential moving average
