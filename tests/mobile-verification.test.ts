@@ -58,6 +58,40 @@ describe('⚡ Mobile Zero-Hardware Attendance Verification Circuits', () => {
       expect(result.matched).toBe(true);
       expect(result.confidence).toBeGreaterThanOrEqual(65);
     });
+
+    it('accurately verifies same person biometric descriptor vector with low Euclidean distance', () => {
+      // Create baseline 128-D normalized unit vector
+      const enrolledVector = new Array(128).fill(0).map((_, i) => Math.sin(i / 10));
+      // Live vector for same person (slight sensor variance)
+      const samePersonLiveVector = enrolledVector.map((val) => val + (Math.random() * 0.04 - 0.02));
+
+      const result = faceVerificationEngine.compareBiometricDescriptors(samePersonLiveVector, enrolledVector);
+      expect(result.matched).toBe(true);
+      expect(result.distance).toBeLessThan(0.48);
+      expect(result.confidence).toBeGreaterThan(60);
+    });
+
+    it('strictly REJECTS friend / impostor biometric vector with distance >= 0.48', () => {
+      // Student A enrolled vector
+      const enrolledVector = new Array(128).fill(0).map((_, i) => Math.sin(i / 10));
+      // Friend B live vector (completely different facial landmarks)
+      const friendLiveVector = new Array(128).fill(0).map((_, i) => Math.cos(i / 5));
+
+      const result = faceVerificationEngine.compareBiometricDescriptors(friendLiveVector, enrolledVector);
+      expect(result.matched).toBe(false);
+      expect(result.distance).toBeGreaterThanOrEqual(0.48);
+      expect(result.confidence).toBeLessThan(50);
+      expect(result.reason).toContain('Impostor or friend\'s face rejected');
+    });
+
+    it('rejects invalid or corrupted vector dimensions', () => {
+      const invalidShortVector = [0.1, 0.2, 0.3];
+      const validVector = new Array(128).fill(0.1);
+
+      const result = faceVerificationEngine.compareBiometricDescriptors(invalidShortVector, validVector);
+      expect(result.matched).toBe(false);
+      expect(result.reason).toContain('Invalid 128-dimensional biometric descriptor');
+    });
   });
 
   describe('Circuit 2: Smartphone-Native Biometric Engine (WebAuthn)', () => {

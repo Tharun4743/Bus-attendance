@@ -192,6 +192,7 @@ export class SupabaseStorageAdapter implements StorageAdapter {
       approvedBy: s.approved_by,
       profilePhotoUrl: s.profile_photo_url,
       profilePhotoPublicId: s.profile_photo_public_id,
+      faceDescriptor: s.face_descriptor,
       createdAt: s.created_at,
       updatedAt: s.updated_at,
     }));
@@ -238,6 +239,7 @@ export class SupabaseStorageAdapter implements StorageAdapter {
       approvedBy: data.approved_by,
       profilePhotoUrl: data.profile_photo_url,
       profilePhotoPublicId: data.profile_photo_public_id,
+      faceDescriptor: data.face_descriptor,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
@@ -266,6 +268,7 @@ export class SupabaseStorageAdapter implements StorageAdapter {
       rejectionReason: data.rejection_reason,
       profilePhotoUrl: data.profile_photo_url,
       profilePhotoPublicId: data.profile_photo_public_id,
+      faceDescriptor: data.face_descriptor,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
@@ -498,6 +501,7 @@ export class SupabaseStorageAdapter implements StorageAdapter {
     if (updates.status) mapped.status = updates.status;
     if (updates.profilePhotoUrl !== undefined) mapped.profile_photo_url = updates.profilePhotoUrl;
     if (updates.profilePhotoPublicId !== undefined) mapped.profile_photo_public_id = updates.profilePhotoPublicId;
+    if (updates.faceDescriptor !== undefined) mapped.face_descriptor = updates.faceDescriptor;
 
     const clean = id.trim();
     const cleanNoPrefix = clean.replace(/^(usr-|stu-)/i, '');
@@ -522,6 +526,7 @@ export class SupabaseStorageAdapter implements StorageAdapter {
       active: data.active,
       profilePhotoUrl: data.profile_photo_url,
       profilePhotoPublicId: data.profile_photo_public_id,
+      faceDescriptor: data.face_descriptor,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };

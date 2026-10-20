@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Fingerprint, MapPin, X, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { api } from '../../services/api';
 
+import { extractFaceDescriptor, loadFaceApiModels } from '../../lib/faceBiometrics';
+
 interface MobileVerificationModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -17,6 +19,7 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
 }) => {
   const [activeTab, setActiveTab] = useState<'FACE' | 'BIOMETRIC'>('FACE');
   const [isLoading, setIsLoading] = useState(false);
+  const [statusText, setStatusText] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successResult, setSuccessResult] = useState<{
     message: string;
@@ -39,8 +42,11 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
   useEffect(() => {
     if (isOpen) {
       setErrorMsg(null);
+      setStatusText(null);
       setSuccessResult(null);
       acquireGps();
+      // Preload face models in background
+      loadFaceApiModels().catch((e) => console.warn('[FaceAPI] Preload error in modal:', e));
       if (activeTab === 'FACE') {
         startCamera();
       }
@@ -133,15 +139,24 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
     }
 
     const selfieBase64 = captureSelfieBase64();
-    if (!selfieBase64) {
+    if (!selfieBase64 || !canvasRef.current) {
       setErrorMsg('Failed to capture camera snapshot. Please ensure camera is visible.');
       return;
     }
 
     setIsLoading(true);
+    setStatusText('Scanning live facial landmarks & biometrics...');
     setErrorMsg(null);
 
     try {
+      const bioResult = await extractFaceDescriptor(canvasRef.current);
+      if (!bioResult.success || !bioResult.descriptor) {
+        setErrorMsg(bioResult.error || 'No human face detected! Look directly into the camera in clear lighting.');
+        return;
+      }
+
+      setStatusText('Verifying biometric match against registered profile...');
+
       const res = await api.verifyMobile({
         busId,
         method: 'FACE_GPS',
@@ -149,6 +164,7 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
         longitude: coords.longitude,
         accuracy: coords.accuracy,
         selfieBase64,
+        faceDescriptor: bioResult.descriptor,
       });
 
       if (res.status === 'PRESENT') {
@@ -169,6 +185,7 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
       setErrorMsg(err.message || 'Face & location verification failed. Check connection.');
     } finally {
       setIsLoading(false);
+      setStatusText(null);
     }
   };
 
@@ -362,6 +379,14 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
               <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-3 text-center">
                 Align your face inside the circle. The photo will verify your presence and geofence.
               </p>
+
+              {/* Status Banner */}
+              {statusText && (
+                <div className="w-full mt-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 flex items-center gap-2.5 text-xs text-blue-700 dark:text-blue-400">
+                  <RefreshCw className="w-4 h-4 shrink-0 animate-spin" />
+                  <span className="font-medium">{statusText}</span>
+                </div>
+              )}
 
               {/* Error Alert */}
               {errorMsg && (

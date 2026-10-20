@@ -736,7 +736,7 @@ apiRouter.post(
         return res.status(404).json({ error: 'Student commuter profile not found.' });
       }
 
-      const { selfieBase64 } = req.body;
+      const { selfieBase64, faceDescriptor } = req.body;
       if (!selfieBase64 || !faceVerificationEngine.isValidImagePayload(selfieBase64)) {
         return res.status(400).json({ error: 'Valid camera selfie snapshot required for face enrollment.' });
       }
@@ -753,6 +753,7 @@ apiRouter.post(
       await storage.updateStudent(student.id, {
         profilePhotoUrl: enrolledUrl,
         profilePhotoPublicId: enrolledPublicId,
+        faceDescriptor: Array.isArray(faceDescriptor) && faceDescriptor.length === 128 ? faceDescriptor : undefined,
       });
 
       console.log(`✅ [Face-Enrollment] Student ${student.registerNumber} (${student.name}) enrolled successfully.`);
@@ -781,7 +782,7 @@ apiRouter.post(
         });
       }
 
-      const { busId, method, latitude, longitude, accuracy, selfieBase64, biometricPayload } = req.body;
+      const { busId, method, latitude, longitude, accuracy, selfieBase64, faceDescriptor, biometricPayload } = req.body;
 
       const targetBusId = busId || student.busId;
       if (student.busId && targetBusId !== student.busId) {
@@ -864,15 +865,39 @@ apiRouter.post(
           });
         }
 
-        const faceResult = faceVerificationEngine.verifyFaceMatch(selfieBase64, student.profilePhotoUrl);
-        if (!faceResult.matched) {
-          return res.status(400).json({
-            status: 'FACE_MISMATCH',
-            message: faceResult.reason || 'Face verification failed. Please align your face inside the circle and retry.',
-            confidence: faceResult.confidence,
-          });
+        // BIOMETRIC DESCRIPTOR COMPARISON (Real Computer Vision Vector Math)
+        if (student.faceDescriptor && Array.isArray(student.faceDescriptor) && student.faceDescriptor.length === 128) {
+          if (!faceDescriptor || !Array.isArray(faceDescriptor) || faceDescriptor.length !== 128) {
+            return res.status(400).json({
+              status: 'FACE_MISMATCH',
+              message: 'Facial biometric descriptor not detected. Look directly into the camera in good lighting.',
+            });
+          }
+
+          const bioResult = faceVerificationEngine.compareBiometricDescriptors(faceDescriptor, student.faceDescriptor);
+          if (!bioResult.matched) {
+            console.log(`❌ [Face-Mismatch] Student ${student.registerNumber} biometric distance=${bioResult.distance}. REJECTED.`);
+            return res.status(400).json({
+              status: 'FACE_MISMATCH',
+              message: `Face mismatch (${bioResult.confidence}% match, distance ${bioResult.distance}). Camera face does not match registered student profile.`,
+              confidence: bioResult.confidence,
+              distance: bioResult.distance,
+            });
+          }
+          faceConfidence = bioResult.confidence;
+          console.log(`✅ [Face-Matched] Student ${student.registerNumber} biometric verified (${faceConfidence}% match, distance ${bioResult.distance}).`);
+        } else {
+          // Fallback if student was enrolled before descriptor support
+          const faceResult = faceVerificationEngine.verifyFaceMatch(selfieBase64, student.profilePhotoUrl);
+          if (!faceResult.matched) {
+            return res.status(400).json({
+              status: 'FACE_MISMATCH',
+              message: faceResult.reason || 'Face verification failed. Please align your face inside the circle and retry.',
+              confidence: faceResult.confidence,
+            });
+          }
+          faceConfidence = faceResult.confidence;
         }
-        faceConfidence = faceResult.confidence;
 
         // Archive visual presence proof to Cloudinary
         const uploadRes = await cloudinaryPipeline.uploadMedia(
