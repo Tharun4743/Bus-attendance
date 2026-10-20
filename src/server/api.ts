@@ -1172,7 +1172,13 @@ apiRouter.get(
       const buses = await storage.getBuses();
       const busMap = new Map(buses.map((b) => [b.id, b]));
 
-      const records = await storage.getAttendance({ date, sessionType: 'EVENING' });
+      const activeDynamic = await storage.getActiveSession();
+      const currentSessionType: SessionType = activeDynamic ? activeDynamic.sessionType : (sessionInfo.sessionType || 'EVENING');
+
+      let records = await storage.getAttendance({ date, sessionType: currentSessionType });
+      if (records.length === 0) {
+        records = await storage.getAttendance({ date });
+      }
       const recordMap = new Map(records.map((r) => [r.studentId, r]));
 
       const roster = activeStudents.map((s) => {
@@ -1430,7 +1436,13 @@ apiRouter.get(
       const students = await storage.getStudentsByBusId(bus.id);
       const activeStudents = students.filter((s) => s.active);
 
-      const records = await storage.getAttendance({ date, busId: bus.id, sessionType: 'EVENING' });
+      const activeDynamic = await storage.getActiveSession(bus.id);
+      const currentSessionType: SessionType = activeDynamic ? activeDynamic.sessionType : (sessionInfo.sessionType || 'EVENING');
+
+      let records = await storage.getAttendance({ date, busId: bus.id, sessionType: currentSessionType });
+      if (records.length === 0) {
+        records = await storage.getAttendance({ date, busId: bus.id });
+      }
       const recordMap = new Map(records.map((r) => [r.studentId, r]));
 
       const roster = activeStudents.map((s) => {
