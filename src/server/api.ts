@@ -530,9 +530,10 @@ apiRouter.get('/attendance/session', async (req: Request, res: Response) => {
         currentTimeIST: nowIST,
         currentDateIST: dateIST,
         locationName:
-          activeDynamic.attendanceMode === 'TRAVELLING'
+          activeDynamic.location?.name ||
+          (activeDynamic.attendanceMode === 'TRAVELLING'
             ? `Travelling Bus (${activeDynamic.busId})`
-            : activeDynamic.location?.name || 'Campus Location',
+            : 'Campus Location'),
         radiusMeters: activeDynamic.radiusMeters,
         maxGpsAccuracyMeters: activeDynamic.maxGpsAccuracyMeters,
         activeSession: activeDynamic,
@@ -576,12 +577,12 @@ const handleStartSession = async (req: AuthRequest, res: Response) => {
     let locationLat = Number(latitude);
     let locationLon = Number(longitude);
     let locAccuracy = Number(accuracy) || 10;
-    let locName = 'College Ground';
+    let locName = req.body.locationName ? String(req.body.locationName).trim() : (attendanceMode === 'TRAVELLING' ? `Travelling Bus (${busId})` : settings.location.name);
 
     if (attendanceMode === 'GROUND') {
       locationLat = isNaN(locationLat) || !latitude ? settings.location.latitude : locationLat;
       locationLon = isNaN(locationLon) || !longitude ? settings.location.longitude : locationLon;
-      locName = settings.location.name;
+      locName = req.body.locationName ? String(req.body.locationName).trim() : settings.location.name;
     }
 
     const dynamicCode = generateDynamic6DigitCode();
