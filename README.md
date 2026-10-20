@@ -6,7 +6,7 @@
 [![Type](https://img.shields.io/badge/Type-PWA-FF6B6B?style=for-the-badge&logo=pwa&logoColor=white)](#) [![Frontend](https://img.shields.io/badge/Frontend-React%2019%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=white)](#) [![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](#) [![Email](https://img.shields.io/badge/Mailer-Brevo%20Transactional%20API-0B996F?style=for-the-badge&logo=brevo&logoColor=white)](#) [![Storage](https://img.shields.io/badge/Media-Cloudinary-3448C5?style=for-the-badge&logo=cloudinary&logoColor=white)](#) [![Deployment](https://img.shields.io/badge/Deployment-Render%20%2B%20Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](#)
 
 <p align="center">
-  <a href="https://github.com/Tharun4743/bus-attendance">📦 <b>Official GitHub Repository</b></a>
+  <a href="https://github.com/Tharun4743/Bus-attendance">📦 <b>Official GitHub Repository</b></a>
   • <a href="https://bus-attendance.vercel.app/">🌐 <b>Production Live Demo</b></a>
 </p>
 
