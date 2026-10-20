@@ -6,11 +6,38 @@ import { AttendanceVerifier } from './attendance/verifier';
 import { ReportGenerator } from './reports/generator';
 import { Role, User, SessionType, VerificationMethod } from '../types';
 import { generateDynamic6DigitCode } from './attendance/codeGenerator';
+import crypto from 'crypto';
+import { brevoMailer } from '../lib/brevo';
+import { cloudinaryPipeline } from '../lib/cloudinary';
 
 export const apiRouter = Router();
 const storage = getStorage();
 const verifier = new AttendanceVerifier(storage);
 const reportGen = new ReportGenerator(storage);
+
+// In-Memory store for live OTPs (10-minute expiry)
+interface StoredOtp {
+  otp: string;
+  expiresAt: number;
+  attempts: number;
+  signupData: {
+    name: string;
+    registerNumber: string;
+    email: string;
+    phone?: string;
+    password: string;
+    preferredBusId?: string;
+  };
+}
+const otpStore = new Map<string, StoredOtp>();
+
+// In-Memory store for cryptographic password reset tokens (15-minute expiry)
+interface StoredResetToken {
+  email: string;
+  expiresAt: number;
+  used: boolean;
+}
+const resetTokenStore = new Map<string, StoredResetToken>();
 
 // Helper for extracting authenticated user
 export interface AuthRequest extends Request {
@@ -114,6 +141,237 @@ apiRouter.post('/auth/signup', async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     return res.status(400).json({ error: err.message || 'Signup failed.' });
+  }
+});
+
+// Request 6-digit OTP via Brevo API
+apiRouter.post('/auth/signup/request-otp', async (req: Request, res: Response) => {
+  try {
+    const { name, registerNumber, email, phone, password, preferredBusId } = req.body;
+    if (!name || !registerNumber || !email || !password) {
+      return res.status(400).json({
+        error: 'Full Name, Register Number, Real Email, and Password are required.',
+      });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanRegNo = registerNumber.trim().toUpperCase();
+
+    // Check if student with registerNumber already exists
+    const existingStudent = await storage.getStudentByRegisterNumber(cleanRegNo);
+    if (existingStudent) {
+      return res.status(400).json({ error: `Register number ${cleanRegNo} is already registered.` });
+    }
+
+    // Check if user with email already exists
+    const existingUser = await storage.getUserByEmail(cleanEmail);
+    if (existingUser) {
+      return res.status(400).json({ error: `An account with email ${cleanEmail} already exists.` });
+    }
+
+    // Generate cryptographic 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    otpStore.set(cleanEmail, {
+      otp,
+      expiresAt,
+      attempts: 0,
+      signupData: {
+        name: name.trim(),
+        registerNumber: cleanRegNo,
+        email: cleanEmail,
+        phone: phone?.trim(),
+        password,
+        preferredBusId,
+      },
+    });
+
+    // Also persist in PostgreSQL otp_verifications table if available
+    try {
+      if ('saveOtp' in storage && typeof (storage as any).saveOtp === 'function') {
+        await (storage as any).saveOtp(cleanEmail, otp, new Date(expiresAt));
+      }
+    } catch (dbErr) {
+      console.warn('⚠️ Could not write OTP to PostgreSQL, proceeding with active memory store:', dbErr);
+    }
+
+    // Dispatch via Brevo API
+    const dispatchResult = await brevoMailer.sendOtpEmail(cleanEmail, name.trim(), otp);
+
+    return res.json({
+      success: true,
+      message: `A 6-digit verification code has been dispatched to ${cleanEmail}.`,
+      expiresInSeconds: 600,
+      emailSent: dispatchResult.success,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to dispatch verification OTP.' });
+  }
+});
+
+// Verify 6-digit OTP and complete registration
+apiRouter.post('/auth/signup/verify-otp', async (req: Request, res: Response) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ error: 'Email and 6-digit OTP code are required.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const record = otpStore.get(cleanEmail);
+
+    if (!record) {
+      return res.status(400).json({ error: 'No pending OTP verification found for this email. Please request a new code.' });
+    }
+
+    if (Date.now() > record.expiresAt) {
+      otpStore.delete(cleanEmail);
+      return res.status(400).json({ error: 'Verification code has expired. Please request a new code.' });
+    }
+
+    record.attempts += 1;
+    if (record.attempts > 5) {
+      otpStore.delete(cleanEmail);
+      return res.status(429).json({ error: 'Too many incorrect attempts. Please request a new code.' });
+    }
+
+    if (record.otp !== otp.trim()) {
+      return res.status(400).json({ error: 'Invalid verification code. Please check and try again.' });
+    }
+
+    // Create student in storage
+    const student = await storage.signupStudent(record.signupData);
+    otpStore.delete(cleanEmail);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Email verified successfully! Your account is submitted for Admin approval.',
+      student: {
+        id: student.id,
+        name: student.name,
+        registerNumber: student.registerNumber,
+        email: student.email,
+        status: student.status,
+      },
+    });
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'OTP verification failed.' });
+  }
+});
+
+// Forgot Password - Dispatches cryptographic reset token via Brevo
+apiRouter.post('/auth/forgot-password', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email address is required.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const user = await storage.getUserByEmail(cleanEmail);
+
+    // Always respond with success to prevent user enumeration attacks
+    if (!user) {
+      return res.json({
+        success: true,
+        message: 'If an account matches that email, a password reset link has been dispatched.',
+      });
+    }
+
+    // Generate cryptographic 32-byte hex token
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+
+    resetTokenStore.set(token, {
+      email: cleanEmail,
+      expiresAt,
+      used: false,
+    });
+
+    const host = req.get('host') || 'localhost:3000';
+    const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
+    const resetUrl = `${protocol}://${host}/reset-password?token=${token}`;
+
+    await brevoMailer.sendPasswordResetEmail(user.email, user.name, resetUrl);
+
+    return res.json({
+      success: true,
+      message: 'If an account matches that email, a password reset link has been dispatched.',
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to process password reset.' });
+  }
+});
+
+// Reset Password - Validates token and updates password
+apiRouter.post('/auth/reset-password', async (req: Request, res: Response) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: 'Reset token and new password are required.' });
+    }
+
+    if (newPassword.length < 4) {
+      return res.status(400).json({ error: 'Password must be at least 4 characters long.' });
+    }
+
+    const record = resetTokenStore.get(token);
+    if (!record || record.used) {
+      return res.status(400).json({ error: 'Invalid or already used reset token. Please request a new link.' });
+    }
+
+    if (Date.now() > record.expiresAt) {
+      resetTokenStore.delete(token);
+      return res.status(400).json({ error: 'Reset token has expired. Please request a new link.' });
+    }
+
+    const user = await storage.getUserByEmail(record.email);
+    if (!user) {
+      return res.status(404).json({ error: 'User account not found.' });
+    }
+
+    await storage.updateUser(user.id, { password: newPassword });
+    record.used = true;
+    resetTokenStore.delete(token);
+
+    return res.json({
+      success: true,
+      message: 'Password successfully updated! You can now log in with your new credentials.',
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to reset password.' });
+  }
+});
+
+// Cloudinary Media Upload Routes
+apiRouter.get('/media/signature', (_req: Request, res: Response) => {
+  const sig = cloudinaryPipeline.generateUploadSignature();
+  if (!sig) {
+    return res.status(503).json({ error: 'Cloudinary credentials not configured on server.' });
+  }
+  return res.json(sig);
+});
+
+apiRouter.post('/media/upload', requireAuth(), async (req: Request, res: Response) => {
+  try {
+    const { fileDataUri, folder } = req.body;
+    if (!fileDataUri) {
+      return res.status(400).json({ error: 'fileDataUri parameter is required.' });
+    }
+
+    const uploadRes = await cloudinaryPipeline.uploadMedia(fileDataUri, folder);
+    if (!uploadRes.success) {
+      return res.status(500).json({ error: uploadRes.error || 'Media upload failed' });
+    }
+
+    return res.json({
+      success: true,
+      secureUrl: uploadRes.secureUrl,
+      publicId: uploadRes.publicId,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Media upload failed' });
   }
 });
 

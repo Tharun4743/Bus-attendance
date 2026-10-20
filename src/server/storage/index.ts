@@ -1,20 +1,18 @@
 import { StorageAdapter } from './StorageAdapter';
-import { JsonStorageAdapter } from './JsonStorageAdapter';
-import { ProductionStorageAdapter } from './ProductionStorageAdapter';
+import { SupabaseStorageAdapter } from './SupabaseStorageAdapter';
 
 let instance: StorageAdapter | null = null;
 
+/**
+ * Authoritative Storage Provider:
+ * 100% PostgreSQL via Supabase PostgREST client with Row-Level Security.
+ */
 export function getStorage(): StorageAdapter {
   if (!instance) {
-    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
-      instance = new ProductionStorageAdapter();
-    } else {
-      instance = new JsonStorageAdapter();
-    }
+    instance = new SupabaseStorageAdapter();
   }
   return instance;
 }
 
 export * from './StorageAdapter';
-export * from './JsonStorageAdapter';
-export * from './ProductionStorageAdapter';
+export * from './SupabaseStorageAdapter';

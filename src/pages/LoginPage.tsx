@@ -76,6 +76,7 @@ export const LoginPage: React.FC = () => {
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
+        <div id="app-logo-slot" className="logo-container mx-auto mb-2 empty:hidden" aria-label="Company Logo Slot"></div>
         <div className="mx-auto w-14 h-14 rounded-2xl bg-emerald-600 dark:bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-600/25 mb-3">
           <Bus className="w-8 h-8" />
         </div>
@@ -141,9 +142,17 @@ export const LoginPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                  Password
+                </label>
+                <Link
+                  to="/forgot-password"
+                  className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-400">
                   <Lock className="w-4 h-4" />

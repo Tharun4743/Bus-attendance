@@ -82,6 +82,54 @@ class ApiClient {
     });
   }
 
+  async requestOtp(data: {
+    name: string;
+    registerNumber: string;
+    email: string;
+    password: string;
+    phone?: string;
+    preferredBusId?: string;
+  }): Promise<{ success: boolean; message: string; expiresInSeconds?: number }> {
+    return this.request('/auth/signup/request-otp', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async verifyOtp(
+    email: string,
+    otp: string
+  ): Promise<{ success: boolean; message: string; student: any }> {
+    return this.request('/auth/signup/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp }),
+    });
+  }
+
+  async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
+    return this.request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    return this.request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword }),
+    });
+  }
+
+  async uploadMedia(
+    fileDataUri: string,
+    folder?: string
+  ): Promise<{ success: boolean; secureUrl: string; publicId: string }> {
+    return this.request('/media/upload', {
+      method: 'POST',
+      body: JSON.stringify({ fileDataUri, folder }),
+    });
+  }
+
   async login(email: string, password: string): Promise<{ token: string; user: User }> {
     const res = await this.request<{ token: string; user: User }>('/auth/login', {
       method: 'POST',
