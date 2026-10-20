@@ -1,23 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { AttendanceRecord, Bus, SessionInfo, Student } from '../../types';
 import { StatusBadge } from '../../components/common/StatusBadge';
-import { PwaNotificationPrompt } from '../../components/common/PwaNotificationPrompt';
-import { showPwaNotification } from '../../utils/pwaNotifications';
+import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import {
-  Bus as BusIcon,
-  Clock,
   CheckCircle2,
-  Calendar,
   Lock,
-  Check,
-  XCircle,
   MapPin,
-  Navigation,
   Camera,
   Fingerprint,
+  Calendar,
+  Radio,
+  RefreshCw,
 } from 'lucide-react';
 import { MobileVerificationModal } from '../../components/attendance/MobileVerificationModal';
 
@@ -29,15 +25,8 @@ export const StudentDashboard: React.FC = () => {
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
   const [history, setHistory] = useState<AttendanceRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const lastNotifiedSessionRef = useRef<string | null>(null);
-
-  // Verification State
-  const [isVerifying, setIsVerifying] = useState<boolean>(false);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isMobileModalOpen, setIsMobileModalOpen] = useState<boolean>(false);
-  const [verificationError, setVerificationError] = useState<{
-    type: 'LOCATION_UNAVAILABLE' | 'INVALID_LOCATION' | 'BUS_MISMATCH' | 'CLOSED' | 'GENERIC';
-    message: string;
-  } | null>(null);
 
   const fetchStudentData = async () => {
     try {
@@ -46,27 +35,12 @@ export const StudentDashboard: React.FC = () => {
       setBus(res.bus);
       setSessionInfo(res.sessionInfo);
       setTodayRecord(res.todayRecord);
-      setHistory(res.history);
-
-      const active = res.sessionInfo?.activeSession;
-      if (
-        active &&
-        active.status === 'ACTIVE' &&
-        res.todayRecord?.status !== 'PRESENT' &&
-        lastNotifiedSessionRef.current !== active.id
-      ) {
-        lastNotifiedSessionRef.current = active.id;
-        showPwaNotification({
-          title: `🚌 ${active.sessionType} Attendance Started!`,
-          body: `Attendance is now active for ${active.busId}. Verify your location to mark attendance.`,
-          url: '/',
-          tag: `session-${active.id}`,
-        });
-      }
+      setHistory(res.history || []);
     } catch (err) {
       console.error('Failed to load student status:', err);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -76,81 +50,16 @@ export const StudentDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // 1-Tap Pure Location Verification
-  const handleVerifyLocation = async () => {
-    setVerificationError(null);
-    setIsVerifying(true);
-
-    try {
-      if (!navigator.geolocation) {
-        throw {
-          type: 'LOCATION_UNAVAILABLE',
-          message: 'GPS Geolocation is not supported by your browser.',
-        };
-      }
-
-      // Capture GPS location
-      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
-        });
-      }).catch((geoErr: any) => {
-        if (geoErr.code === 1) {
-          throw {
-            type: 'LOCATION_UNAVAILABLE',
-            message: 'Please allow location permission in your browser to verify attendance.',
-          };
-        }
-        throw {
-          type: 'LOCATION_UNAVAILABLE',
-          message: 'Unable to get GPS location. Please ensure GPS is turned on and try again.',
-        };
-      });
-
-      // Submit location to backend
-      const result = await api.verifyLocation({
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-        accuracy: pos.coords.accuracy,
-        capturedAt: new Date().toISOString(),
-      });
-
-      if (result.status === 'PRESENT') {
-        setVerificationError(null);
-        await fetchStudentData();
-      } else if (result.status === 'BUS_MISMATCH') {
-        setVerificationError({
-          type: 'BUS_MISMATCH',
-          message: result.message || 'You are not assigned to the active route.',
-        });
-      } else if (result.status === 'INVALID_LOCATION') {
-        setVerificationError({
-          type: 'INVALID_LOCATION',
-          message: result.message || 'Outside attendance boundary. Make sure you are at the bus/campus point.',
-        });
-      } else {
-        setVerificationError({
-          type: 'GENERIC',
-          message: result.message || 'Location verification could not be completed.',
-        });
-      }
-    } catch (err: any) {
-      setVerificationError({
-        type: err.type || 'GENERIC',
-        message: err.message || 'Location verification failed. Please try again.',
-      });
-    } finally {
-      setIsVerifying(false);
-    }
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchStudentData();
   };
 
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 space-y-3">
         <div className="w-9 h-9 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Loading student profile...</p>
+        <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Loading Student Commuter Portal...</p>
       </div>
     );
   }
@@ -163,242 +72,300 @@ export const StudentDashboard: React.FC = () => {
     (activeSession.busId === 'ALL' || activeSession.busId === student?.busId);
 
   const isSessionActive = sessionInfo?.status === 'ACTIVE' || isTargetBusActive;
-  const isUpcoming = sessionInfo?.status === 'UPCOMING' && !isTargetBusActive;
 
   return (
-    <div className="space-y-4 max-w-2xl mx-auto pb-8">
-      {/* PWA Device Push Notification Permission Prompt */}
-      <PwaNotificationPrompt />
-
-      {/* Header Container */}
-      <div className="bg-white dark:bg-[#141418] rounded-2xl p-5 sm:p-6 shadow-xs border border-zinc-200/90 dark:border-[#26262e] transition-all">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <Badge variant="emerald" className="mb-2">
-              STUDENT PORTAL
-            </Badge>
-            <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
-              {student?.name || user?.name}
-            </h1>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-1">
-              Register No: <strong className="text-blue-600 dark:text-sky-400 font-mono">{student?.registerNumber}</strong>
-            </p>
+    <div className="space-y-4 max-w-4xl mx-auto pb-10">
+      {/* ========================================================================= */}
+      {/* 1. STUDENT EXECUTIVE CONSOLE HEADER                                       */}
+      {/* ========================================================================= */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#141418] rounded-2xl p-5 sm:p-6 shadow-xs border border-zinc-200/90 dark:border-[#26262e] transition-all">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Badge variant="emerald">STUDENT COMMUTER PORTAL</Badge>
+            <span className="text-xs font-mono font-bold text-blue-600 dark:text-sky-400">
+              {student?.registerNumber || 'REG-PENDING'}
+            </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-[#1a1a20] text-emerald-600 dark:text-[#4ade80] flex items-center justify-center border border-zinc-200 dark:border-[#26262e] shrink-0 shadow-xs">
-            <BusIcon className="w-6 h-6" />
-          </div>
+          <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
+            {student?.name || user?.name}
+          </h1>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-1 flex items-center gap-2">
+            <span>Assigned: <strong>{bus?.busNumber || 'Bus No 6'}</strong></span>
+            <span>•</span>
+            <span>Route: <strong>{bus?.routeName || 'Campus Transit'}</strong></span>
+          </p>
         </div>
 
-        {/* Bus Assignment Box */}
-        <div className="mt-4 p-3.5 bg-zinc-50 dark:bg-[#1a1a20] rounded-xl border border-zinc-200/80 dark:border-[#26262e] flex items-center justify-between text-xs">
-          <div>
-            <p className="text-[10px] text-zinc-400 font-black uppercase tracking-wider">Assigned Route</p>
-            <p className="font-bold text-zinc-900 dark:text-white text-sm">{bus?.busNumber || 'Bus No 6'}</p>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">{bus?.routeName || 'Dharapuram'}</p>
-          </div>
-          <Badge variant="blue">
-            {bus?.id || student?.busId || 'BUS06'}
-          </Badge>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Button onClick={handleRefresh} disabled={isRefreshing} variant="secondary" size="sm">
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </Button>
         </div>
       </div>
 
-      {/* Main Attendance Card */}
-      <div className="bg-white dark:bg-[#141418] rounded-2xl p-5 sm:p-6 shadow-xs border border-zinc-200/90 dark:border-[#26262e] space-y-4 transition-all">
-        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-[#26262e] pb-3">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-emerald-600 dark:text-[#4ade80]" />
-            <h3 className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white">
-              {activeSession ? `${activeSession.sessionType} Attendance` : "Today's Attendance"}
-            </h3>
-          </div>
-          <StatusBadge status={isPresent ? 'PRESENT' : isSessionActive ? 'ACTIVE' : sessionInfo?.status || 'UPCOMING'} size="sm" />
-        </div>
-
-        {/* Dynamic Verification Content according to status */}
+      {/* ========================================================================= */}
+      {/* 2. REAL-TIME BOARDING PASS & VERIFICATION SUITE                           */}
+      {/* ========================================================================= */}
+      <div className="bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] shadow-xs overflow-hidden transition-all">
         {isPresent ? (
-          /* PRESENT STATE */
-          <div className="p-5 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 text-center space-y-3.5">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-xs">
-              <CheckCircle2 className="w-8 h-8" />
-            </div>
-            <div>
-              <Badge variant="emerald" className="mb-1.5">
-                VERIFIED ATTENDANCE
-              </Badge>
-              <h4 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
-                PRESENT
-              </h4>
-              <p className="text-xs text-emerald-700 dark:text-[#4ade80] font-medium mt-0.5">
-                {todayRecord.sessionType} attendance verified via GPS location.
-              </p>
+          /* ===================================================================== */
+          /* VERIFIED BOARDING PASS (GREEN STATE)                                   */
+          /* ===================================================================== */
+          <div className="p-6 sm:p-8 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-500/20 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white">
+                      VERIFIED PASS
+                    </span>
+                    <span className="text-xs text-emerald-700 dark:text-emerald-400 font-bold font-mono">
+                      {todayRecord.attendanceDate}
+                    </span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight mt-1">
+                    Boarding Attendance Confirmed
+                  </h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    Your physical presence has been verified and registered on the bus roster.
+                  </p>
+                </div>
+              </div>
+
+              {todayRecord.selfieImageUrl && (
+                <div className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-emerald-500 shrink-0 shadow-sm self-start sm:self-auto">
+                  <img
+                    src={todayRecord.selfieImageUrl}
+                    alt="Selfie"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/10" />
+                </div>
+              )}
             </div>
 
-            {/* Verification Details */}
-            <div className="bg-white/80 dark:bg-[#141418]/90 p-4 rounded-xl border border-emerald-200/70 dark:border-emerald-500/30 text-xs text-left space-y-2">
-              <div className="flex justify-between">
-                <span className="text-zinc-500 dark:text-zinc-400">Student:</span>
-                <span className="font-bold text-zinc-900 dark:text-white">{student?.name || user?.name}</span>
+            {/* Receipt Summary Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white/90 dark:bg-[#181820]/90 p-4 rounded-xl border border-emerald-200/70 dark:border-emerald-500/20 text-xs">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-zinc-400">Verification Mode</span>
+                <p className="font-bold text-zinc-900 dark:text-white mt-0.5 flex items-center gap-1">
+                  {todayRecord.verificationMethod === 'FACE_GPS' ? (
+                    <>
+                      <Camera className="w-3.5 h-3.5 text-purple-600" />
+                      Face + GPS ({todayRecord.faceMatchConfidence || 92}%)
+                    </>
+                  ) : todayRecord.verificationMethod === 'PHONE_BIOMETRIC_GPS' ? (
+                    <>
+                      <Fingerprint className="w-3.5 h-3.5 text-emerald-600" />
+                      Phone Biometric
+                    </>
+                  ) : (
+                    'Dynamic Code + GPS'
+                  )}
+                </p>
               </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-500 dark:text-zinc-400">Register No:</span>
-                <span className="font-mono font-bold text-blue-600 dark:text-sky-400">{student?.registerNumber}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-500 dark:text-zinc-400">Bus:</span>
-                <span className="font-bold text-zinc-900 dark:text-white">{student?.busId} ({bus?.busNumber})</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-500 dark:text-zinc-400">Verified at:</span>
-                <span className="font-bold text-emerald-600 dark:text-[#4ade80]">
+
+              <div>
+                <span className="text-[10px] uppercase font-bold text-zinc-400">Boarding Time</span>
+                <p className="font-bold font-mono text-zinc-900 dark:text-white mt-0.5">
                   {todayRecord.verifiedAt
                     ? new Date(todayRecord.verifiedAt).toLocaleTimeString('en-US', {
                         timeZone: 'Asia/Kolkata',
-                        hour: 'numeric',
+                        hour: '2-digit',
                         minute: '2-digit',
                       })
-                    : 'Verified'}
-                </span>
+                    : 'Registered'}
+                </p>
               </div>
-            </div>
 
-            <div className="pt-2 border-t border-emerald-500/20 text-xs text-emerald-700 dark:text-[#4ade80] font-bold space-y-1 text-left">
-              <p className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-600 dark:text-[#4ade80]" /> GPS Location verified</p>
-              <p className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-600 dark:text-[#4ade80]" /> Bus route confirmed</p>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-zinc-400">Distance to Bus</span>
+                <p className="font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  {todayRecord.distanceMeters != null ? `${Math.round(todayRecord.distanceMeters)} meters` : 'At Bus'}
+                </p>
+              </div>
+
+              <div>
+                <span className="text-[10px] uppercase font-bold text-zinc-400">Assigned Bus</span>
+                <p className="font-bold text-zinc-900 dark:text-white mt-0.5">
+                  {bus?.busNumber || 'Bus 06'}
+                </p>
+              </div>
             </div>
           </div>
         ) : isSessionActive ? (
-          /* ACTIVE SESSION */
-          <div className="space-y-4 text-center">
-            <div className="p-4 rounded-xl bg-zinc-50 dark:bg-[#1a1a20] border border-zinc-200 dark:border-[#26262e] text-left space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase text-blue-700 dark:text-sky-400 bg-blue-50 dark:bg-sky-500/15 px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-sky-500/30">
-                  🚌 {activeSession?.sessionType || 'SESSION'} ATTENDANCE
-                </span>
-                <span className="text-xs font-black text-emerald-600 dark:text-[#4ade80] animate-pulse">
-                  ● ACTIVE
-                </span>
+          /* ===================================================================== */
+          /* ACTIVE BOARDING WINDOW (ACTION REQUIRED)                               */
+          /* ===================================================================== */
+          <div className="p-6 sm:p-8 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
+                    <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-200" />
+                    TRANSIT BOARDING ACTIVE
+                  </span>
+                  <span className="text-xs text-zinc-500 font-mono font-bold">
+                    Bus {student?.busId || 'BUS06'}
+                  </span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
+                  Verify Your Physical Presence
+                </h2>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  The bus in-charge has initiated attendance for your route. Mark attendance on your smartphone using Face ID or Phone Biometrics.
+                </p>
               </div>
-              <p className="text-xs font-bold text-zinc-900 dark:text-white pt-1">
-                Route: <span className="text-blue-600 dark:text-sky-400">{student?.busId || 'BUS06'}</span> • {bus?.routeName || 'Dharapuram'}
-              </p>
+
+              <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-[#1e1e26] text-xs font-mono font-bold text-zinc-600 dark:text-zinc-300">
+                <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Geofenced Boundary: 100m</span>
+              </div>
             </div>
 
-            {/* Error Banner States */}
-            {verificationError && (
-              <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-500/15 border border-rose-200 dark:border-rose-500/30 text-left space-y-1">
-                <div className="flex items-start gap-2.5">
-                  <XCircle className="w-4 h-4 text-rose-600 dark:text-[#fb7185] shrink-0 mt-0.5" />
-                  <div>
-                    <h5 className="text-xs font-bold text-rose-900 dark:text-rose-200 uppercase">
-                      {verificationError.type === 'LOCATION_UNAVAILABLE' && '📍 Location Access Needed'}
-                      {verificationError.type === 'INVALID_LOCATION' && '📍 Outside Boundary'}
-                      {verificationError.type === 'BUS_MISMATCH' && '❌ Bus Route Mismatch'}
-                      {verificationError.type === 'GENERIC' && 'Verification Notice'}
-                    </h5>
-                    <p className="text-xs text-rose-700 dark:text-[#fb7185] leading-relaxed">
-                      {verificationError.message}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Mobile Zero-Hardware Verification Suite */}
-            <div className="pt-2 space-y-2.5">
+            {/* Primary Action Buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
               <button
                 type="button"
                 onClick={() => setIsMobileModalOpen(true)}
-                className="w-full flex items-center justify-center gap-2.5 py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm shadow-md transition-all active:scale-[0.98] cursor-pointer min-h-[48px]"
+                className="flex items-center justify-center gap-3 py-4 px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-black text-sm shadow-lg shadow-emerald-600/20 transition-all cursor-pointer min-h-[56px]"
               >
-                <Camera className="w-4 h-4" />
+                <Camera className="w-5 h-5" />
                 <span>📸 VERIFY WITH MOBILE FACE & GPS</span>
               </button>
 
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsMobileModalOpen(true)}
-                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#1a1a20] dark:hover:bg-[#23232c] border border-zinc-200 dark:border-[#2e2e38] text-zinc-800 dark:text-zinc-200 text-xs font-bold transition-all cursor-pointer"
-                >
-                  <Fingerprint className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Phone Biometric</span>
-                </button>
+              <button
+                type="button"
+                onClick={() => setIsMobileModalOpen(true)}
+                className="flex items-center justify-center gap-3 py-4 px-5 rounded-2xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#1a1a22] dark:hover:bg-[#22222c] active:scale-[0.98] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white font-bold text-sm shadow-xs transition-all cursor-pointer min-h-[56px]"
+              >
+                <Fingerprint className="w-5 h-5 text-emerald-500" />
+                <span>👆 Use Phone TouchID / Biometrics</span>
+              </button>
+            </div>
 
-                <button
-                  type="button"
-                  onClick={handleVerifyLocation}
-                  disabled={isVerifying}
-                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#1a1a20] dark:hover:bg-[#23232c] border border-zinc-200 dark:border-[#2e2e38] text-zinc-800 dark:text-zinc-200 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-                >
-                  <Navigation className="w-3.5 h-3.5 text-sky-500" />
-                  <span>Fast GPS Check</span>
-                </button>
-              </div>
-
-              <p className="text-[11px] text-zinc-400 dark:text-zinc-500 text-center">
-                100% Smartphone Verification • Front Camera Selfie or Fingerprint with GPS location
+            <p className="text-[11px] text-zinc-400 dark:text-zinc-500 text-center">
+              100% Smartphone Verification • Front camera selfie automatically enrolls and verifies within seconds
+            </p>
+          </div>
+        ) : (
+          /* ===================================================================== */
+          /* SESSION CLOSED / WAITING FOR IN-CHARGE                                */
+          /* ===================================================================== */
+          <div className="p-8 sm:p-12 text-center space-y-4">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-zinc-100 dark:bg-[#1e1e26] text-zinc-400 flex items-center justify-center border border-zinc-200 dark:border-[#2e2e38]">
+              <Lock className="w-7 h-7" />
+            </div>
+            <div className="space-y-1">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                ATTENDANCE CLOSED
+              </span>
+              <h2 className="text-lg sm:text-xl font-black text-zinc-900 dark:text-white tracking-tight">
+                Transit Attendance Not Initiated
+              </h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto">
+                The bus in-charge has not opened transit attendance for Bus {student?.busId || '06'} yet.
+                This console will automatically unlock the moment boarding starts.
               </p>
             </div>
           </div>
-        ) : isUpcoming ? (
-          /* UPCOMING STATE */
-          <div className="p-6 rounded-2xl bg-zinc-50 dark:bg-[#1a1a20] border border-zinc-200/90 dark:border-[#26262e] text-center space-y-2">
-            <div className="w-10 h-10 mx-auto rounded-xl bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-[#fde047] flex items-center justify-center border border-amber-200 dark:border-amber-500/30">
-              <Clock className="w-5 h-5" />
-            </div>
-            <h4 className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white">SESSION UPCOMING</h4>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto">
-              Attendance opens when dispatched by Administrator or Bus Incharge.
-            </p>
-          </div>
-        ) : (
-          /* CLOSED STATE */
-          <div className="p-6 rounded-2xl bg-zinc-50 dark:bg-[#1a1a20] border border-zinc-200/90 dark:border-[#26262e] text-center space-y-2">
-            <div className="w-10 h-10 mx-auto rounded-xl bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 flex items-center justify-center border border-zinc-300 dark:border-zinc-700">
-              <Lock className="w-5 h-5" />
-            </div>
-            <h4 className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white">ATTENDANCE CLOSED</h4>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto">
-              No active attendance session at this time.
-            </p>
-          </div>
         )}
       </div>
 
-      {/* Attendance History */}
-      <div className="bg-white dark:bg-[#141418] rounded-2xl p-5 shadow-xs border border-zinc-200/90 dark:border-[#26262e] transition-all">
-        <div className="flex items-center gap-2 mb-3">
-          <Calendar className="w-4 h-4 text-zinc-400" />
-          <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-            Attendance History
-          </h3>
+      {/* ========================================================================= */}
+      {/* 3. COMMUTER ATTENDANCE HISTORY TABLE                                      */}
+      {/* ========================================================================= */}
+      <div className="bg-white dark:bg-[#141418] rounded-2xl shadow-xs border border-zinc-200/90 dark:border-[#26262e] overflow-hidden transition-all">
+        <div className="p-4 border-b border-zinc-200/90 dark:border-[#26262e] bg-zinc-50/70 dark:bg-[#101014] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-zinc-400" />
+            <h3 className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white">
+              My Transit History
+            </h3>
+          </div>
+          <span className="text-xs text-zinc-400 font-mono font-bold">
+            {history.length} Records
+          </span>
         </div>
 
         {history.length === 0 ? (
-          <p className="text-xs text-zinc-400 dark:text-zinc-500 text-center py-6">No past attendance records found.</p>
+          <div className="p-10 text-center text-xs text-zinc-400 font-bold">
+            No past attendance records found.
+          </div>
         ) : (
-          <div className="divide-y divide-zinc-100 dark:divide-[#26262e]">
-            {history.slice(0, 5).map((rec) => (
-              <div key={rec.id} className="py-3 flex items-center justify-between text-xs">
-                <div>
-                  <span className="font-bold text-zinc-900 dark:text-white">{rec.attendanceDate}</span>
-                  <span className="text-zinc-400 text-xs ml-2 font-mono">({rec.sessionType})</span>
-                </div>
-                <StatusBadge status={rec.status} size="sm" />
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-zinc-50/80 dark:bg-[#101014] text-zinc-500 dark:text-zinc-400 font-black uppercase tracking-wider text-[10px] border-b border-zinc-200 dark:border-[#26262e]">
+                <tr>
+                  <th className="px-5 py-3.5">Date</th>
+                  <th className="px-5 py-3.5">Session</th>
+                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5">Verification Mode</th>
+                  <th className="px-5 py-3.5">Verified Time</th>
+                  <th className="px-5 py-3.5">Distance</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-[#26262e]">
+                {history.map((rec) => (
+                  <tr key={rec.id} className="hover:bg-zinc-50/70 dark:hover:bg-[#1a1a20]/60 transition">
+                    <td className="px-5 py-3.5 font-bold font-mono text-zinc-900 dark:text-white">
+                      {rec.attendanceDate}
+                    </td>
+                    <td className="px-5 py-3.5 text-zinc-500 font-bold">
+                      {rec.sessionType}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <StatusBadge status={rec.status} size="sm" />
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {rec.verificationMethod === 'FACE_GPS' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800">
+                          <Camera className="w-3 h-3" />
+                          Face + GPS
+                        </span>
+                      ) : rec.verificationMethod === 'PHONE_BIOMETRIC_GPS' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
+                          <Fingerprint className="w-3 h-3" />
+                          Phone Biometric
+                        </span>
+                      ) : (
+                        <span className="text-zinc-500 font-mono text-[11px]">Dynamic Code</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 text-zinc-500 dark:text-zinc-400 font-mono">
+                      {rec.verifiedAt
+                        ? new Date(rec.verifiedAt).toLocaleTimeString('en-US', {
+                            timeZone: 'Asia/Kolkata',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        : '—'}
+                    </td>
+                    <td className="px-5 py-3.5 text-zinc-500 dark:text-zinc-400 font-mono">
+                      {rec.distanceMeters != null ? `${Math.round(rec.distanceMeters)}m` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
-      {/* Zero-Hardware Mobile Face & Biometric Verification Modal */}
+      {/* ========================================================================= */}
+      {/* 4. MODAL VIEWFINDER (Front Camera & Fingerprint Verification)             */}
+      {/* ========================================================================= */}
       <MobileVerificationModal
         isOpen={isMobileModalOpen}
         onClose={() => setIsMobileModalOpen(false)}
-        busId={student?.busId}
-        onSuccess={async () => {
+        busId={student?.busId || 'BUS06'}
+        onSuccess={() => {
           setIsMobileModalOpen(false);
-          await fetchStudentData();
+          fetchStudentData();
         }}
       />
     </div>
