@@ -871,11 +871,11 @@ export class SupabaseStorageAdapter implements StorageAdapter {
       reportTime: '09:15',
       timezone: 'Asia/Kolkata',
       location: {
-        name: 'VSB Engineering College Campus',
-        latitude: data?.campus_latitude ?? 10.9572,
-        longitude: data?.campus_longitude ?? 78.0766,
-        radiusMeters: Number(data?.radius_meters ?? 150),
-        maxGpsAccuracyMeters: Number(data?.max_gps_accuracy_meters ?? 80),
+        name: process.env.CAMPUS_NAME || 'VSB Engineering College Campus',
+        latitude: data?.campus_latitude ?? (process.env.DEFAULT_CAMPUS_LAT ? Number(process.env.DEFAULT_CAMPUS_LAT) : 10.9572),
+        longitude: data?.campus_longitude ?? (process.env.DEFAULT_CAMPUS_LNG ? Number(process.env.DEFAULT_CAMPUS_LNG) : 78.0766),
+        radiusMeters: Number(data?.radius_meters ?? (process.env.DEFAULT_GEOFENCE_RADIUS_METERS ? Number(process.env.DEFAULT_GEOFENCE_RADIUS_METERS) : 150)),
+        maxGpsAccuracyMeters: Number(data?.max_gps_accuracy_meters ?? (process.env.MAX_GPS_ACCURACY_METERS ? Number(process.env.MAX_GPS_ACCURACY_METERS) : 80)),
       },
     };
   }
