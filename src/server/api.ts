@@ -776,9 +776,13 @@ apiRouter.post(
 
       // 3. Geofence Perimeter Calculation (Haversine Formula)
       const settings = await storage.getSettings();
-      const targetLat = activeSession.location?.latitude ?? settings.location?.latitude ?? 10.9572;
-      const targetLng = activeSession.location?.longitude ?? settings.location?.longitude ?? 78.0766;
-      const radiusMeters = activeSession.radiusMeters || settings.location?.radiusMeters || 150;
+      const envLat = process.env.DEFAULT_CAMPUS_LAT ? Number(process.env.DEFAULT_CAMPUS_LAT) : 12.9716;
+      const envLng = process.env.DEFAULT_CAMPUS_LNG ? Number(process.env.DEFAULT_CAMPUS_LNG) : 77.5946;
+      const envRadius = process.env.DEFAULT_GEOFENCE_RADIUS_METERS ? Number(process.env.DEFAULT_GEOFENCE_RADIUS_METERS) : 150;
+
+      const targetLat = activeSession.location?.latitude ?? settings.location?.latitude ?? envLat;
+      const targetLng = activeSession.location?.longitude ?? settings.location?.longitude ?? envLng;
+      const radiusMeters = activeSession.radiusMeters || settings.location?.radiusMeters || envRadius;
 
       const distance = calculateDistance(numLat, numLng, targetLat, targetLng);
       if (distance > radiusMeters) {
