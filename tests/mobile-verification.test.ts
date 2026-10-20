@@ -93,6 +93,27 @@ describe('⚡ Mobile Zero-Hardware Attendance Verification Circuits', () => {
       expect(result.reason).toContain('Invalid 128-dimensional biometric descriptor');
     });
 
+    it('calibrates scores smoothly along the ISO/NIST Platt sigmoid curve without step-overfitting', () => {
+      // Create vectors at exact Euclidean distances to test the continuous score curve
+      const base = new Array(128).fill(0);
+      base[0] = 1; // Unit vector
+
+      // Vector at distance 0.20
+      const close = [...base];
+      close[0] = Math.cos(0.20);
+      close[1] = Math.sin(0.20);
+      const resClose = faceVerificationEngine.compareBiometricDescriptors(close, base);
+      expect(resClose.confidence).toBeGreaterThanOrEqual(90); // ~96%
+
+      // Vector at distance 0.65 (friend / impostor)
+      const distant = [...base];
+      distant[0] = Math.cos(0.65);
+      distant[1] = Math.sin(0.65);
+      const resDistant = faceVerificationEngine.compareBiometricDescriptors(distant, base);
+      expect(resDistant.confidence).toBeLessThan(25); // ~15%
+      expect(resDistant.matched).toBe(false);
+    });
+
     it('loads trained neural network model from public/models and detects impostor vectors', async () => {
       const { studentClassifierEngine } = await import('../src/lib/studentClassifier');
       const loaded = await studentClassifierEngine.loadModel();

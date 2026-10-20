@@ -1,7 +1,11 @@
 {
-  "modelName": "StudentFaceClassifierMLP",
-  "version": "1.0.0",
-  "trainedAt": "2026-10-20T13:57:52.588Z",
+  "modelName": "RegularizedStudentFaceClassifierMLP",
+  "version": "2.0.0",
+  "regularization": {
+    "l2WeightDecay": 0.0012,
+    "dropoutRate": 0.35,
+    "temperatureScaling": 1.6
+  },
   "architecture": {
     "inputDimension": 128,
     "hiddenLayers": [

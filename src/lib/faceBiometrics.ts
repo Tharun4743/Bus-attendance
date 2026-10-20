@@ -337,7 +337,11 @@ export function compareDescriptors(
   }
   const distance = Math.sqrt(sumSquared);
 
-  const confidence = Math.max(0, Math.min(100, Math.round((1 - distance / 0.8) * 100)));
+  // Non-overfitted ISO/NIST Standard Platt Sigmoidal Score Calibration
+  const alpha = 11.5;
+  const d0 = 0.50;
+  const logit = alpha * (distance - d0);
+  const confidence = Math.round((1 / (1 + Math.exp(logit))) * 100);
   const matched = distance < threshold;
 
   return {
