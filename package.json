@@ -10,7 +10,8 @@
     "dev:client": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "tsx tests/verify-system.ts"
+    "test": "tsx tests/verify-system.ts",
+    "train:model": "tsx scripts/train_student_model.ts"
   },
   "engines": {
     "node": ">=18.0.0"
