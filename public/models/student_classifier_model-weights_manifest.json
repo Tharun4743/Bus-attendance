@@ -1,9 +1,18 @@
 {
-  "modelName": "RegularizedStudentFaceClassifierMLP",
-  "version": "2.0.0",
+  "modelName": "AutoMLChampionStudentClassifier",
+  "version": "3.0.0",
+  "championConfig": {
+    "id": 4,
+    "name": "Deep Generalization Optimal",
+    "lr": 0.011,
+    "l2Lambda": 0.0014,
+    "dropoutRate": 0.32,
+    "noiseSigma": 0.065,
+    "epochs": 125
+  },
   "regularization": {
-    "l2WeightDecay": 0.0012,
-    "dropoutRate": 0.35,
+    "l2WeightDecay": 0.0014,
+    "dropoutRate": 0.32,
     "temperatureScaling": 1.6
   },
   "architecture": {

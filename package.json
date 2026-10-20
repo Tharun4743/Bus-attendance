@@ -11,7 +11,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "tsx tests/verify-system.ts",
-    "train:model": "tsx scripts/train_student_model.ts"
+    "train:model": "tsx scripts/train_student_model.ts",
+    "train:loop": "tsx scripts/automl_train_loop.ts"
   },
   "engines": {
     "node": ">=18.0.0"
