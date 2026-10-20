@@ -12,7 +12,9 @@
     "preview": "vite preview",
     "test": "tsx tests/verify-system.ts",
     "train:model": "tsx scripts/train_student_model.ts",
-    "train:loop": "tsx scripts/automl_train_loop.ts"
+    "train:loop": "tsx scripts/automl_train_loop.ts",
+    "train:continuous": "tsx scripts/continuous_train_loop.ts",
+    "test:accuracy": "tsx scripts/evaluate_accuracy.ts"
   },
   "engines": {
     "node": ">=18.0.0"
