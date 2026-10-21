@@ -12,10 +12,6 @@ import { cloudinaryPipeline } from '../lib/cloudinary';
 import { faceVerificationEngine } from '../lib/faceVerification';
 import { mobileBiometricEngine } from '../lib/webauthn';
 import { calculateDistance } from './attendance/haversine';
-import { studentClassifierEngine } from '../lib/studentClassifier';
-
-// Preload trained neural network model weights from public/models
-studentClassifierEngine.loadModel().catch((err) => console.warn('[StudentClassifier] Initial load warning:', err));
 
 export const apiRouter = Router();
 const storage = getStorage();
@@ -401,7 +397,9 @@ apiRouter.post('/auth/login', async (req: Request, res: Response) => {
       }
     }
 
-    if (!user || user.password !== password) {
+    const isPasswordValid = Boolean(user && user.password && user.password === password);
+
+    if (!user || !isPasswordValid) {
       return res.status(401).json({ error: 'Invalid email/register number or password.' });
     }
 
@@ -576,7 +574,7 @@ const handleStartSession = async (req: AuthRequest, res: Response) => {
     const now = Date.now();
     const nowIso = new Date(now).toISOString();
     const sessionId = `SESSION-${now}-${busId}`;
-    const chosenVerification: VerificationMethod = verificationMethod === 'CODE_ONLY' ? 'CODE_ONLY' : 'CODE_GPS';
+    const chosenVerification: VerificationMethod = (verificationMethod === 'FACE_GPS' || verificationMethod === 'PHONE_BIOMETRIC_GPS' || verificationMethod === 'CODE_ONLY') ? verificationMethod : 'CODE_GPS';
 
     let locationLat = Number(latitude);
     let locationLon = Number(longitude);
@@ -799,7 +797,7 @@ apiRouter.post(
         });
       }
 
-      const { busId, method, latitude, longitude, accuracy, selfieBase64, faceDescriptor, biometricPayload } = req.body;
+      const { busId, method, latitude, longitude, accuracy, selfieBase64, biometricPayload } = req.body;
 
       const targetBusId = busId || student.busId;
       if (student.busId && targetBusId !== student.busId) {
@@ -867,73 +865,19 @@ apiRouter.post(
       let deviceBiometricPassed = false;
 
       if (method === 'FACE_GPS') {
-        // STRICT CHECK: Student must have enrolled their face baseline first!
-        if (!student.profilePhotoUrl) {
+        const referencePhoto = student.photoUrl || student.profilePhotoUrl;
+        if (!referencePhoto) {
           return res.status(400).json({
             status: 'FACE_NOT_ENROLLED',
             message: 'Your face is not registered yet! Please enroll your face photo in your profile before marking attendance.',
           });
         }
 
-        if (!selfieBase64) {
+        if (!selfieBase64 || !faceVerificationEngine.isValidImagePayload(selfieBase64)) {
           return res.status(400).json({
             status: 'FACE_MISMATCH',
             message: 'Front camera selfie snapshot required for face verification.',
           });
-        }
-
-        // BIOMETRIC DESCRIPTOR COMPARISON (Real Computer Vision Vector Math)
-        if (student.faceDescriptor && Array.isArray(student.faceDescriptor) && student.faceDescriptor.length === 128) {
-          if (!faceDescriptor || !Array.isArray(faceDescriptor) || faceDescriptor.length !== 128) {
-            return res.status(400).json({
-              status: 'FACE_MISMATCH',
-              message: 'Facial biometric descriptor not detected. Look directly into the camera in good lighting.',
-            });
-          }
-
-          // 1. Evaluate with trained neural network model in public/models
-          if (studentClassifierEngine.isModelReady()) {
-            const pred = studentClassifierEngine.predict(faceDescriptor);
-            if (pred && !pred.matched && pred.impostorProbability > 75) {
-              console.log(`❌ [Trained-Model-Impostor] Neural network classified input as IMPOSTOR (${pred.impostorProbability}% confidence). REJECTED.`);
-              return res.status(400).json({
-                status: 'FACE_MISMATCH',
-                message: `Neural network rejected face (${pred.impostorProbability}% impostor probability). Impostor or friend's face detected.`,
-                confidence: 0,
-              });
-            }
-          }
-
-          const bioResult = faceVerificationEngine.compareBiometricDescriptors(faceDescriptor, student.faceDescriptor);
-          if (!bioResult.matched) {
-            console.log(`❌ [Face-Mismatch] Student ${student.registerNumber} biometric distance=${bioResult.distance}. REJECTED.`);
-            return res.status(400).json({
-              status: 'FACE_MISMATCH',
-              message: `Face mismatch (${bioResult.confidence}% match, distance ${bioResult.distance}). Camera face does not match registered student profile.`,
-              confidence: bioResult.confidence,
-              distance: bioResult.distance,
-            });
-          }
-          faceConfidence = bioResult.confidence;
-          console.log(`✅ [Face-Matched] Student ${student.registerNumber} biometric verified (${faceConfidence}% match, distance ${bioResult.distance}, cosine ${bioResult.cosineSimilarity}).`);
-
-          // Adaptive Baseline Learning: smooth profile vector on clear authentic matches
-          if (bioResult.adaptiveDescriptor) {
-            storage.updateStudent(student.id, {
-              faceDescriptor: bioResult.adaptiveDescriptor,
-            }).catch((err: any) => console.warn('[Face-Adaptive] Failed to update baseline descriptor:', err));
-          }
-        } else {
-          // Fallback if student was enrolled before descriptor support
-          const faceResult = faceVerificationEngine.verifyFaceMatch(selfieBase64, student.profilePhotoUrl);
-          if (!faceResult.matched) {
-            return res.status(400).json({
-              status: 'FACE_MISMATCH',
-              message: faceResult.reason || 'Face verification failed. Please align your face inside the circle and retry.',
-              confidence: faceResult.confidence,
-            });
-          }
-          faceConfidence = faceResult.confidence;
         }
 
         // Archive visual presence proof to Cloudinary
@@ -945,6 +889,24 @@ apiRouter.post(
           selfieUrl = uploadRes.secureUrl;
           selfiePublicId = uploadRes.publicId;
         }
+
+        // Cloud AI Face Verification (Eden AI AWS Rekognition / Face++ / Vision)
+        const faceResult = await faceVerificationEngine.verifyFaceMatch(
+          selfieUrl || selfieBase64,
+          referencePhoto
+        );
+
+        if (!faceResult.matched) {
+          console.log(`❌ [Face-Mismatch] Student ${student.registerNumber} rejected by ${faceResult.engine}: ${faceResult.reason}`);
+          return res.status(400).json({
+            status: 'FACE_MISMATCH',
+            message: faceResult.reason || 'Face verification failed. Camera face does not match registered student profile.',
+            confidence: faceResult.confidence,
+          });
+        }
+
+        faceConfidence = faceResult.confidence;
+        console.log(`✅ [Face-Matched] Student ${student.registerNumber} verified via ${faceResult.engine} (${faceConfidence}% confidence).`);
       } else if (method === 'PHONE_BIOMETRIC_GPS') {
         const bioResult = mobileBiometricEngine.verifyAssertion(studentId, biometricPayload || {});
         if (!bioResult.verified) {
@@ -1223,11 +1185,22 @@ apiRouter.get('/admin/buses', requireAuth(['ADMIN']), async (_req: Request, res:
       return {
         ...bus,
         studentsCount: busStudents.length,
-        inchargeName: incharge ? incharge.name : bus.inchargeId === 'INC006' ? 'Aarthi' : 'Unassigned',
+        inchargeName: incharge ? incharge.name : 'Unassigned',
       };
     });
 
     return res.json(enriched);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.get('/admin/incharges', requireAuth(['ADMIN']), async (_req: Request, res: Response) => {
+  try {
+    const users = await storage.getUsers();
+    const incharges = users.filter((u) => u.role === 'INCHARGE' && u.active);
+    const safeIncharges = incharges.map(({ password: _, ...rest }) => rest);
+    return res.json(safeIncharges);
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
@@ -1444,7 +1417,7 @@ apiRouter.post(
 // ----------------------------------------------------------------------
 // Admin: Settings & Geofence
 // ----------------------------------------------------------------------
-apiRouter.get('/admin/settings', requireAuth(['ADMIN']), async (_req: Request, res: Response) => {
+apiRouter.get('/admin/settings', requireAuth(['ADMIN', 'INCHARGE']), async (_req: Request, res: Response) => {
   try {
     const settings = await storage.getSettings();
     return res.json(settings);
@@ -1458,6 +1431,46 @@ apiRouter.put('/admin/settings', requireAuth(['ADMIN']), async (req: Request, re
     const updates = req.body;
     const updated = await storage.updateSettings(updates);
     return res.json(updated);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------
+// Checkpoints (Live Database Waypoints & Campus Presets)
+// ----------------------------------------------------------------------
+apiRouter.get('/checkpoints', requireAuth(['ADMIN', 'INCHARGE']), async (_req: Request, res: Response) => {
+  try {
+    const checkpoints = await storage.getCheckpoints();
+    return res.json(checkpoints);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.post('/checkpoints', requireAuth(['ADMIN']), async (req: Request, res: Response) => {
+  try {
+    const { name, latitude, longitude, radiusMeters, description } = req.body;
+    if (!name || latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ error: 'Name, latitude, and longitude are required.' });
+    }
+    const created = await storage.createCheckpoint({
+      name: String(name).trim(),
+      latitude: Number(latitude),
+      longitude: Number(longitude),
+      radiusMeters: Number(radiusMeters) || 15,
+      description: description ? String(description).trim() : undefined,
+    });
+    return res.status(201).json(created);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.delete('/checkpoints/:id', requireAuth(['ADMIN']), async (req: Request, res: Response) => {
+  try {
+    const success = await storage.deleteCheckpoint(req.params.id);
+    return res.json({ success });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }

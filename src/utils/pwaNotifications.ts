@@ -100,6 +100,16 @@ export function registerServiceWorker(): void {
   if (typeof window === 'undefined') return;
 
   if ('serviceWorker' in navigator) {
+    // In local development mode, unregister Service Worker to prevent intercepting SPA routes or Vite HMR
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const reg of registrations) {
+          reg.unregister();
+        }
+      });
+      return;
+    }
+
     window.addEventListener('load', () => {
       navigator.serviceWorker
         .register('/sw.js')

@@ -10,6 +10,7 @@ import {
   SessionInfo,
   Student,
   User,
+  CampusCheckpoint,
 } from '../types';
 
 const API_BASE = '/api';
@@ -270,6 +271,10 @@ class ApiClient {
     return this.request('/admin/buses');
   }
 
+  async getIncharges(): Promise<User[]> {
+    return this.request<User[]>('/admin/incharges');
+  }
+
   async createBus(data: Omit<Bus, 'id'>): Promise<Bus> {
     return this.request('/admin/buses', {
       method: 'POST',
@@ -354,6 +359,24 @@ class ApiClient {
     return this.request<AttendanceSettings>('/admin/settings', {
       method: 'PUT',
       body: JSON.stringify(settings),
+    });
+  }
+
+  // Campus Checkpoints
+  async getCheckpoints(): Promise<CampusCheckpoint[]> {
+    return this.request<CampusCheckpoint[]>('/checkpoints');
+  }
+
+  async createCheckpoint(data: Omit<CampusCheckpoint, 'id' | 'createdAt'>): Promise<CampusCheckpoint> {
+    return this.request<CampusCheckpoint>('/checkpoints', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteCheckpoint(id: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(`/checkpoints/${id}`, {
+      method: 'DELETE',
     });
   }
 

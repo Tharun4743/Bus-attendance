@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Bus, SessionInfo } from '../../types';
+import { formatISTTime, formatISTTime24 } from '../../utils/time';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
 import { StatCard } from '../../components/ui/StatCard';
@@ -133,7 +134,7 @@ export const TodayAttendance: React.FC = () => {
       `"${r.busNumber}"`,
       `"${r.routeName}"`,
       `"${r.status}"`,
-      `"${r.verifiedAt ? new Date(r.verifiedAt).toLocaleTimeString() : ''}"`,
+      `"${r.verifiedAt ? formatISTTime24(r.verifiedAt) : ''}"`,
       `"${r.distanceMeters ?? ''}"`,
       `"${r.accuracyMeters ?? ''}"`,
       `"${r.verificationMethod || 'GPS_GEOFENCE'}"`,
@@ -350,14 +351,7 @@ export const TodayAttendance: React.FC = () => {
                     {stu.accuracyMeters != null ? `${stu.accuracyMeters}m` : '—'}
                   </td>
                   <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400 font-mono">
-                    {stu.verifiedAt
-                      ? new Date(stu.verifiedAt).toLocaleTimeString('en-US', {
-                          timeZone: 'Asia/Kolkata',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          second: '2-digit',
-                        })
-                      : '—'}
+                    {stu.verifiedAt ? formatISTTime(stu.verifiedAt, { second: '2-digit' }) : '—'}
                   </td>
                   <td className="px-5 py-4 text-right">
                     <button

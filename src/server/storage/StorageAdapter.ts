@@ -8,6 +8,7 @@ import {
   User,
   ActiveSession,
   SessionType,
+  CampusCheckpoint,
 } from '../../types';
 
 export interface StorageAdapter {
@@ -75,6 +76,11 @@ export interface StorageAdapter {
   // Settings
   getSettings(): Promise<AttendanceSettings>;
   updateSettings(settings: Partial<AttendanceSettings>): Promise<AttendanceSettings>;
+
+  // Campus Checkpoints
+  getCheckpoints(): Promise<CampusCheckpoint[]>;
+  createCheckpoint(checkpoint: Omit<CampusCheckpoint, 'id' | 'createdAt'>): Promise<CampusCheckpoint>;
+  deleteCheckpoint(id: string): Promise<boolean>;
 
   // Notifications
   getNotifications(filter?: { busId?: string; role?: string }): Promise<Notification[]>;

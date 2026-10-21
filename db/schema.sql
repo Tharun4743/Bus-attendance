@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS public.students (
 -- 5. ACTIVE_SESSIONS TABLE (Transit Attendance Windows & Dynamic Codes)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.active_sessions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     session_type session_type NOT NULL,
     attendance_mode TEXT NOT NULL DEFAULT 'GROUND',
     verification_method TEXT NOT NULL DEFAULT 'CODE_GPS',
@@ -140,7 +140,7 @@ CREATE TABLE IF NOT EXISTS public.active_sessions (
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.attendance_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    session_id UUID REFERENCES public.active_sessions(id) ON DELETE CASCADE,
+    session_id TEXT REFERENCES public.active_sessions(id) ON DELETE CASCADE,
     student_id TEXT NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
     bus_id TEXT NOT NULL,
     attendance_date DATE NOT NULL DEFAULT CURRENT_DATE,
@@ -194,13 +194,33 @@ CREATE TABLE IF NOT EXISTS public.password_resets (
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.geofence_settings (
     id TEXT PRIMARY KEY DEFAULT 'default',
-    campus_latitude DOUBLE PRECISION NOT NULL DEFAULT 12.9716,
-    campus_longitude DOUBLE PRECISION NOT NULL DEFAULT 77.5946,
+    location_name TEXT NOT NULL DEFAULT 'VSB Engineering College Campus',
+    campus_latitude DOUBLE PRECISION NOT NULL DEFAULT 10.9572,
+    campus_longitude DOUBLE PRECISION NOT NULL DEFAULT 78.0766,
     radius_meters NUMERIC NOT NULL DEFAULT 150,
-    code_rotation_seconds INTEGER NOT NULL DEFAULT 60,
     max_gps_accuracy_meters NUMERIC NOT NULL DEFAULT 80,
+    start_time TEXT NOT NULL DEFAULT '16:50',
+    end_time TEXT NOT NULL DEFAULT '16:55',
+    report_time TEXT NOT NULL DEFAULT '16:57',
+    timezone TEXT NOT NULL DEFAULT 'Asia/Kolkata',
+    code_rotation_seconds INTEGER NOT NULL DEFAULT 60,
     enforce_gps BOOLEAN NOT NULL DEFAULT true,
+    simulation_enabled BOOLEAN NOT NULL DEFAULT false,
+    simulated_time TEXT,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- ============================================================================
+-- 9B. CHECKPOINTS TABLE (Live Campus & Transit Waypoints)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.checkpoints (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    latitude DOUBLE PRECISION NOT NULL,
+    longitude DOUBLE PRECISION NOT NULL,
+    radius_meters NUMERIC NOT NULL DEFAULT 15,
+    description TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
 -- ============================================================================
@@ -256,6 +276,7 @@ ALTER TABLE public.buses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.active_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.attendance_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.geofence_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.checkpoints ENABLE ROW LEVEL SECURITY;
 
 -- Service Role (Full Access for Backend API Worker)
 DROP POLICY IF EXISTS "Service role full access users" ON public.users;
@@ -275,3 +296,6 @@ CREATE POLICY "Service role full access attendance_records" ON public.attendance
 
 DROP POLICY IF EXISTS "Service role full access geofence_settings" ON public.geofence_settings;
 CREATE POLICY "Service role full access geofence_settings" ON public.geofence_settings FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Service role full access checkpoints" ON public.checkpoints;
+CREATE POLICY "Service role full access checkpoints" ON public.checkpoints FOR ALL USING (true);

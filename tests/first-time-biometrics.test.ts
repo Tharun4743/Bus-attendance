@@ -4,15 +4,10 @@ dotenv.config();
 
 import { getStorage } from '../src/server/storage';
 import { cloudinaryPipeline } from '../src/lib/cloudinary';
-import { studentClassifierEngine } from '../src/lib/studentClassifier';
+import { faceVerificationEngine } from '../src/lib/faceVerification';
 
 describe('⚡ 3-Pose Biometric Calibration & Supabase PostgreSQL Persistence Circuit', () => {
   const storage = getStorage();
-
-  beforeAll(async () => {
-    // Ensure neural model is loaded
-    await studentClassifierEngine.loadModel();
-  });
 
   it('Circuit 1: Cloudinary Media Pipeline is configured with new isolated cloud', () => {
     expect(cloudinaryPipeline.isConfigured()).toBe(true);
@@ -80,17 +75,18 @@ describe('⚡ 3-Pose Biometric Calibration & Supabase PostgreSQL Persistence Cir
     expect(reFetched?.faceEnrollmentQuality).toBe(98);
   });
 
-  it('Circuit 3: Neural classifier evaluates newly enrolled vector with continuous Platt Sigmoid', async () => {
+  it('Circuit 3: Cloud AI Face Verification engine verifies registered student photo', async () => {
     const student = await storage.getStudentById('STU-24IT001');
-    expect(student?.faceDescriptor).toBeDefined();
+    expect(student?.photoUrl).toBeDefined();
 
-    const res = studentClassifierEngine.predict(student!.faceDescriptor!);
+    const res = await faceVerificationEngine.verifyFaceMatchAsync(student!.photoUrl!, student!.photoUrl!);
 
     expect(res).toBeDefined();
-    expect(typeof res?.confidence).toBe('number');
-    expect(res!.confidence).toBeGreaterThanOrEqual(0);
-    expect(res!.confidence).toBeLessThanOrEqual(100);
-    expect(typeof res?.impostorProbability).toBe('number');
+    expect(res.matched).toBe(true);
+    expect(typeof res.confidence).toBe('number');
+    expect(res.confidence).toBeGreaterThanOrEqual(70);
+    expect(res.confidence).toBeLessThanOrEqual(100);
+    expect(res.engine).toBeDefined();
   });
 
   it('Circuit 4: Commuter Roster queries with zero reliance on JSON files', async () => {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Bus, Student } from '../../types';
+import { formatISTTime, formatISTTime24, getISTDateString } from '../../utils/time';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Button } from '../../components/ui/Button';
@@ -66,7 +67,7 @@ export const AttendanceHistory: React.FC = () => {
       `"${r.studentName}"`,
       `"${r.busNumber}"`,
       `"${r.status}"`,
-      `"${r.verifiedAt ? new Date(r.verifiedAt).toLocaleTimeString() : ''}"`,
+      `"${r.verifiedAt ? formatISTTime24(r.verifiedAt) : ''}"`,
       `"${r.distanceMeters ?? ''}"`,
       `"${r.accuracyMeters ?? ''}"`,
       `"${r.verificationMethod || 'GPS_GEOFENCE'}"`,
@@ -78,7 +79,7 @@ export const AttendanceHistory: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `bus_attendance_history_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `bus_attendance_history_${getISTDateString()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -236,14 +237,7 @@ export const AttendanceHistory: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400 font-mono">
-                      {record.verifiedAt
-                        ? new Date(record.verifiedAt).toLocaleTimeString('en-US', {
-                            timeZone: 'Asia/Kolkata',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit',
-                          })
-                        : '—'}
+                      {record.verifiedAt ? formatISTTime(record.verifiedAt, { second: '2-digit' }) : '—'}
                     </td>
                     <td className="px-5 py-4 font-mono text-zinc-600 dark:text-zinc-300">
                       {record.distanceMeters != null ? `${record.distanceMeters}m` : '—'}

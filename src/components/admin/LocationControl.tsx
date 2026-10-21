@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
+import { CampusCheckpoint } from '../../types';
+import { formatISTDate } from '../../utils/time';
 import {
   MapPin,
   Compass,
@@ -9,6 +11,9 @@ import {
   Building2,
   Crosshair,
   Sparkles,
+  Plus,
+  Trash2,
+  Loader2,
 } from 'lucide-react';
 
 interface LocationControlProps {
@@ -16,29 +21,39 @@ interface LocationControlProps {
 }
 
 export const LocationControl: React.FC<LocationControlProps> = ({ onUpdated }) => {
-  const [locationName, setLocationName] = useState<string>('College Ground');
-  const [latitude, setLatitude] = useState<number>(13.0827);
-  const [longitude, setLongitude] = useState<number>(80.2707);
-  const [radiusMeters, setRadiusMeters] = useState<number>(10);
+  const [locationName, setLocationName] = useState<string>('');
+  const [latitude, setLatitude] = useState<number>(0);
+  const [longitude, setLongitude] = useState<number>(0);
+  const [radiusMeters, setRadiusMeters] = useState<number>(15);
   const [maxAccuracyMeters, setMaxAccuracyMeters] = useState<number>(20);
+
+  const [checkpoints, setCheckpoints] = useState<CampusCheckpoint[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isAddingCp, setIsAddingCp] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const fetchSettings = async () => {
+  const fetchData = async () => {
     try {
-      const data = await api.getSettings();
-      setLocationName(data.location.name);
-      setLatitude(data.location.latitude);
-      setLongitude(data.location.longitude);
-      setRadiusMeters(data.location.radiusMeters);
-      setMaxAccuracyMeters(data.location.maxGpsAccuracyMeters);
+      const [settingsData, checkpointsData] = await Promise.all([
+        api.getSettings(),
+        api.getCheckpoints().catch(() => []),
+      ]);
+      setLocationName(settingsData.location.name);
+      setLatitude(settingsData.location.latitude);
+      setLongitude(settingsData.location.longitude);
+      setRadiusMeters(settingsData.location.radiusMeters);
+      setMaxAccuracyMeters(settingsData.location.maxGpsAccuracyMeters);
+      setCheckpoints(checkpointsData);
     } catch (err) {
-      console.error('Failed to load location settings:', err);
+      console.error('Failed to load location settings or checkpoints:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSettings();
+    fetchData();
   }, []);
 
   const handleUseCurrentLocation = () => {
@@ -68,6 +83,17 @@ export const LocationControl: React.FC<LocationControlProps> = ({ onUpdated }) =
     );
   };
 
+  const handleApplyCheckpoint = (cp: CampusCheckpoint) => {
+    setLocationName(cp.name);
+    setLatitude(cp.latitude);
+    setLongitude(cp.longitude);
+    setRadiusMeters(cp.radiusMeters);
+    setFeedback({
+      type: 'success',
+      message: `Selected database checkpoint "${cp.name}". Click "Save Target Location" to apply as active geofence.`,
+    });
+  };
+
   const handleSaveLocation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!locationName.trim() || isNaN(latitude) || isNaN(longitude)) {
@@ -90,7 +116,7 @@ export const LocationControl: React.FC<LocationControlProps> = ({ onUpdated }) =
       });
       setFeedback({
         type: 'success',
-        message: `Target location updated to "${locationName.trim()}" with a ${radiusMeters}-meter surrounding area boundary!`,
+        message: `Target location updated to "${locationName.trim()}" with a ${radiusMeters}-meter surrounding area boundary in PostgreSQL!`,
       });
       if (onUpdated) onUpdated();
     } catch (err: any) {
@@ -103,26 +129,63 @@ export const LocationControl: React.FC<LocationControlProps> = ({ onUpdated }) =
     }
   };
 
-  const campusPresets = [
-    { name: 'College Ground (Main)', lat: 13.0827, lon: 80.2707, radius: 10, desc: 'Official student evening assembly point' },
-    { name: 'Main Bus Bay & Departure Hub', lat: 13.0831, lon: 80.2715, radius: 15, desc: 'Central transport pickup terminal' },
-    { name: 'Campus Entrance Gate', lat: 13.0819, lon: 80.2698, radius: 12, desc: 'Front security gate attendance line' },
-    { name: 'Sports Complex / Stadium', lat: 13.084, lon: 80.272, radius: 25, desc: 'Open ground athletic area' },
-  ];
+  const handleSaveAsNewCheckpoint = async () => {
+    if (!locationName.trim() || isNaN(latitude) || isNaN(longitude)) {
+      setFeedback({ type: 'error', message: 'Please provide a valid location name and coordinates first.' });
+      return;
+    }
+    setIsAddingCp(true);
+    try {
+      const created = await api.createCheckpoint({
+        name: locationName.trim(),
+        latitude: Number(latitude),
+        longitude: Number(longitude),
+        radiusMeters: Number(radiusMeters),
+        description: `Custom checkpoint saved on ${formatISTDate(new Date())}`,
+      });
+      setCheckpoints((prev) => [...prev, created]);
+      setFeedback({
+        type: 'success',
+        message: `Checkpoint "${created.name}" saved permanently to PostgreSQL!`,
+      });
+    } catch (err: any) {
+      setFeedback({
+        type: 'error',
+        message: err.message || 'Failed to save new checkpoint to database.',
+      });
+    } finally {
+      setIsAddingCp(false);
+    }
+  };
 
-  const handleApplyPreset = (p: typeof campusPresets[0]) => {
-    setLocationName(p.name);
-    setLatitude(p.lat);
-    setLongitude(p.lon);
-    setRadiusMeters(p.radius);
-    setFeedback({
-      type: 'success',
-      message: `Selected preset "${p.name}". Click "Save Location & Boundary" to apply.`,
-    });
+  const handleDeleteCheckpoint = async (id: string, name: string) => {
+    if (!confirm(`Delete checkpoint "${name}" from PostgreSQL database?`)) return;
+    try {
+      await api.deleteCheckpoint(id);
+      setCheckpoints((prev) => prev.filter((c) => c.id !== id));
+      setFeedback({
+        type: 'success',
+        message: `Checkpoint "${name}" removed from database.`,
+      });
+    } catch (err: any) {
+      setFeedback({
+        type: 'error',
+        message: err.message || 'Failed to delete checkpoint.',
+      });
+    }
   };
 
   const surroundingMeterChips = [5, 10, 15, 20, 25, 30, 50, 100];
   const accuracyMeterChips = [10, 15, 20, 30, 50];
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-3xl p-8 sm:p-12 shadow-sm border border-slate-200 flex flex-col items-center justify-center space-y-3">
+        <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Loading Live Target Geofence & Checkpoints...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-6">
@@ -134,10 +197,10 @@ export const LocationControl: React.FC<LocationControlProps> = ({ onUpdated }) =
           </div>
           <div>
             <h2 className="text-base font-extrabold text-slate-900">
-              Target Attendance Location & Surrounding Area Chooser
+              Target Attendance Location & Checkpoints (Live PostgreSQL)
             </h2>
             <p className="text-xs text-slate-500 font-medium">
-              Admin can choose the target attendance coordinates and adjust the surrounding meter radius.
+              Coordinates and perimeter radius are retrieved and persisted live from the database.
             </p>
           </div>
         </div>
@@ -145,10 +208,10 @@ export const LocationControl: React.FC<LocationControlProps> = ({ onUpdated }) =
         <button
           type="button"
           onClick={handleUseCurrentLocation}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition self-start sm:self-auto shadow-sm"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition self-start sm:self-auto shadow-sm cursor-pointer"
         >
           <Compass className="w-3.5 h-3.5 text-brand-600" />
-          <span>Capture My Live GPS Coordinates</span>
+          <span>Capture Device GPS</span>
         </button>
       </div>
 
@@ -169,48 +232,73 @@ export const LocationControl: React.FC<LocationControlProps> = ({ onUpdated }) =
         </div>
       )}
 
-      {/* 1. Choose Target Location Presets */}
+      {/* 1. Live Database Checkpoints */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-            1. Choose Target Location
+            1. Live Database Checkpoints ({checkpoints.length})
           </label>
-          <span className="text-[10px] text-slate-400 font-medium">Click to pick target zone</span>
+          <span className="text-[10px] text-slate-400 font-medium">Loaded from PostgreSQL</span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-          {campusPresets.map((p) => {
-            const isSelected = locationName === p.name;
-            return (
-              <button
-                key={p.name}
-                type="button"
-                onClick={() => handleApplyPreset(p)}
-                className={`p-3 rounded-2xl border text-left transition flex flex-col justify-between ${
-                  isSelected
-                    ? 'border-brand-500 bg-brand-50/60 ring-2 ring-brand-500/20 shadow-sm'
-                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <Building2 className="w-3.5 h-3.5 text-slate-400 group-hover:text-brand-600" />
-                      <span className="text-xs font-extrabold text-slate-900">{p.name}</span>
+
+        {checkpoints.length === 0 ? (
+          <div className="p-4 rounded-2xl border border-dashed border-slate-200 text-center text-xs text-slate-400">
+            No checkpoints saved in database. Capture coordinates below to save the first checkpoint.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+            {checkpoints.map((p) => {
+              const isSelected = locationName === p.name;
+              return (
+                <div
+                  key={p.id}
+                  className={`p-3 rounded-2xl border transition flex flex-col justify-between ${
+                    isSelected
+                      ? 'border-brand-500 bg-brand-50/60 ring-2 ring-brand-500/20 shadow-sm'
+                      : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleApplyCheckpoint(p)}
+                    className="text-left w-full cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="text-xs font-extrabold text-slate-900 truncate">{p.name}</span>
+                      </div>
+                      {isSelected && <span className="h-2 w-2 rounded-full bg-brand-600 shrink-0" />}
                     </div>
-                    {isSelected && <span className="h-2 w-2 rounded-full bg-brand-600" />}
+                    {p.description && (
+                      <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{p.description}</p>
+                    )}
+                  </button>
+
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-mono text-slate-600">
+                    <span>{p.latitude.toFixed(4)}, {p.longitude.toFixed(4)}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="font-bold text-brand-700 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                        {p.radiusMeters}m
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteCheckpoint(p.id, p.name);
+                        }}
+                        className="text-slate-400 hover:text-rose-600 p-0.5 transition cursor-pointer"
+                        title="Delete checkpoint"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-0.5">{p.desc}</p>
                 </div>
-                <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-mono text-slate-600">
-                  <span>{p.lat.toFixed(4)}, {p.lon.toFixed(4)}</span>
-                  <span className="font-bold text-brand-700 bg-white px-1.5 py-0.5 rounded border border-slate-200">
-                    {p.radius}m
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* 2. Choose Surrounding Area in Meters */}
@@ -238,13 +326,13 @@ export const LocationControl: React.FC<LocationControlProps> = ({ onUpdated }) =
               key={m}
               type="button"
               onClick={() => setRadiusMeters(m)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
                 radiusMeters === m
                   ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20'
                   : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
               }`}
             >
-              {m}m {m === 10 ? '(Default)' : ''}
+              {m}m
             </button>
           ))}
         </div>
@@ -262,9 +350,9 @@ export const LocationControl: React.FC<LocationControlProps> = ({ onUpdated }) =
           />
           <div className="flex justify-between text-[10px] text-slate-400 font-mono font-medium">
             <span>3m (Strict)</span>
-            <span>10m (Official College Ground)</span>
+            <span>15m (Gate/Bay)</span>
             <span>50m</span>
-            <span>150m (Wide Campus)</span>
+            <span>150m (Campus Wide)</span>
           </div>
         </div>
 
@@ -277,7 +365,7 @@ export const LocationControl: React.FC<LocationControlProps> = ({ onUpdated }) =
             </div>
             <div>
               <p className="text-xs font-extrabold text-slate-900">
-                Target Zone: {locationName}
+                Target Zone: {locationName || 'Live Target'}
               </p>
               <p className="text-[11px] text-slate-500">
                 Coordinates: <span className="font-mono font-bold text-slate-700">{latitude.toFixed(6)}, {longitude.toFixed(6)}</span>
@@ -290,7 +378,7 @@ export const LocationControl: React.FC<LocationControlProps> = ({ onUpdated }) =
 
           <div className="text-right shrink-0">
             <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full border border-emerald-200">
-              <Sparkles className="w-3 h-3" /> Active Verification Ring
+              <Sparkles className="w-3 h-3" /> Live Geofence Boundary
             </span>
           </div>
         </div>
@@ -310,7 +398,7 @@ export const LocationControl: React.FC<LocationControlProps> = ({ onUpdated }) =
             <input
               type="text"
               required
-              placeholder="e.g. College Ground, Main Bus Bay"
+              placeholder="e.g. Campus Bus Bay, Ground"
               value={locationName}
               onChange={(e) => setLocationName(e.target.value)}
               className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-800 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none"
@@ -325,8 +413,8 @@ export const LocationControl: React.FC<LocationControlProps> = ({ onUpdated }) =
               type="number"
               step="0.000001"
               required
-              value={latitude}
-              onChange={(e) => setLatitude(parseFloat(e.target.value))}
+              value={latitude || ''}
+              onChange={(e) => setLatitude(parseFloat(e.target.value) || 0)}
               className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 font-mono font-bold text-slate-800 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none"
             />
           </div>
@@ -339,8 +427,8 @@ export const LocationControl: React.FC<LocationControlProps> = ({ onUpdated }) =
               type="number"
               step="0.000001"
               required
-              value={longitude}
-              onChange={(e) => setLongitude(parseFloat(e.target.value))}
+              value={longitude || ''}
+              onChange={(e) => setLongitude(parseFloat(e.target.value) || 0)}
               className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 font-mono font-bold text-slate-800 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none"
             />
           </div>
@@ -356,7 +444,7 @@ export const LocationControl: React.FC<LocationControlProps> = ({ onUpdated }) =
                     key={acc}
                     type="button"
                     onClick={() => setMaxAccuracyMeters(acc)}
-                    className={`px-2 py-0.5 text-[10px] font-bold rounded-lg transition ${
+                    className={`px-2 py-0.5 text-[10px] font-bold rounded-lg transition cursor-pointer ${
                       maxAccuracyMeters === acc
                         ? 'bg-slate-900 text-white'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -380,14 +468,24 @@ export const LocationControl: React.FC<LocationControlProps> = ({ onUpdated }) =
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={handleSaveAsNewCheckpoint}
+            disabled={isAddingCp}
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs transition cursor-pointer disabled:opacity-50"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Save as New DB Checkpoint</span>
+          </button>
+
           <button
             type="submit"
             disabled={isSaving}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition shadow-md disabled:opacity-70"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition shadow-md disabled:opacity-70 cursor-pointer"
           >
             <Save className="w-4 h-4" />
-            <span>{isSaving ? 'Saving Target & Surrounding Area...' : 'Save Target Location & Surrounding Area'}</span>
+            <span>{isSaving ? 'Saving to Database...' : 'Save Target Location & Boundary'}</span>
           </button>
         </div>
       </form>

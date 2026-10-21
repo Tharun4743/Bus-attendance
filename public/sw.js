@@ -31,6 +31,11 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
 
+  // Never intercept on localhost or during local Vite dev testing
+  if (self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1') {
+    return;
+  }
+
   // Never intercept Vite internal modules, source files, or backend API endpoints
   if (
     url.includes('/@vite') ||
@@ -60,12 +65,13 @@ self.addEventListener('fetch', (event) => {
         const cached = await caches.match(event.request);
         if (cached) return cached;
         if (event.request.mode === 'navigate') {
-          const fallback = await caches.match('/index.html');
+          const fallback = (await caches.match('/index.html')) || (await caches.match('/'));
           if (fallback) return fallback;
+          return fetch('/index.html');
         }
-        return new Response('Offline or Network Error', {
-          status: 503,
-          statusText: 'Service Unavailable',
+        return new Response('Offline', {
+          status: 200,
+          statusText: 'OK',
           headers: new Headers({ 'Content-Type': 'text/plain' })
         });
       })

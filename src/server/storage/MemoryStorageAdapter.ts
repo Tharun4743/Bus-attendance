@@ -9,6 +9,7 @@ import {
   User,
   ActiveSession,
   SessionType,
+  CampusCheckpoint,
 } from '../../types';
 
 export class MemoryStorageAdapter implements StorageAdapter {
@@ -19,6 +20,40 @@ export class MemoryStorageAdapter implements StorageAdapter {
   private activeSession: ActiveSession | null = null;
   private notifications: Notification[] = [];
   private reports: FinalReport[] = [];
+  private checkpoints: CampusCheckpoint[] = [
+    {
+      id: 'CP-1',
+      name: 'Main Bus Bay & Departure Hub',
+      latitude: 10.9575,
+      longitude: 78.0770,
+      radiusMeters: 15,
+      description: 'Central student transport departure bay',
+    },
+    {
+      id: 'CP-2',
+      name: 'Campus Main Entrance Gate',
+      latitude: 10.9568,
+      longitude: 78.0758,
+      radiusMeters: 12,
+      description: 'Primary security barrier and boarding checkpoint',
+    },
+    {
+      id: 'CP-3',
+      name: 'College Ground & Sports Pavilion',
+      latitude: 10.9580,
+      longitude: 78.0780,
+      radiusMeters: 25,
+      description: 'Official evening assembly zone',
+    },
+    {
+      id: 'CP-4',
+      name: 'Central Academic Block Entrance',
+      latitude: 10.9572,
+      longitude: 78.0766,
+      radiusMeters: 15,
+      description: 'Main academic concourse',
+    },
+  ];
   private settings: AttendanceSettings = {
     sessionType: 'EVENING',
     startTime: '16:50',
@@ -213,6 +248,12 @@ export class MemoryStorageAdapter implements StorageAdapter {
     student.status = 'REJECTED';
     student.approved = false;
     student.rejectionReason = reason;
+
+    const user = await this.getUserByEmail(student.email);
+    if (user) {
+      user.approved = false;
+      user.status = 'REJECTED';
+    }
     return student;
   }
 
@@ -362,8 +403,43 @@ export class MemoryStorageAdapter implements StorageAdapter {
   }
 
   async updateSettings(settings: Partial<AttendanceSettings>): Promise<AttendanceSettings> {
-    Object.assign(this.settings, settings);
+    if (settings.location) {
+      this.settings.location = { ...this.settings.location, ...settings.location };
+    }
+    if (settings.simulation) {
+      this.settings.simulation = { ...this.settings.simulation, ...settings.simulation };
+    }
+    Object.assign(this.settings, {
+      startTime: settings.startTime ?? this.settings.startTime,
+      endTime: settings.endTime ?? this.settings.endTime,
+      reportTime: settings.reportTime ?? this.settings.reportTime,
+      timezone: settings.timezone ?? this.settings.timezone,
+    });
     return this.getSettings();
+  }
+
+  // Campus Checkpoints
+  async getCheckpoints(): Promise<CampusCheckpoint[]> {
+    return [...this.checkpoints];
+  }
+
+  async createCheckpoint(checkpoint: Omit<CampusCheckpoint, 'id' | 'createdAt'>): Promise<CampusCheckpoint> {
+    const cp: CampusCheckpoint = {
+      ...checkpoint,
+      id: `CP-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+    this.checkpoints.push(cp);
+    return cp;
+  }
+
+  async deleteCheckpoint(id: string): Promise<boolean> {
+    const idx = this.checkpoints.findIndex((c) => c.id === id);
+    if (idx !== -1) {
+      this.checkpoints.splice(idx, 1);
+      return true;
+    }
+    return false;
   }
 
   // Notifications

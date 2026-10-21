@@ -1,7 +1,7 @@
 export type Role = 'ADMIN' | 'INCHARGE' | 'STUDENT';
 export type SessionType = 'MORNING' | 'EVENING';
 export type AttendanceMode = 'GROUND' | 'TRAVELLING';
-export type VerificationMethod = 'CODE_ONLY' | 'CODE_GPS';
+export type VerificationMethod = 'CODE_ONLY' | 'CODE_GPS' | 'FACE_GPS' | 'PHONE_BIOMETRIC_GPS' | 'ADMIN_OVERRIDE';
 export type StudentApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface User {
@@ -251,4 +251,14 @@ export interface LocationVerificationResponse {
   studentName?: string;
   registerNumber?: string;
   busId?: string;
+}
+
+export interface CampusCheckpoint {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  radiusMeters: number;
+  description?: string;
+  createdAt?: string;
 }

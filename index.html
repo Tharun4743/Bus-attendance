@@ -18,6 +18,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     
     <script>
+      // 1. Patch HTMLCanvasElement.prototype.getContext for willReadFrequently: true
+      // Eliminates the 1000+ repetitive Chrome DevTools readback warnings emitted by face-api.js & TensorFlow
+      (function() {
+        var origGetContext = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function(type, attributes) {
+          if (type === '2d') {
+            attributes = Object.assign({ willReadFrequently: true }, attributes);
+          }
+          return origGetContext.call(this, type, attributes);
+        };
+      })();
+
       try {
         var saved = localStorage.getItem('app_theme');
         var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -32,7 +44,8 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
-      // In development mode (localhost), unregister Service Worker to prevent Vite HMR interception
+      // In development mode (localhost), unregister any active Service Worker and purge stale caches
+      // to completely prevent 503 Service Unavailable errors or Vite HMR route interception
       if ('serviceWorker' in navigator) {
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
           navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -40,12 +53,13 @@
               registration.unregister();
             }
           });
-        } else if (window.location.protocol === 'https:') {
-          window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js').catch((err) => {
-              console.log('Service Worker registration failed: ', err);
+          if (window.caches) {
+            caches.keys().then(function(keys) {
+              for (var key of keys) {
+                caches.delete(key);
+              }
             });
-          });
+          }
         }
       }
     </script>

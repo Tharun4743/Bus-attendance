@@ -30,7 +30,7 @@ export const StartAttendanceModal: React.FC<StartAttendanceModalProps> = ({
   const [sessionType, setSessionType] = useState<SessionType>('MORNING');
   const [attendanceMode, setAttendanceMode] = useState<AttendanceMode>('TRAVELLING');
   const [verificationMethod, setVerificationMethod] = useState<VerificationMethod>('CODE_GPS');
-  const [selectedBusId, setSelectedBusId] = useState<string>(buses[0]?.id || 'BUS06');
+  const [selectedBusId, setSelectedBusId] = useState<string>(buses[0]?.id || '');
   const [radiusMeters, setRadiusMeters] = useState<number>(10);
 
   useEffect(() => {

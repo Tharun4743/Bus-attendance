@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Fingerprint, MapPin, X, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { api } from '../../services/api';
 
-import { extractFaceDescriptor, loadFaceApiModels } from '../../lib/faceBiometrics';
+import { cameraCapture } from '../../lib/cameraCapture';
 
 interface MobileVerificationModalProps {
   isOpen: boolean;
@@ -45,8 +45,6 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
       setStatusText(null);
       setSuccessResult(null);
       acquireGps();
-      // Preload face models in background
-      loadFaceApiModels().catch((e) => console.warn('[FaceAPI] Preload error in modal:', e));
       if (activeTab === 'FACE') {
         startCamera();
       }
@@ -91,16 +89,11 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
   const startCamera = async () => {
     try {
       stopCamera();
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } },
-        audio: false,
-      });
+      if (!videoRef.current) return;
+      const stream = await cameraCapture.startCamera(videoRef.current, 'user');
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-        setIsCameraActive(true);
-      }
+      setIsCameraActive(true);
+      setErrorMsg(null);
     } catch (err: any) {
       setIsCameraActive(false);
       setErrorMsg('Camera access failed. Please enable camera permission in your phone settings.');
@@ -109,26 +102,19 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
 
   const stopCamera = () => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
+      cameraCapture.stopCamera(streamRef.current);
       streamRef.current = null;
     }
     setIsCameraActive(false);
   };
 
   const captureSelfieBase64 = (): string | null => {
-    if (!videoRef.current || !canvasRef.current) return null;
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    canvas.width = video.videoWidth || 480;
-    canvas.height = video.videoHeight || 480;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-
-    // Flip horizontally for front camera selfie natural look
-    ctx.translate(canvas.width, 0);
-    ctx.scale(-1, 1);
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL('image/jpeg', 0.82);
+    if (!videoRef.current) return null;
+    try {
+      return cameraCapture.captureFrame(videoRef.current, 0.92);
+    } catch {
+      return null;
+    }
   };
 
   const handleVerifyWithFace = async () => {
@@ -139,24 +125,16 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
     }
 
     const selfieBase64 = captureSelfieBase64();
-    if (!selfieBase64 || !canvasRef.current) {
-      setErrorMsg('Failed to capture camera snapshot. Please ensure camera is visible.');
+    if (!selfieBase64) {
+      setErrorMsg('Failed to capture camera snapshot. Please ensure camera is active.');
       return;
     }
 
     setIsLoading(true);
-    setStatusText('Scanning live facial landmarks & biometrics...');
+    setStatusText('Verifying face with Cloud AI & GPS geofence...');
     setErrorMsg(null);
 
     try {
-      const bioResult = await extractFaceDescriptor(canvasRef.current);
-      if (!bioResult.success || !bioResult.descriptor) {
-        setErrorMsg(bioResult.error || 'No human face detected! Look directly into the camera in clear lighting.');
-        return;
-      }
-
-      setStatusText('Verifying biometric match against registered profile...');
-
       const res = await api.verifyMobile({
         busId,
         method: 'FACE_GPS',
@@ -164,7 +142,6 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
         longitude: coords.longitude,
         accuracy: coords.accuracy,
         selfieBase64,
-        faceDescriptor: bioResult.descriptor,
       });
 
       if (res.status === 'PRESENT') {

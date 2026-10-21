@@ -10,10 +10,12 @@ import {
   User,
   ActiveSession,
   SessionType,
+  CampusCheckpoint,
 } from '../../types';
 
 export class PostgresStorageAdapter implements StorageAdapter {
   private pool: Pool;
+  private isInitialized = false;
 
   constructor() {
     const connectionString = process.env.DATABASE_URL;
@@ -30,6 +32,46 @@ export class PostgresStorageAdapter implements StorageAdapter {
     });
 
     console.log('⚡ [PostgresStorageAdapter] Connected to live Supabase PostgreSQL Pooler');
+  }
+
+  private async ensureSchema(): Promise<void> {
+    if (this.isInitialized) return;
+    try {
+      await this.pool.query(`
+        ALTER TABLE public.geofence_settings 
+          ADD COLUMN IF NOT EXISTS location_name TEXT NOT NULL DEFAULT 'VSB Engineering College Campus',
+          ADD COLUMN IF NOT EXISTS start_time TEXT NOT NULL DEFAULT '16:50',
+          ADD COLUMN IF NOT EXISTS end_time TEXT NOT NULL DEFAULT '16:55',
+          ADD COLUMN IF NOT EXISTS report_time TEXT NOT NULL DEFAULT '16:57',
+          ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'Asia/Kolkata',
+          ADD COLUMN IF NOT EXISTS simulation_enabled BOOLEAN NOT NULL DEFAULT false,
+          ADD COLUMN IF NOT EXISTS simulated_time TEXT;
+
+        CREATE TABLE IF NOT EXISTS public.checkpoints (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          name TEXT NOT NULL,
+          latitude DOUBLE PRECISION NOT NULL,
+          longitude DOUBLE PRECISION NOT NULL,
+          radius_meters NUMERIC NOT NULL DEFAULT 15,
+          description TEXT,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+        );
+      `);
+
+      const cpCount = await this.pool.query(`SELECT COUNT(*) FROM public.checkpoints;`);
+      if (parseInt(cpCount.rows[0].count, 10) === 0) {
+        await this.pool.query(`
+          INSERT INTO public.checkpoints (name, latitude, longitude, radius_meters, description) VALUES
+            ('Main Bus Bay & Departure Hub', 10.9575, 78.0770, 15, 'Central student transport departure bay'),
+            ('Campus Main Entrance Gate', 10.9568, 78.0758, 12, 'Primary security barrier and boarding checkpoint'),
+            ('College Ground & Sports Pavilion', 10.9580, 78.0780, 25, 'Official evening assembly zone'),
+            ('Central Academic Block Entrance', 10.9572, 78.0766, 15, 'Main academic concourse');
+        `);
+      }
+      this.isInitialized = true;
+    } catch (err) {
+      console.error('Error ensuring schema in PostgresStorageAdapter:', err);
+    }
   }
 
   // ==========================================================================
@@ -207,7 +249,9 @@ export class PostgresStorageAdapter implements StorageAdapter {
       idCardUrl: s.id_card_url,
       idCardPublicId: s.id_card_public_id,
       photoUrl: s.photo_url,
+      profilePhotoUrl: s.photo_url,
       photoPublicId: s.photo_public_id,
+      profilePhotoPublicId: s.photo_public_id,
       faceDescriptor: s.face_descriptor ? (typeof s.face_descriptor === 'string' ? JSON.parse(s.face_descriptor) : s.face_descriptor) : undefined,
       faceDescriptorLeft: s.face_descriptor_left ? (typeof s.face_descriptor_left === 'string' ? JSON.parse(s.face_descriptor_left) : s.face_descriptor_left) : undefined,
       faceDescriptorRight: s.face_descriptor_right ? (typeof s.face_descriptor_right === 'string' ? JSON.parse(s.face_descriptor_right) : s.face_descriptor_right) : undefined,
@@ -308,7 +352,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
     // 1. Insert user
     await this.pool.query(
       `INSERT INTO public.users (email, password_hash, name, role, student_id, status, active)
-       VALUES ($1, $2, $3, 'STUDENT', $4, 'APPROVED', true)
+       VALUES ($1, $2, $3, 'STUDENT', $4, 'PENDING', true)
        ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash;`,
       [email, password, data.name.trim(), studentId]
     );
@@ -318,9 +362,9 @@ export class PostgresStorageAdapter implements StorageAdapter {
       `INSERT INTO public.students (
          id, register_number, name, email, phone, preferred_bus_id, bus_id, status, approved, active
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $6, 'APPROVED', true, true)
+       VALUES ($1, $2, $3, $4, $5, $6, NULL, 'PENDING', false, true)
        RETURNING *;`,
-      [studentId, regNo, data.name.trim(), email, data.phone || null, data.preferredBusId || 'BUS06']
+      [studentId, regNo, data.name.trim(), email, data.phone || null, data.preferredBusId || null]
     );
 
     return this.mapStudent(res.rows[0]);
@@ -381,7 +425,14 @@ export class PostgresStorageAdapter implements StorageAdapter {
       [studentId.trim(), busId, approvedBy]
     );
     if (res.rows.length === 0) return null;
-    return this.mapStudent(res.rows[0]);
+    const s = res.rows[0];
+    await this.pool.query(
+      `UPDATE public.users
+       SET status = 'APPROVED', active = true, assigned_bus_id = $2, updated_at = NOW()
+       WHERE student_id = $1 OR email = $3;`,
+      [s.id, busId, s.email]
+    );
+    return this.mapStudent(s);
   }
 
   async rejectStudent(studentId: string, reason?: string): Promise<Student | null> {
@@ -393,7 +444,14 @@ export class PostgresStorageAdapter implements StorageAdapter {
       [studentId.trim(), reason || 'Registration rejected']
     );
     if (res.rows.length === 0) return null;
-    return this.mapStudent(res.rows[0]);
+    const s = res.rows[0];
+    await this.pool.query(
+      `UPDATE public.users
+       SET status = 'REJECTED', updated_at = NOW()
+       WHERE student_id = $1 OR email = $2;`,
+      [s.id, s.email]
+    );
+    return this.mapStudent(s);
   }
 
   async updateStudent(id: string, updates: Partial<Student>): Promise<Student | null> {
@@ -475,7 +533,37 @@ export class PostgresStorageAdapter implements StorageAdapter {
     );
 
     if (res.rows.length === 0) return null;
-    return this.mapStudent(res.rows[0]);
+    const s = res.rows[0];
+
+    const userFields: string[] = [];
+    const userVals: any[] = [];
+    let uIdx = 1;
+    if (updates.name !== undefined) {
+      userFields.push(`name = $${uIdx++}`);
+      userVals.push(updates.name);
+    }
+    if (updates.status !== undefined) {
+      userFields.push(`status = $${uIdx++}`);
+      userVals.push(updates.status);
+    }
+    if (updates.busId !== undefined) {
+      userFields.push(`assigned_bus_id = $${uIdx++}`);
+      userVals.push(updates.busId);
+    }
+    if (updates.active !== undefined) {
+      userFields.push(`active = $${uIdx++}`);
+      userVals.push(updates.active);
+    }
+    if (userFields.length > 0) {
+      userFields.push(`updated_at = NOW()`);
+      userVals.push(s.id, s.email);
+      await this.pool.query(
+        `UPDATE public.users SET ${userFields.join(', ')} WHERE student_id = $${uIdx} OR email = $${uIdx + 1};`,
+        userVals
+      ).catch((err) => console.warn('[PostgresStorageAdapter] user sync warning:', err.message));
+    }
+
+    return this.mapStudent(s);
   }
 
   async deleteStudent(id: string): Promise<boolean> {
@@ -698,6 +786,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
        )
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW())
        ON CONFLICT (student_id, attendance_date, session_type) DO UPDATE SET
+         session_id = EXCLUDED.session_id,
          bus_id = EXCLUDED.bus_id,
          status = EXCLUDED.status,
          code_used = EXCLUDED.code_used,
@@ -888,11 +977,19 @@ export class PostgresStorageAdapter implements StorageAdapter {
   }
 
   // ==========================================================================
-  // 6. GEOFENCE SETTINGS
+  // 6. GEOFENCE SETTINGS & CAMPUS CHECKPOINTS
   // ==========================================================================
   async getSettings(): Promise<AttendanceSettings> {
+    await this.ensureSchema();
     const res = await this.pool.query(`SELECT * FROM public.geofence_settings WHERE id = 'default' LIMIT 1;`);
     if (res.rows.length === 0) {
+      await this.pool.query(`
+        INSERT INTO public.geofence_settings 
+          (id, location_name, campus_latitude, campus_longitude, radius_meters, max_gps_accuracy_meters, start_time, end_time, report_time, timezone, simulation_enabled, simulated_time)
+        VALUES 
+          ('default', 'VSB Engineering College Campus', 10.9572, 78.0766, 150, 80, '16:50', '16:55', '16:57', 'Asia/Kolkata', false, null)
+        ON CONFLICT (id) DO NOTHING;
+      `);
       return {
         sessionType: 'EVENING',
         startTime: '16:50',
@@ -913,40 +1010,101 @@ export class PostgresStorageAdapter implements StorageAdapter {
     const s = res.rows[0];
     return {
       sessionType: 'EVENING',
-      startTime: '16:50',
-      endTime: '16:55',
-      reportTime: '16:57',
-      timezone: 'Asia/Kolkata',
+      startTime: s.start_time || '16:50',
+      endTime: s.end_time || '16:55',
+      reportTime: s.report_time || '16:57',
+      timezone: s.timezone || 'Asia/Kolkata',
       location: {
-        name: 'VSB Engineering College Campus',
+        name: s.location_name || 'VSB Engineering College Campus',
         latitude: Number(s.campus_latitude),
         longitude: Number(s.campus_longitude),
         radiusMeters: Number(s.radius_meters),
         maxGpsAccuracyMeters: Number(s.max_gps_accuracy_meters),
       },
-      simulation: { enabled: false, simulatedTime: null },
+      simulation: {
+        enabled: Boolean(s.simulation_enabled),
+        simulatedTime: s.simulated_time || null,
+      },
     };
   }
 
   async updateSettings(settings: Partial<AttendanceSettings>): Promise<AttendanceSettings> {
-    const lat = settings.location?.latitude ?? 10.9572;
-    const lng = settings.location?.longitude ?? 78.0766;
-    const rad = settings.location?.radiusMeters ?? 150;
-    const acc = settings.location?.maxGpsAccuracyMeters ?? 80;
+    await this.ensureSchema();
+    const current = await this.getSettings();
+
+    const name = settings.location?.name ?? current.location.name;
+    const lat = settings.location?.latitude ?? current.location.latitude;
+    const lng = settings.location?.longitude ?? current.location.longitude;
+    const rad = settings.location?.radiusMeters ?? current.location.radiusMeters;
+    const acc = settings.location?.maxGpsAccuracyMeters ?? current.location.maxGpsAccuracyMeters;
+    const startTime = settings.startTime ?? current.startTime;
+    const endTime = settings.endTime ?? current.endTime;
+    const reportTime = settings.reportTime ?? current.reportTime;
+    const timezone = settings.timezone ?? current.timezone;
+    const simEnabled = settings.simulation?.enabled ?? current.simulation?.enabled ?? false;
+    const simTime = settings.simulation?.simulatedTime !== undefined ? settings.simulation.simulatedTime : (current.simulation?.simulatedTime ?? null);
 
     await this.pool.query(
-      `INSERT INTO public.geofence_settings (id, campus_latitude, campus_longitude, radius_meters, max_gps_accuracy_meters, enforce_gps, updated_at)
-       VALUES ('default', $1, $2, $3, $4, true, NOW())
+      `INSERT INTO public.geofence_settings 
+        (id, location_name, campus_latitude, campus_longitude, radius_meters, max_gps_accuracy_meters, start_time, end_time, report_time, timezone, simulation_enabled, simulated_time, enforce_gps, updated_at)
+       VALUES ('default', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true, NOW())
        ON CONFLICT (id) DO UPDATE SET
+         location_name = EXCLUDED.location_name,
          campus_latitude = EXCLUDED.campus_latitude,
          campus_longitude = EXCLUDED.campus_longitude,
          radius_meters = EXCLUDED.radius_meters,
          max_gps_accuracy_meters = EXCLUDED.max_gps_accuracy_meters,
+         start_time = EXCLUDED.start_time,
+         end_time = EXCLUDED.end_time,
+         report_time = EXCLUDED.report_time,
+         timezone = EXCLUDED.timezone,
+         simulation_enabled = EXCLUDED.simulation_enabled,
+         simulated_time = EXCLUDED.simulated_time,
          updated_at = NOW();`,
-      [lat, lng, rad, acc]
+      [name, lat, lng, rad, acc, startTime, endTime, reportTime, timezone, simEnabled, simTime]
     );
 
     return this.getSettings();
+  }
+
+  async getCheckpoints(): Promise<CampusCheckpoint[]> {
+    await this.ensureSchema();
+    const res = await this.pool.query(`SELECT * FROM public.checkpoints ORDER BY created_at ASC;`);
+    return res.rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      latitude: Number(r.latitude),
+      longitude: Number(r.longitude),
+      radiusMeters: Number(r.radius_meters),
+      description: r.description || undefined,
+      createdAt: r.created_at,
+    }));
+  }
+
+  async createCheckpoint(cp: Omit<CampusCheckpoint, 'id' | 'createdAt'>): Promise<CampusCheckpoint> {
+    await this.ensureSchema();
+    const res = await this.pool.query(
+      `INSERT INTO public.checkpoints (name, latitude, longitude, radius_meters, description)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *;`,
+      [cp.name.trim(), cp.latitude, cp.longitude, cp.radiusMeters, cp.description?.trim() || null]
+    );
+    const r = res.rows[0];
+    return {
+      id: r.id,
+      name: r.name,
+      latitude: Number(r.latitude),
+      longitude: Number(r.longitude),
+      radiusMeters: Number(r.radius_meters),
+      description: r.description || undefined,
+      createdAt: r.created_at,
+    };
+  }
+
+  async deleteCheckpoint(id: string): Promise<boolean> {
+    await this.ensureSchema();
+    const res = await this.pool.query(`DELETE FROM public.checkpoints WHERE id = $1;`, [id]);
+    return (res.rowCount ?? 0) > 0;
   }
 
   // ==========================================================================
