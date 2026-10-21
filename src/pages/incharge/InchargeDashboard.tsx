@@ -24,6 +24,7 @@ import {
   X,
 } from 'lucide-react';
 import { InchargeMapPickerModal } from '../../components/incharge/InchargeMapPickerModal';
+import { formatISTTime, formatISTTime24 } from '../../utils/time';
 
 export const InchargeDashboard: React.FC = () => {
   const [data, setData] = useState<{
@@ -135,7 +136,7 @@ export const InchargeDashboard: React.FC = () => {
       r.status,
       r.verificationMethod || 'N/A',
       r.faceMatchConfidence ? `${r.faceMatchConfidence}%` : 'N/A',
-      r.verifiedAt || 'N/A',
+      r.verifiedAt ? formatISTTime24(r.verifiedAt) : 'N/A',
       r.distanceMeters != null ? `${r.distanceMeters}m` : 'N/A',
     ]);
     const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
@@ -244,7 +245,7 @@ export const InchargeDashboard: React.FC = () => {
                   <span>•</span>
                   <span className="flex items-center gap-1 font-mono">
                     <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                    Started: {activeSession.startedAt ? new Date(activeSession.startedAt).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }) : 'Live'}
+                    Started: {activeSession.startedAt ? formatISTTime(activeSession.startedAt) : 'Live'}
                   </span>
                 </div>
               </div>
@@ -445,14 +446,7 @@ export const InchargeDashboard: React.FC = () => {
                       )}
                     </td>
                     <td className="px-5 py-3.5 text-zinc-500 dark:text-zinc-400 font-mono">
-                      {stu.verifiedAt
-                        ? new Date(stu.verifiedAt).toLocaleTimeString('en-US', {
-                            timeZone: 'Asia/Kolkata',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit',
-                          })
-                        : '—'}
+                      {stu.verifiedAt ? formatISTTime(stu.verifiedAt) : '—'}
                     </td>
                     <td className="px-5 py-3.5 text-zinc-500 dark:text-zinc-400 font-mono">
                       {stu.distanceMeters != null ? `${Math.round(stu.distanceMeters)}m` : '—'}

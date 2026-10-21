@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Bus, Student, SessionInfo, ActiveSession } from '../../types';
+import { formatISTTime } from '../../utils/time';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { StatCard } from '../../components/ui/StatCard';
 import { Button } from '../../components/ui/Button';
@@ -213,7 +214,11 @@ export const AdminDashboard: React.FC = () => {
 
   // 1-Click Student Approval
   const handleApproveStudent = async (studentId: string) => {
-    const busId = selectedBusesForApproval[studentId] || data?.buses[0]?.id || 'BUS06';
+    const busId = selectedBusesForApproval[studentId] || data?.buses[0]?.id;
+    if (!busId) {
+      alert('Please configure at least one bus before approving student registrations.');
+      return;
+    }
     setIsProcessingApproval(studentId);
     try {
       await api.approveStudent(studentId, busId);
@@ -652,11 +657,7 @@ export const AdminDashboard: React.FC = () => {
                               )}
                             </td>
                             <td className="py-3 px-4 text-xs text-zinc-500 dark:text-zinc-400 font-mono">
-                              {stu.verifiedAt ? (
-                                new Date(stu.verifiedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                              ) : (
-                                '—'
-                              )}
+                              {stu.verifiedAt ? formatISTTime(stu.verifiedAt) : '—'}
                             </td>
                             <td className="py-3 px-4 text-right">
                               <button
@@ -692,7 +693,7 @@ export const AdminDashboard: React.FC = () => {
                           </div>
                           {stu.verifiedAt && (
                             <p className="text-[10px] text-emerald-600 dark:text-[#4ade80] font-mono">
-                              Verified {new Date(stu.verifiedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              Verified {formatISTTime(stu.verifiedAt)}
                             </p>
                           )}
                         </div>
@@ -735,7 +736,7 @@ export const AdminDashboard: React.FC = () => {
                     selectedBusesForApproval[stu.id] ||
                     stu.preferredBusId ||
                     data?.buses[0]?.id ||
-                    'BUS06';
+                    '';
 
                   return (
                     <div

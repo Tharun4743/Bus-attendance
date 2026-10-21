@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
+import { api } from '../../services/api';
 import {
   MapPin,
   Crosshair,
@@ -11,7 +12,7 @@ import {
   AlertCircle,
   Building2,
 } from 'lucide-react';
-import { Bus, SessionType } from '../../types';
+import { Bus, SessionType, CampusCheckpoint } from '../../types';
 
 interface InchargeMapPickerModalProps {
   isOpen: boolean;
@@ -21,34 +22,6 @@ interface InchargeMapPickerModalProps {
   onSessionStarted: () => void;
 }
 
-// Preset College & Transit Checkpoints
-const PRESET_CHECKPOINTS = [
-  {
-    name: 'College Main Gate',
-    lat: 10.9572,
-    lon: 78.0766,
-    desc: 'Main Highway Entrance Arch',
-  },
-  {
-    name: 'Campus Bus Bay',
-    lat: 10.9585,
-    lon: 78.078,
-    desc: 'Central Transit Parking Platform',
-  },
-  {
-    name: 'Engineering Block Bay',
-    lat: 10.956,
-    lon: 78.0755,
-    desc: 'Academic Block Pickup Point',
-  },
-  {
-    name: 'Karur Central Stand',
-    lat: 10.9602,
-    lon: 78.082,
-    desc: 'City Center Transit Junction',
-  },
-];
-
 export const InchargeMapPickerModal: React.FC<InchargeMapPickerModalProps> = ({
   isOpen,
   onClose,
@@ -57,10 +30,12 @@ export const InchargeMapPickerModal: React.FC<InchargeMapPickerModalProps> = ({
   onSessionStarted,
 }) => {
   const [sessionType, setSessionType] = useState<SessionType>(initialSessionType);
-  const [locationName, setLocationName] = useState<string>('Campus Bus Bay');
-  const [latitude, setLatitude] = useState<number>(10.9572);
-  const [longitude, setLongitude] = useState<number>(78.0766);
+  const [locationName, setLocationName] = useState<string>(bus.routeName || '');
+  const [latitude, setLatitude] = useState<number>(0);
+  const [longitude, setLongitude] = useState<number>(0);
   const [radiusMeters, setRadiusMeters] = useState<number>(100);
+  const [campusLocation, setCampusLocation] = useState<{ name: string; lat: number; lon: number } | null>(null);
+  const [checkpoints, setCheckpoints] = useState<CampusCheckpoint[]>([]);
   const [isLocating, setIsLocating] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -75,6 +50,34 @@ export const InchargeMapPickerModal: React.FC<InchargeMapPickerModalProps> = ({
     if (!isOpen) return;
 
     setErrorMsg(null);
+
+    // Fetch live geofence settings and checkpoints from database
+    Promise.all([
+      api.getSettings(),
+      api.getCheckpoints().catch(() => []),
+    ]).then(([settings, cpList]) => {
+      setCheckpoints(cpList);
+      if (settings?.location) {
+        setCampusLocation({
+          name: settings.location.name,
+          lat: settings.location.latitude,
+          lon: settings.location.longitude,
+        });
+        setLocationName(bus.routeName || settings.location.name || 'Campus Bus Bay');
+        setLatitude(settings.location.latitude);
+        setLongitude(settings.location.longitude);
+        if (settings.location.radiusMeters) {
+          setRadiusMeters(settings.location.radiusMeters);
+        }
+        if (mapInstanceRef.current && markerRef.current && circleRef.current) {
+          const latlng: L.LatLngExpression = [settings.location.latitude, settings.location.longitude];
+          markerRef.current.setLatLng(latlng);
+          circleRef.current.setLatLng(latlng);
+          circleRef.current.setRadius(settings.location.radiusMeters || 100);
+          mapInstanceRef.current.setView(latlng, 16);
+        }
+      }
+    }).catch(() => {});
 
     const timer = setTimeout(() => {
       if (!mapContainerRef.current) return;
@@ -348,34 +351,62 @@ export const InchargeMapPickerModal: React.FC<InchargeMapPickerModalProps> = ({
             </div>
           </div>
 
-          {/* Quick Checkpoint Presets */}
+          {/* Live Checkpoints & Quick Selection */}
           <div className="space-y-1.5">
-            <label className="block text-[11px] font-extrabold text-zinc-400 uppercase tracking-wider">
-              Quick Landmark Presets
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {PRESET_CHECKPOINTS.map((chk) => {
-                const isMatch =
-                  Math.abs(latitude - chk.lat) < 0.0001 && Math.abs(longitude - chk.lon) < 0.0001;
-                return (
-                  <button
-                    key={chk.name}
-                    type="button"
-                    onClick={() => updateMapPosition(chk.lat, chk.lon, chk.name)}
-                    className={`p-2.5 rounded-xl border text-left transition text-xs cursor-pointer ${
-                      isMatch
-                        ? 'bg-amber-500/10 border-amber-500 text-amber-700 dark:text-amber-300 font-bold'
-                        : 'bg-zinc-50 dark:bg-[#181820] border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <Building2 className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                      <span className="truncate font-bold">{chk.name}</span>
-                    </div>
-                    <p className="text-[10px] text-zinc-400 truncate mt-0.5">{chk.desc}</p>
-                  </button>
-                );
-              })}
+            <div className="flex items-center justify-between">
+              <label className="block text-[11px] font-extrabold text-zinc-400 uppercase tracking-wider">
+                Live Database Checkpoints & Route ({checkpoints.length + (campusLocation ? 1 : 0)})
+              </label>
+              <span className="text-[10px] text-zinc-400 font-medium">PostgreSQL Live Data</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {campusLocation && (
+                <button
+                  type="button"
+                  onClick={() => updateMapPosition(campusLocation.lat, campusLocation.lon, campusLocation.name)}
+                  className={`p-2.5 rounded-xl border text-left transition text-xs cursor-pointer ${
+                    Math.abs(latitude - campusLocation.lat) < 0.0001 && Math.abs(longitude - campusLocation.lon) < 0.0001
+                      ? 'bg-amber-500/10 border-amber-500 text-amber-700 dark:text-amber-300 font-bold'
+                      : 'bg-zinc-50 dark:bg-[#181820] border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span className="truncate font-bold">🏫 {campusLocation.name}</span>
+                  </div>
+                  <p className="text-[10px] text-zinc-400 truncate mt-0.5">Live Campus Geofence Center</p>
+                </button>
+              )}
+              {checkpoints.map((cp) => (
+                <button
+                  key={cp.id}
+                  type="button"
+                  onClick={() => updateMapPosition(cp.latitude, cp.longitude, cp.name)}
+                  className={`p-2.5 rounded-xl border text-left transition text-xs cursor-pointer ${
+                    Math.abs(latitude - cp.latitude) < 0.0001 && Math.abs(longitude - cp.longitude) < 0.0001
+                      ? 'bg-amber-500/10 border-amber-500 text-amber-700 dark:text-amber-300 font-bold'
+                      : 'bg-zinc-50 dark:bg-[#181820] border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-brand-600 shrink-0" />
+                    <span className="truncate font-bold">📍 {cp.name}</span>
+                  </div>
+                  <p className="text-[10px] text-zinc-400 truncate mt-0.5">{cp.description || 'Database Checkpoint'}</p>
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={handleUseDeviceLocation}
+                disabled={isLocating}
+                className="p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#181820] text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 text-left transition text-xs cursor-pointer flex flex-col justify-center"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Crosshair className={`w-3.5 h-3.5 text-blue-500 shrink-0 ${isLocating ? 'animate-spin' : ''}`} />
+                  <span className="truncate font-bold">📍 Smartphone GPS (Live)</span>
+                </div>
+                <p className="text-[10px] text-zinc-400 truncate mt-0.5">Use Bus In-charge Current Live Coordinates</p>
+              </button>
             </div>
           </div>
 

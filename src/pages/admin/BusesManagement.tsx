@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
-import { Bus } from '../../types';
+import { Bus, User } from '../../types';
 import { Modal } from '../../components/common/Modal';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Button } from '../../components/ui/Button';
@@ -9,6 +9,7 @@ import { Bus as BusIcon, Plus, Edit2, CheckCircle, XCircle, Users, AlertCircle }
 
 export const BusesManagement: React.FC = () => {
   const [buses, setBuses] = useState<(Bus & { studentsCount: number; inchargeName: string })[]>([]);
+  const [incharges, setIncharges] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingBus, setEditingBus] = useState<Bus | null>(null);
@@ -16,15 +17,19 @@ export const BusesManagement: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Form Fields
-  const [busNumber, setBusNumber] = useState<string>('Bus No 6');
-  const [routeName, setRouteName] = useState<string>('Dharapuram');
-  const [inchargeId, setInchargeId] = useState<string>('INC006');
+  const [busNumber, setBusNumber] = useState<string>('');
+  const [routeName, setRouteName] = useState<string>('');
+  const [inchargeId, setInchargeId] = useState<string>('');
   const [active, setActive] = useState<boolean>(true);
 
   const fetchBuses = async () => {
     try {
-      const res = await api.getBuses();
-      setBuses(res);
+      const [busRes, incRes] = await Promise.all([
+        api.getBuses(),
+        api.getIncharges().catch(() => []),
+      ]);
+      setBuses(busRes);
+      setIncharges(incRes);
     } catch (err) {
       console.error('Failed to load buses:', err);
     } finally {
@@ -38,9 +43,9 @@ export const BusesManagement: React.FC = () => {
 
   const handleOpenAdd = () => {
     setEditingBus(null);
-    setBusNumber('Bus No 6');
-    setRouteName('Dharapuram');
-    setInchargeId('INC006');
+    setBusNumber('');
+    setRouteName('');
+    setInchargeId(incharges[0]?.id || '');
     setActive(true);
     setFormError(null);
     setIsModalOpen(true);
@@ -267,7 +272,12 @@ export const BusesManagement: React.FC = () => {
               onChange={(e) => setInchargeId(e.target.value)}
               className="w-full h-11 px-4 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none"
             >
-              <option value="INC006">Aarthi (INC006)</option>
+              <option value="">-- Unassigned (No Incharge) --</option>
+              {incharges.map((inc) => (
+                <option key={inc.id} value={inc.id}>
+                  {inc.name} ({inc.email})
+                </option>
+              ))}
             </select>
           </div>
 

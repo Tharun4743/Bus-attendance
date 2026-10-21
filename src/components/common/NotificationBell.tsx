@@ -3,6 +3,7 @@ import { Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import { Notification } from '../../types';
+import { formatISTTime } from '../../utils/time';
 
 export const NotificationBell: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -102,10 +103,7 @@ export const NotificationBell: React.FC = () => {
                     </div>
                     <p className="text-xs text-zinc-600 dark:text-zinc-300 mt-1 line-clamp-2">{n.message}</p>
                     <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1.5 font-mono">
-                      {new Date(n.createdAt).toLocaleTimeString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      {formatISTTime(n.createdAt)}
                     </p>
                   </div>
                 ))

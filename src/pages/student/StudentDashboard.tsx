@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { MobileVerificationModal } from '../../components/attendance/MobileVerificationModal';
 import { FaceEnrollmentModal } from '../../components/attendance/FaceEnrollmentModal';
+import { formatISTTime } from '../../utils/time';
 
 export const StudentDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -56,14 +57,17 @@ export const StudentDashboard: React.FC = () => {
   const [hasAutoOpenedModal, setHasAutoOpenedModal] = useState(false);
 
   const userKey = student?.id || user?.id || user?.studentId || '';
-  const cachedEnrollment = userKey ? localStorage.getItem(`face_enrolled_${userKey}`) === 'true' : false;
-  const isFaceEnrolled = Boolean(student?.faceDescriptor || student?.profilePhotoUrl || student?.photoUrl || cachedEnrollment);
+  const isFaceEnrolled = Boolean(
+    student?.faceDescriptor &&
+    Array.isArray(student.faceDescriptor) &&
+    student.faceDescriptor.length === 128
+  );
 
   useEffect(() => {
-    if (student?.profilePhotoUrl && userKey) {
-      localStorage.setItem(`face_enrolled_${userKey}`, 'true');
+    if (student && !isFaceEnrolled && userKey) {
+      localStorage.removeItem(`face_enrolled_${userKey}`);
     }
-  }, [student?.profilePhotoUrl, userKey]);
+  }, [student, isFaceEnrolled, userKey]);
 
   // Auto-prompt first-time biometric enrollment if profile has no face descriptor
   useEffect(() => {
@@ -114,9 +118,13 @@ export const StudentDashboard: React.FC = () => {
             {student?.name || user?.name}
           </h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-1 flex items-center gap-2">
-            <span>Assigned: <strong>{bus?.busNumber || 'Bus No 6'}</strong></span>
-            <span>•</span>
-            <span>Route: <strong>{bus?.routeName || 'Campus Transit'}</strong></span>
+            <span>Assigned: <strong>{bus?.busNumber || student?.busId || 'Unassigned'}</strong></span>
+            {bus?.routeName && (
+              <>
+                <span>•</span>
+                <span>Route: <strong>{bus.routeName}</strong></span>
+              </>
+            )}
           </p>
         </div>
 
@@ -249,13 +257,7 @@ export const StudentDashboard: React.FC = () => {
               <div>
                 <span className="text-[10px] uppercase font-bold text-zinc-400">Boarding Time</span>
                 <p className="font-bold font-mono text-zinc-900 dark:text-white mt-0.5">
-                  {todayRecord.verifiedAt
-                    ? new Date(todayRecord.verifiedAt).toLocaleTimeString('en-US', {
-                        timeZone: 'Asia/Kolkata',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
-                    : 'Registered'}
+                  {todayRecord.verifiedAt ? formatISTTime(todayRecord.verifiedAt) : 'Registered'}
                 </p>
               </div>
 
@@ -269,7 +271,7 @@ export const StudentDashboard: React.FC = () => {
               <div>
                 <span className="text-[10px] uppercase font-bold text-zinc-400">Assigned Bus</span>
                 <p className="font-bold text-zinc-900 dark:text-white mt-0.5">
-                  {bus?.busNumber || 'Bus 06'}
+                  {bus?.busNumber || student?.busId || 'Unassigned'}
                 </p>
               </div>
             </div>
@@ -287,7 +289,7 @@ export const StudentDashboard: React.FC = () => {
                     TRANSIT BOARDING ACTIVE
                   </span>
                   <span className="text-xs text-zinc-500 font-mono font-bold">
-                    Bus {student?.busId || 'BUS06'}
+                    Bus {bus?.busNumber || student?.busId || 'Assigned Bus'}
                   </span>
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
@@ -365,7 +367,7 @@ export const StudentDashboard: React.FC = () => {
                 Transit Attendance Not Initiated
               </h2>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto">
-                The bus in-charge has not opened transit attendance for Bus {student?.busId || '06'} yet.
+                The bus in-charge has not opened transit attendance for {bus?.busNumber || student?.busId || 'your bus'} yet.
                 This console will automatically unlock the moment boarding starts.
               </p>
             </div>
@@ -434,13 +436,7 @@ export const StudentDashboard: React.FC = () => {
                       )}
                     </td>
                     <td className="px-5 py-3.5 text-zinc-500 dark:text-zinc-400 font-mono">
-                      {rec.verifiedAt
-                        ? new Date(rec.verifiedAt).toLocaleTimeString('en-US', {
-                            timeZone: 'Asia/Kolkata',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })
-                        : '—'}
+                      {rec.verifiedAt ? formatISTTime(rec.verifiedAt) : '—'}
                     </td>
                     <td className="px-5 py-3.5 text-zinc-500 dark:text-zinc-400 font-mono">
                       {rec.distanceMeters != null ? `${Math.round(rec.distanceMeters)}m` : '—'}
@@ -459,7 +455,7 @@ export const StudentDashboard: React.FC = () => {
       <MobileVerificationModal
         isOpen={isMobileModalOpen}
         onClose={() => setIsMobileModalOpen(false)}
-        busId={student?.busId || 'BUS06'}
+        busId={student?.busId || ''}
         onSuccess={() => {
           setIsMobileModalOpen(false);
           fetchStudentData();
@@ -474,9 +470,13 @@ export const StudentDashboard: React.FC = () => {
         onClose={() => setIsEnrollModalOpen(false)}
         studentName={student?.name || user?.name}
         registerNumber={student?.registerNumber || user?.studentId || ''}
-        onSuccess={(photoUrl) => {
+        onSuccess={(photoUrl, updatedStudent) => {
           if (userKey) localStorage.setItem(`face_enrolled_${userKey}`, 'true');
-          setStudent((prev) => (prev ? { ...prev, profilePhotoUrl: photoUrl, photoUrl, faceDescriptor: [1] } : prev));
+          if (updatedStudent) {
+            setStudent(updatedStudent);
+          } else {
+            setStudent((prev) => (prev ? { ...prev, profilePhotoUrl: photoUrl, photoUrl, faceDescriptor: new Array(128).fill(0.1) } : prev));
+          }
           setIsEnrollModalOpen(false);
           fetchStudentData();
         }}

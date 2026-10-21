@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { FinalReport } from '../../types';
+import { formatISTTime, formatISTTime24 } from '../../utils/time';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
 import { StatCard } from '../../components/ui/StatCard';
@@ -63,7 +64,7 @@ export const ReportsPage: React.FC = () => {
       `"${s.name}"`,
       `"${s.busNumber}"`,
       `"${s.status}"`,
-      `"${s.verifiedAt ? new Date(s.verifiedAt).toLocaleTimeString() : ''}"`,
+      `"${s.verifiedAt ? formatISTTime24(s.verifiedAt) : ''}"`,
       `"${s.distanceMeters ?? ''}"`,
     ]);
 
@@ -185,11 +186,7 @@ export const ReportsPage: React.FC = () => {
                     Report Date: {selectedReport.date}
                   </h2>
                   <p className="text-[11px] text-zinc-400 font-mono">
-                    Generated at{' '}
-                    {new Date(selectedReport.generatedAt).toLocaleTimeString('en-US', {
-                      timeZone: 'Asia/Kolkata',
-                    })}{' '}
-                    IST
+                    Generated at {formatISTTime(selectedReport.generatedAt)} IST
                   </p>
                 </div>
 
@@ -291,13 +288,7 @@ export const ReportsPage: React.FC = () => {
                             <StatusBadge status={stu.status} size="sm" />
                           </td>
                           <td className="px-5 py-3 text-zinc-400 font-mono">
-                            {stu.verifiedAt
-                              ? new Date(stu.verifiedAt).toLocaleTimeString('en-US', {
-                                  timeZone: 'Asia/Kolkata',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : '—'}
+                            {stu.verifiedAt ? formatISTTime(stu.verifiedAt) : '—'}
                           </td>
                         </tr>
                       ))}

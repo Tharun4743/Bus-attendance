@@ -18,11 +18,11 @@ export const GeofenceSettings: React.FC = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Form Fields
-  const [locationName, setLocationName] = useState<string>('College Ground');
-  const [latitude, setLatitude] = useState<number>(13.0827);
-  const [longitude, setLongitude] = useState<number>(80.2707);
-  const [radiusMeters, setRadiusMeters] = useState<number>(10);
+  // Form Fields (Loaded dynamically from PostgreSQL)
+  const [locationName, setLocationName] = useState<string>('');
+  const [latitude, setLatitude] = useState<number>(0);
+  const [longitude, setLongitude] = useState<number>(0);
+  const [radiusMeters, setRadiusMeters] = useState<number>(15);
   const [maxAccuracyMeters, setMaxAccuracyMeters] = useState<number>(20);
   const [startTime, setStartTime] = useState<string>('16:50');
   const [endTime, setEndTime] = useState<string>('16:55');
@@ -106,16 +106,10 @@ export const GeofenceSettings: React.FC = () => {
     }
   };
 
-  const handleResetDefaults = () => {
-    setLocationName('College Ground');
-    setLatitude(13.0827);
-    setLongitude(80.2707);
-    setRadiusMeters(10);
-    setMaxAccuracyMeters(20);
-    setStartTime('16:50');
-    setEndTime('16:55');
-    setSimulationEnabled(false);
-    setMessage({ type: 'success', text: 'Reset to standard default values. Remember to click Save.' });
+  const handleResetDefaults = async () => {
+    setIsLoading(true);
+    await fetchSettings();
+    setMessage({ type: 'success', text: 'Reloaded current settings from live PostgreSQL database.' });
   };
 
   if (isLoading) {

@@ -3,19 +3,18 @@ import { AttendanceSettings, SessionInfo, SessionStatus } from '../../types';
 /**
  * Gets the current time in Asia/Kolkata (IST).
  */
-export function getCurrentISTDate(): Date {
+export function getCurrentISTDate(timezone: string = 'Asia/Kolkata'): Date {
   const now = new Date();
-  // Format to Asia/Kolkata representation
-  const istString = now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+  const istString = now.toLocaleString('en-US', { timeZone: timezone });
   return new Date(istString);
 }
 
 /**
  * Formats date into YYYY-MM-DD in Asia/Kolkata timezone.
  */
-export function getISTDateString(d: Date = new Date()): string {
+export function getISTDateString(d: Date = new Date(), timezone: string = 'Asia/Kolkata'): string {
   const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Kolkata',
+    timeZone: timezone,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -26,9 +25,9 @@ export function getISTDateString(d: Date = new Date()): string {
 /**
  * Formats time into HH:mm:ss in Asia/Kolkata timezone.
  */
-export function getISTTimeString(d: Date = new Date()): string {
+export function getISTTimeString(d: Date = new Date(), timezone: string = 'Asia/Kolkata'): string {
   const formatter = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Kolkata',
+    timeZone: timezone,
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -49,8 +48,9 @@ function timeToMinutes(timeStr: string): number {
  * Evaluates current session status based on settings and server IST time.
  */
 export function evaluateSessionStatus(settings: AttendanceSettings): SessionInfo {
-  let currentTimeStr = getISTTimeString();
-  let currentDateStr = getISTDateString();
+  const tz = settings.timezone || 'Asia/Kolkata';
+  let currentTimeStr = getISTTimeString(new Date(), tz);
+  let currentDateStr = getISTDateString(new Date(), tz);
   let isSimulated = false;
 
   // Support Admin Simulation / Test mode
