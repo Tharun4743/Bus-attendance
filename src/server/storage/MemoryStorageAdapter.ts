@@ -339,8 +339,9 @@ export class MemoryStorageAdapter implements StorageAdapter {
   }
 
   async createBus(bus: Omit<Bus, 'id'> & { id?: string }): Promise<Bus> {
-    const cleanBusNo = bus.busNumber.trim().toUpperCase();
-    const id = bus.id || (cleanBusNo.startsWith('BUS') ? cleanBusNo : `BUS-${cleanBusNo}`);
+    const cleanBusNo = bus.busNumber.trim();
+    const cleanId = cleanBusNo.toUpperCase();
+    const id = bus.id || (cleanId.startsWith('BUS') ? cleanId : `BUS-${cleanId}`);
     const existingIdx = this.buses.findIndex((b) => b.id === id || b.busNumber.toLowerCase() === cleanBusNo.toLowerCase());
     const newBus: Bus = {
       id,

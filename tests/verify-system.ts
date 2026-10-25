@@ -79,18 +79,31 @@ async function runSystemTests() {
   // 3. Real Data Lifecycle: First-Time Setup -> Bus Creation -> Student Signup -> Pending -> Approval
   console.log('\n--- 3. REAL DATA LIFECYCLE: SETUP -> BUS -> SIGNUP -> APPROVAL ---');
 
-  // 3a. Initial state verification: Constant Admin is configured
+  // 3a. Initial state verification: Pure unseeded state
   const hasAdminInitial = await storage.hasAdmin();
-  const initAdmin = await storage.getUserByEmail('tharun@gmail.com');
+  assert(!hasAdminInitial, 'System initial state: Pure unseeded state with 0 users');
+
+  // Provision admin user dynamically for test lifecycle
+  const initAdmin = await storage.createUser({
+    id: 'ADMIN-001',
+    name: 'Tharunkumar K',
+    email: 'campusvsb4743@gmail.com',
+    password: 'DynamicSetupPassword4743!',
+    role: 'ADMIN',
+    active: true,
+    approved: true,
+    status: 'APPROVED',
+  });
+  const hasAdminAfter = await storage.hasAdmin();
   const initBuses = await storage.getBuses();
   const initStudents = await storage.getStudents();
-  assert(hasAdminInitial && initAdmin?.role === 'ADMIN', 'Constant Admin (Tharun) configured and active');
+  assert(hasAdminAfter && initAdmin.role === 'ADMIN', 'Admin dynamically provisioned and active');
   assert(initBuses.length >= 0, 'Bus registry ready');
   assert(initStudents.length === 0, 'System initial state: 0 Students present');
 
   // 3b. Admin Authentication Verification
-  const adminAuth = await storage.getUserByEmail('tharun@gmail.com');
-  assert(adminAuth?.password === '474743' && adminAuth.role === 'ADMIN', 'Constant Admin credentials verified');
+  const adminAuth = await storage.getUserByEmail('campusvsb4743@gmail.com');
+  assert(adminAuth?.password === 'DynamicSetupPassword4743!' && adminAuth.role === 'ADMIN', 'Admin credentials verified');
 
   // 3c. Admin creates a real bus (Bus No 6 with Incharge Aarthi)
   const newBus = await storage.createBus({
