@@ -10,9 +10,8 @@ import {
   Sun,
   Moon,
   AlertCircle,
-  Building2,
 } from 'lucide-react';
-import { Bus, SessionType, CampusCheckpoint } from '../../types';
+import { Bus, SessionType } from '../../types';
 
 interface InchargeMapPickerModalProps {
   isOpen: boolean;
@@ -37,8 +36,6 @@ export const InchargeMapPickerModal: React.FC<InchargeMapPickerModalProps> = ({
   const [latitude, setLatitude] = useState<number>(0);
   const [longitude, setLongitude] = useState<number>(0);
   const [radiusMeters, setRadiusMeters] = useState<number>(initialAttendanceMode === 'GROUND' ? 35 : 1000);
-  const [campusLocation, setCampusLocation] = useState<{ name: string; lat: number; lon: number } | null>(null);
-  const [checkpoints, setCheckpoints] = useState<CampusCheckpoint[]>([]);
   const [isLocating, setIsLocating] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -57,18 +54,9 @@ export const InchargeMapPickerModal: React.FC<InchargeMapPickerModalProps> = ({
     setAttendanceMode(initialMode);
     setRadiusMeters(initialMode === 'GROUND' ? 35 : 1000);
 
-    // Fetch live geofence settings and checkpoints from database
-    Promise.all([
-      api.getSettings(),
-      api.getCheckpoints().catch(() => []),
-    ]).then(([settings, cpList]) => {
-      setCheckpoints(cpList);
+    // Fetch live geofence settings from database
+    api.getSettings().then((settings) => {
       if (settings?.location) {
-        setCampusLocation({
-          name: settings.location.name,
-          lat: settings.location.latitude,
-          lon: settings.location.longitude,
-        });
         setLocationName(bus.routeName || (initialMode === 'GROUND' ? settings.location.name : `Travelling Bus (${bus.busNumber})`));
         setLatitude(settings.location.latitude);
         setLongitude(settings.location.longitude);
@@ -353,65 +341,6 @@ export const InchargeMapPickerModal: React.FC<InchargeMapPickerModalProps> = ({
                 <Sparkles className="w-3 h-3 text-amber-400" />
                 Tap anywhere on map or drag pin to adjust
               </span>
-            </div>
-          </div>
-
-          {/* Live Checkpoints & Quick Selection */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="block text-[11px] font-extrabold text-zinc-400 uppercase tracking-wider">
-                Live Database Checkpoints & Route ({checkpoints.length + (campusLocation ? 1 : 0)})
-              </label>
-              <span className="text-[10px] text-zinc-400 font-medium">PostgreSQL Live Data</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {campusLocation && (
-                <button
-                  type="button"
-                  onClick={() => updateMapPosition(campusLocation.lat, campusLocation.lon, campusLocation.name)}
-                  className={`p-2.5 rounded-xl border text-left transition text-xs cursor-pointer ${
-                    Math.abs(latitude - campusLocation.lat) < 0.0001 && Math.abs(longitude - campusLocation.lon) < 0.0001
-                      ? 'bg-amber-500/10 border-amber-500 text-amber-700 dark:text-amber-300 font-bold'
-                      : 'bg-zinc-50 dark:bg-[#181820] border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                    <span className="truncate font-bold">🏫 {campusLocation.name}</span>
-                  </div>
-                  <p className="text-[10px] text-zinc-400 truncate mt-0.5">Live Campus Geofence Center</p>
-                </button>
-              )}
-              {checkpoints.map((cp) => (
-                <button
-                  key={cp.id}
-                  type="button"
-                  onClick={() => updateMapPosition(cp.latitude, cp.longitude, cp.name)}
-                  className={`p-2.5 rounded-xl border text-left transition text-xs cursor-pointer ${
-                    Math.abs(latitude - cp.latitude) < 0.0001 && Math.abs(longitude - cp.longitude) < 0.0001
-                      ? 'bg-amber-500/10 border-amber-500 text-amber-700 dark:text-amber-300 font-bold'
-                      : 'bg-zinc-50 dark:bg-[#181820] border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-brand-600 shrink-0" />
-                    <span className="truncate font-bold">📍 {cp.name}</span>
-                  </div>
-                  <p className="text-[10px] text-zinc-400 truncate mt-0.5">{cp.description || 'Database Checkpoint'}</p>
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={handleUseDeviceLocation}
-                disabled={isLocating}
-                className="p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#181820] text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 text-left transition text-xs cursor-pointer flex flex-col justify-center"
-              >
-                <div className="flex items-center gap-1.5">
-                  <Crosshair className={`w-3.5 h-3.5 text-blue-500 shrink-0 ${isLocating ? 'animate-spin' : ''}`} />
-                  <span className="truncate font-bold">📍 Smartphone GPS (Live)</span>
-                </div>
-                <p className="text-[10px] text-zinc-400 truncate mt-0.5">Use Bus In-charge Current Live Coordinates</p>
-              </button>
             </div>
           </div>
 

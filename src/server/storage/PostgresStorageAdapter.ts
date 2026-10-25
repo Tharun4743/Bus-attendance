@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import crypto from 'crypto';
 import { StorageAdapter } from './StorageAdapter';
 import {
   Student,
@@ -58,16 +59,6 @@ export class PostgresStorageAdapter implements StorageAdapter {
         );
       `);
 
-      const cpCount = await this.pool.query(`SELECT COUNT(*) FROM public.checkpoints;`);
-      if (parseInt(cpCount.rows[0].count, 10) === 0) {
-        await this.pool.query(`
-          INSERT INTO public.checkpoints (name, latitude, longitude, radius_meters, description) VALUES
-            ('Main Bus Bay & Departure Hub', 10.9575, 78.0770, 15, 'Central student transport departure bay'),
-            ('Campus Main Entrance Gate', 10.9568, 78.0758, 12, 'Primary security barrier and boarding checkpoint'),
-            ('College Ground & Sports Pavilion', 10.9580, 78.0780, 25, 'Official evening assembly zone'),
-            ('Central Academic Block Entrance', 10.9572, 78.0766, 15, 'Main academic concourse');
-        `);
-      }
       this.isInitialized = true;
     } catch (err) {
       console.error('Error ensuring schema in PostgresStorageAdapter:', err);
@@ -263,7 +254,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
          status = 'PENDING',
          active = false
        RETURNING id, email, name, phone, role, assigned_bus_id, status, active, created_at;`,
-      [email, data.password || 'aarthi123', data.name.trim(), data.phone?.trim() || null, busId]
+      [email, data.password || crypto.randomUUID(), data.name.trim(), data.phone?.trim() || null, busId]
     );
 
     const u = res.rows[0];
@@ -478,7 +469,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
 
     const email = data.email ? data.email.trim().toLowerCase() : `${regNo}@college.edu`;
     const studentId = `STU-${regNo.toUpperCase()}`;
-    const password = data.password || '123456';
+    const password = data.password || crypto.randomUUID();
 
     // 1. Insert user
     await this.pool.query(
@@ -510,7 +501,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
       `INSERT INTO public.users (email, password_hash, name, role, student_id, status, active)
        VALUES ($1, $2, $3, 'STUDENT', $4, $5, true)
        ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, status = EXCLUDED.status;`,
-      [email, student.password || '123456', student.name, studentId, student.status || 'APPROVED']
+      [email, student.password || crypto.randomUUID(), student.name, studentId, student.status || 'APPROVED']
     );
 
     const res = await this.pool.query(
