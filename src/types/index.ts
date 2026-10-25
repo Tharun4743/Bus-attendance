@@ -9,12 +9,16 @@ export interface User {
   email: string;
   password?: string;
   name: string;
+  phone?: string;
   role: Role;
   assignedBusId?: string;
+  busNumber?: string;
+  routeName?: string;
   studentId?: string;
   status?: StudentApprovalStatus;
   approved?: boolean;
   active?: boolean;
+  createdAt?: string;
 }
 
 export interface Student {

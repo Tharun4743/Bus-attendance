@@ -14,11 +14,13 @@ export const BusesManagement: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingBus, setEditingBus] = useState<Bus | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Form Fields
   const [busNumber, setBusNumber] = useState<string>('');
   const [routeName, setRouteName] = useState<string>('');
+  const [capacity, setCapacity] = useState<number>(60);
   const [inchargeId, setInchargeId] = useState<string>('');
   const [active, setActive] = useState<boolean>(true);
 
@@ -45,6 +47,7 @@ export const BusesManagement: React.FC = () => {
     setEditingBus(null);
     setBusNumber('');
     setRouteName('');
+    setCapacity(60);
     setInchargeId(incharges[0]?.id || '');
     setActive(true);
     setFormError(null);
@@ -55,6 +58,7 @@ export const BusesManagement: React.FC = () => {
     setEditingBus(bus);
     setBusNumber(bus.busNumber);
     setRouteName(bus.routeName);
+    setCapacity(bus.capacity || 60);
     setInchargeId(bus.inchargeId);
     setActive(bus.active);
     setFormError(null);
@@ -76,15 +80,25 @@ export const BusesManagement: React.FC = () => {
         await api.updateBus(editingBus.id, {
           busNumber: busNumber.trim().toUpperCase(),
           routeName: routeName.trim(),
+          capacity: Number(capacity) || 60,
           inchargeId,
           active,
+        });
+        setFeedback({
+          type: 'success',
+          message: `Bus ${busNumber.toUpperCase()} updated successfully.`,
         });
       } else {
         await api.createBus({
           busNumber: busNumber.trim().toUpperCase(),
           routeName: routeName.trim(),
+          capacity: Number(capacity) || 60,
           inchargeId,
           active,
+        });
+        setFeedback({
+          type: 'success',
+          message: `Bus ${busNumber.toUpperCase()} and route "${routeName.trim()}" created successfully.`,
         });
       }
       setIsModalOpen(false);
@@ -111,13 +125,13 @@ export const BusesManagement: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#141418] rounded-2xl p-5 sm:p-6 shadow-xs border border-zinc-200/90 dark:border-[#26262e] transition-all">
         <div>
           <Badge variant="blue" className="mb-2">
-            FLEET MANAGEMENT
+            SUPER ADMIN FLEET MANAGEMENT
           </Badge>
           <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
-            Bus Fleet Management
+            Bus Fleet & Route Management
           </h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-1">
-            Configure transit routes, incharge assignments, and student capacities.
+            SuperAdmin can add buses, define routes, configure incharge assignments, and establish capacity limits.
           </p>
         </div>
 
@@ -128,9 +142,22 @@ export const BusesManagement: React.FC = () => {
           className="self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
-          <span>Add Bus</span>
+          <span>Add New Bus Route</span>
         </Button>
       </div>
+
+      {feedback && (
+        <div
+          className={`p-3.5 sm:p-4 rounded-xl border flex items-start gap-2.5 text-xs font-semibold transition-all ${
+            feedback.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-500/15 dark:border-emerald-500/30 dark:text-[#4ade80]'
+              : 'bg-rose-50 border-rose-200 text-rose-800 dark:bg-rose-500/15 dark:border-rose-500/30 dark:text-[#fb7185]'
+          }`}
+        >
+          <CheckCircle className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600 dark:text-[#4ade80]" />
+          <span>{feedback.message}</span>
+        </div>
+      )}
 
       {/* Buses Table */}
       <div className="bg-white dark:bg-[#141418] rounded-2xl shadow-xs border border-zinc-200/90 dark:border-[#26262e] overflow-hidden transition-all">
@@ -279,6 +306,20 @@ export const BusesManagement: React.FC = () => {
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+              Passenger Capacity (Seats)
+            </label>
+            <input
+              type="number"
+              min={10}
+              max={120}
+              value={capacity}
+              onChange={(e) => setCapacity(parseInt(e.target.value) || 60)}
+              className="w-full h-11 px-4 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none"
+            />
           </div>
 
           <div className="flex items-center gap-2.5 pt-2">

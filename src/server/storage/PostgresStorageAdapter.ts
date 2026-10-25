@@ -229,6 +229,137 @@ export class PostgresStorageAdapter implements StorageAdapter {
     return res.rows.length > 0;
   }
 
+  async signupIncharge(data: {
+    name: string;
+    email: string;
+    phone?: string;
+    password?: string;
+    busNumber: string;
+    routeName?: string;
+  }): Promise<User> {
+    const email = data.email.trim().toLowerCase();
+    const rawBusNo = data.busNumber.trim();
+    const busId = rawBusNo.toUpperCase().startsWith('BUS') ? rawBusNo.toUpperCase() : `BUS-${rawBusNo.toUpperCase()}`;
+    const routeName = data.routeName?.trim() || `${rawBusNo} Route`;
+
+    // 1. Upsert bus in public.buses
+    await this.pool.query(
+      `INSERT INTO public.buses (id, bus_number, route_name, capacity, active)
+       VALUES ($1, $2, $3, 60, true)
+       ON CONFLICT (id) DO UPDATE SET bus_number = EXCLUDED.bus_number, route_name = EXCLUDED.route_name;`,
+      [busId, rawBusNo, routeName]
+    );
+
+    // 2. Insert In-Charge user with PENDING approval and active = false
+    const res = await this.pool.query(
+      `INSERT INTO public.users (email, password_hash, name, phone, role, assigned_bus_id, status, active)
+       VALUES ($1, $2, $3, $4, 'INCHARGE', $5, 'PENDING', false)
+       ON CONFLICT (email) DO UPDATE SET
+         name = EXCLUDED.name,
+         phone = EXCLUDED.phone,
+         password_hash = EXCLUDED.password_hash,
+         role = 'INCHARGE',
+         assigned_bus_id = EXCLUDED.assigned_bus_id,
+         status = 'PENDING',
+         active = false
+       RETURNING id, email, name, phone, role, assigned_bus_id, status, active, created_at;`,
+      [email, data.password || 'aarthi123', data.name.trim(), data.phone?.trim() || null, busId]
+    );
+
+    const u = res.rows[0];
+    return {
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      phone: u.phone,
+      role: u.role,
+      assignedBusId: u.assigned_bus_id,
+      busNumber: rawBusNo,
+      routeName,
+      status: u.status,
+      active: u.active,
+      approved: false,
+      createdAt: u.created_at?.toISOString?.() || u.created_at,
+    };
+  }
+
+  async getPendingIncharges(): Promise<User[]> {
+    const res = await this.pool.query(
+      `SELECT u.id, u.email, u.name, u.phone, u.role, u.assigned_bus_id, u.status, u.active, u.created_at, b.bus_number, b.route_name
+       FROM public.users u
+       LEFT JOIN public.buses b ON b.id = u.assigned_bus_id
+       WHERE u.role = 'INCHARGE' AND u.status = 'PENDING'
+       ORDER BY u.created_at DESC;`
+    );
+    return res.rows.map((u) => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      phone: u.phone,
+      role: u.role,
+      assignedBusId: u.assigned_bus_id,
+      busNumber: u.bus_number || u.assigned_bus_id,
+      routeName: u.route_name || '',
+      status: u.status,
+      active: u.active,
+      approved: false,
+      createdAt: u.created_at?.toISOString?.() || u.created_at,
+    }));
+  }
+
+  async approveIncharge(userId: string, busNumber?: string): Promise<User | null> {
+    const cleanId = userId.trim();
+    const userRes = await this.pool.query(
+      `SELECT * FROM public.users WHERE id::text = $1 OR email ILIKE $1 LIMIT 1;`,
+      [cleanId]
+    );
+    if (userRes.rows.length === 0) return null;
+    const user = userRes.rows[0];
+    const busId = busNumber
+      ? (busNumber.toUpperCase().startsWith('BUS') ? busNumber.toUpperCase() : `BUS-${busNumber.toUpperCase()}`)
+      : user.assigned_bus_id;
+
+    // Approve Incharge User
+    const updatedRes = await this.pool.query(
+      `UPDATE public.users
+       SET status = 'APPROVED', active = true, assigned_bus_id = $2, updated_at = NOW()
+       WHERE id = $1
+       RETURNING id, email, name, role, assigned_bus_id, status, active;`,
+      [user.id, busId]
+    );
+
+    // Link In-charge to bus
+    if (busId) {
+      await this.pool.query(
+        `UPDATE public.buses SET incharge_id = $1, active = true WHERE id = $2 OR bus_number ILIKE $2;`,
+        [user.id, busId]
+      );
+    }
+
+    const u = updatedRes.rows[0];
+    return {
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      role: u.role,
+      assignedBusId: u.assigned_bus_id,
+      status: u.status,
+      active: u.active,
+      approved: true,
+    };
+  }
+
+  async rejectIncharge(userId: string): Promise<boolean> {
+    const cleanId = userId.trim();
+    const res = await this.pool.query(
+      `UPDATE public.users SET status = 'REJECTED', active = false, updated_at = NOW()
+       WHERE id::text = $1 OR email ILIKE $1
+       RETURNING id;`,
+      [cleanId]
+    );
+    return res.rows.length > 0;
+  }
+
   // ==========================================================================
   // 2. STUDENTS ROSTER & VERIFICATION
   // ==========================================================================
@@ -634,14 +765,30 @@ export class PostgresStorageAdapter implements StorageAdapter {
   }
 
   async createBus(bus: Omit<Bus, 'id'> & { id?: string }): Promise<Bus> {
-    const id = bus.id || `BUS${Date.now().toString().slice(-4)}`;
+    const cleanBusNo = bus.busNumber.trim().toUpperCase();
+    const id = bus.id || (cleanBusNo.startsWith('BUS') ? cleanBusNo : `BUS-${cleanBusNo}`);
     const res = await this.pool.query(
       `INSERT INTO public.buses (id, bus_number, route_name, incharge_id, capacity, active)
        VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (id) DO UPDATE SET
+         bus_number = EXCLUDED.bus_number,
+         route_name = EXCLUDED.route_name,
+         incharge_id = COALESCE(EXCLUDED.incharge_id, public.buses.incharge_id),
+         capacity = EXCLUDED.capacity,
+         active = EXCLUDED.active,
+         updated_at = NOW()
        RETURNING *;`,
-      [id, bus.busNumber, bus.routeName, bus.inchargeId || null, bus.capacity || 60, bus.active ?? true]
+      [id, cleanBusNo, bus.routeName.trim(), bus.inchargeId || null, bus.capacity || 60, bus.active ?? true]
     );
     const b = res.rows[0];
+
+    if (bus.inchargeId) {
+      await this.pool.query(
+        `UPDATE public.users SET assigned_bus_id = $1 WHERE id::text = $2;`,
+        [id, bus.inchargeId]
+      );
+    }
+
     return {
       id: b.id,
       busNumber: b.bus_number,

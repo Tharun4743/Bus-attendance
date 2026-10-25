@@ -114,6 +114,96 @@ export class MemoryStorageAdapter implements StorageAdapter {
     return this.users.some((u) => u.role === 'ADMIN');
   }
 
+  async signupIncharge(data: {
+    name: string;
+    email: string;
+    phone?: string;
+    password?: string;
+    busNumber: string;
+    routeName?: string;
+  }): Promise<User> {
+    const email = data.email.trim().toLowerCase();
+    const rawBusNo = data.busNumber.trim();
+    const busId = rawBusNo.toUpperCase().startsWith('BUS') ? rawBusNo.toUpperCase() : `BUS-${rawBusNo.toUpperCase()}`;
+
+    // Ensure bus exists in memory
+    const existingBus = this.buses.find((b) => b.id === busId || b.busNumber.toLowerCase() === rawBusNo.toLowerCase());
+    if (!existingBus) {
+      this.buses.push({
+        id: busId,
+        busNumber: rawBusNo,
+        routeName: data.routeName || `${rawBusNo} Route`,
+        inchargeId: '',
+        capacity: 60,
+        active: true,
+      });
+    }
+
+    const inchargeUser: User = {
+      id: `USR-${Date.now()}`,
+      email,
+      name: data.name.trim(),
+      phone: data.phone?.trim(),
+      password: data.password || 'aarthi123',
+      role: 'INCHARGE',
+      assignedBusId: busId,
+      busNumber: rawBusNo,
+      routeName: data.routeName || `${rawBusNo} Route`,
+      status: 'PENDING',
+      active: false,
+      approved: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    const existingIdx = this.users.findIndex((u) => u.email.toLowerCase() === email);
+    if (existingIdx !== -1) {
+      this.users[existingIdx] = inchargeUser;
+    } else {
+      this.users.push(inchargeUser);
+    }
+
+    return inchargeUser;
+  }
+
+  async getPendingIncharges(): Promise<User[]> {
+    return this.users.filter((u) => u.role === 'INCHARGE' && u.status === 'PENDING');
+  }
+
+  async approveIncharge(userId: string, busNumber?: string): Promise<User | null> {
+    const cleanId = userId.trim().toLowerCase();
+    const user = this.users.find((u) => u.id.toLowerCase() === cleanId || u.email.toLowerCase() === cleanId);
+    if (!user) return null;
+
+    const busId = busNumber
+      ? (busNumber.toUpperCase().startsWith('BUS') ? busNumber.toUpperCase() : `BUS-${busNumber.toUpperCase()}`)
+      : user.assignedBusId;
+
+    user.status = 'APPROVED';
+    user.active = true;
+    user.approved = true;
+    if (busId) user.assignedBusId = busId;
+
+    if (busId) {
+      const bus = this.buses.find((b) => b.id === busId || b.busNumber.toLowerCase() === busId.toLowerCase());
+      if (bus) {
+        bus.inchargeId = user.id;
+        bus.active = true;
+      }
+    }
+
+    return user;
+  }
+
+  async rejectIncharge(userId: string): Promise<boolean> {
+    const cleanId = userId.trim().toLowerCase();
+    const user = this.users.find((u) => u.id.toLowerCase() === cleanId || u.email.toLowerCase() === cleanId);
+    if (!user) return false;
+    user.status = 'REJECTED';
+    user.active = false;
+    user.approved = false;
+    return true;
+  }
+
   // Students
   async getStudents(filter?: {
     status?: string;
@@ -292,9 +382,26 @@ export class MemoryStorageAdapter implements StorageAdapter {
   }
 
   async createBus(bus: Omit<Bus, 'id'> & { id?: string }): Promise<Bus> {
-    const id = bus.id || `BUS${Date.now().toString().slice(-4)}`;
-    const newBus: Bus = { ...bus, id };
-    this.buses.push(newBus);
+    const cleanBusNo = bus.busNumber.trim().toUpperCase();
+    const id = bus.id || (cleanBusNo.startsWith('BUS') ? cleanBusNo : `BUS-${cleanBusNo}`);
+    const existingIdx = this.buses.findIndex((b) => b.id === id || b.busNumber.toLowerCase() === cleanBusNo.toLowerCase());
+    const newBus: Bus = {
+      id,
+      busNumber: cleanBusNo,
+      routeName: bus.routeName.trim(),
+      inchargeId: bus.inchargeId || '',
+      capacity: bus.capacity || 60,
+      active: bus.active ?? true,
+    };
+    if (existingIdx !== -1) {
+      this.buses[existingIdx] = newBus;
+    } else {
+      this.buses.push(newBus);
+    }
+    if (bus.inchargeId) {
+      const u = this.users.find((user) => user.id === bus.inchargeId);
+      if (u) u.assignedBusId = id;
+    }
     return newBus;
   }
 

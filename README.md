@@ -3,7 +3,7 @@
 # 🚌 College Bus Attendance System — Real-Time Transit & Cloud AI Presence PWA
 ### *Progressive Web Application for Morning & Evening Transit Attendance Verification, Cloud AI Face Verification (Eden AI & Vision), Geofencing & Fleet Analytics*
 
-[![Type](https://img.shields.io/badge/Type-PWA-FF6B6B?style=for-the-badge&logo=pwa&logoColor=white)](#) [![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=white)](#) [![Backend](https://img.shields.io/badge/Backend-Node.js%20%2B%20Express-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](#) [![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](#) [![Email](https://img.shields.io/badge/Mailer-Brevo%20Transactional%20API-0B996F?style=for-the-badge&logo=brevo&logoColor=white)](#) [![Media](https://img.shields.io/badge/Media-Cloudinary-3448C5?style=for-the-badge&logo=cloudinary&logoColor=white)](#) [![AI Vision](https://img.shields.io/badge/AI%20Vision-Eden%20AI%20%2B%20OpenAI-FF9900?style=for-the-badge&logo=amazonwebservices&logoColor=white)](#) [![Timezone](https://img.shields.io/badge/Timezone-Asia%2FKolkata%20(IST)-4B0082?style=for-the-badge)](#)
+[![Type](https://img.shields.io/badge/Type-PWA-FF6B6B?style=for-the-badge&logo=pwa&logoColor=white)](#) [![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=white)](#) [![Backend](https://img.shields.io/badge/Backend-Node.js%20%2B%20Express-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](#) [![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](#) [![Email](https://img.shields.io/badge/Mailer-Brevo%20Transactional%20API-0B996F?style=for-the-badge&logo=brevo&logoColor=white)](#) [![Media](https://img.shields.io/badge/Media-Cloudinary-3448C5?style=for-the-badge&logo=cloudinary&logoColor=white)](#) [![AI Vision](https://img.shields.io/badge/AI%20Vision-Eden%20AI%20(AWS%20Rekognition)-FF9900?style=for-the-badge&logo=amazonwebservices&logoColor=white)](#) [![Timezone](https://img.shields.io/badge/Timezone-Asia%2FKolkata%20(IST)-4B0082?style=for-the-badge)](#)
 
 <p align="center">
   <a href="https://github.com/Tharun4743/Bus-attendance">📦 <b>Official GitHub Repository: Tharun4743/Bus-attendance</b></a>
@@ -41,8 +41,7 @@ Educational transport departments managing fleet logistics and hundreds of stude
 ## 3. 💡 Core Architectural Modules
 
 ### 1. 🤖 Cloud AI Face Verification Engine (`src/lib/faceVerification.ts`)
-* **Eden AI Universal Face Compare:** Direct integration with `https://api.edenai.run/v2/image/face_compare` leveraging top computer vision providers (**Amazon Rekognition** and **Face++**) to compare the student's official registered portrait with their live camera selfie.
-* **OpenAI Vision API:** Multi-modal facial comparison via `gpt-4o-mini` vision analysis.
+* **Eden AI Universal Face Compare:** Direct integration with `https://api.edenai.run/v2/image/face_compare` strictly utilizing `process.env.EDENAI_API_KEY` to leverage top computer vision providers (**Amazon Rekognition** and **Face++**) to compare the student's official registered portrait with their live camera selfie.
 * **Resilient Perceptual Fallback:** Mathematical histogram and structural analysis ensuring 100% service uptime even if external cloud API credits are exhausted.
 * **Zero Local Models:** Completely eliminated heavy client-side `@vladmandic/face-api` and binary model weights. Production bundle reduced from **2.36 MB down to 1.02 MB** (over 56% size reduction!).
 
@@ -82,7 +81,6 @@ graph TD
     API --> Brevo["Brevo API v3 (6-Digit OTP & Password Reset)"]
     API --> Cloudinary["Cloudinary API (Signed Media Uploads)"]
     API --> EdenAI["Eden AI (AWS Rekognition / Face++ Face Compare)"]
-    API --> OpenAI["OpenAI Vision API (Multi-Modal Face Verification)"]
     API --> DB[("Supabase PostgreSQL (Tables, RLS, Indexes)")]
 ```
 
@@ -166,8 +164,7 @@ cp .env.example .env
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud namespace | `your-cloud-name` |
 | `CLOUDINARY_API_KEY` | Cloudinary public API key | `your-cloudinary-api-key` |
 | `CLOUDINARY_API_SECRET` | Cloudinary private API secret | `your-cloudinary-api-secret` |
-| `EDENAI_API_KEY` | Eden AI Live API Key for AWS Rekognition & Face++ | `your_edenai_api_key_here` |
-| `OPENAI_API_KEY` | OpenAI API Key for GPT-4o Vision comparison | `your_openai_api_key_here` |
+| `EDENAI_API_KEY` | Eden AI Live API Key strictly used for AWS Rekognition & Face++ comparison | `your_edenai_api_key_here` |
 | `GROQ_API_KEYS` | Groq API Keys (comma-separated) for fast LLM inference | `your_groq_api_keys_here` |
 | `DEFAULT_CAMPUS_LAT` | Campus reference latitude for geofence validation | `10.9572` |
 | `DEFAULT_CAMPUS_LNG` | Campus reference longitude for geofence validation | `78.0766` |

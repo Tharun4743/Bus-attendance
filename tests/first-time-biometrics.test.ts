@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -8,6 +8,20 @@ import { faceVerificationEngine } from '../src/lib/faceVerification';
 
 describe('⚡ 3-Pose Biometric Calibration & Supabase PostgreSQL Persistence Circuit', () => {
   const storage = getStorage();
+  const testStudentId = 'STU-TESTVITEST01';
+  const testEmail = 'test.vitest@college.edu';
+
+  afterAll(async () => {
+    // Clean up temporary test student from Supabase PostgreSQL
+    try {
+      if ('pool' in (storage as any)) {
+        await (storage as any).pool.query("DELETE FROM public.students WHERE id = $1", [testStudentId]);
+        await (storage as any).pool.query("DELETE FROM public.users WHERE email = $1", [testEmail]);
+      }
+    } catch (e) {
+      // Ignore cleanup error
+    }
+  });
 
   it('Circuit 1: Cloudinary Media Pipeline is configured with new isolated cloud', () => {
     expect(cloudinaryPipeline.isConfigured()).toBe(true);
@@ -19,10 +33,23 @@ describe('⚡ 3-Pose Biometric Calibration & Supabase PostgreSQL Persistence Cir
   });
 
   it('Circuit 2: Supabase PostgreSQL stores and updates 3-angle biometric vectors', async () => {
-    // 1. Fetch target student
-    const student = await storage.getStudentById('STU-24IT001');
+    // 1. Create or fetch dedicated test student
+    let student = await storage.getStudentById(testStudentId);
+    if (!student) {
+      student = await storage.createStudent({
+        name: 'Vitest Test Commuter',
+        registerNumber: 'TESTVITEST01',
+        email: testEmail,
+        phone: '+91 9876543210',
+        busId: 'BUS06',
+        role: 'STUDENT',
+        status: 'APPROVED',
+        approved: true,
+        active: true,
+      });
+    }
     expect(student).toBeDefined();
-    expect(student?.id).toBe('STU-24IT001');
+    expect(student?.id).toBe(testStudentId);
 
     // 2. Generate synthetic normalized 128-D multi-pose calibration vectors
     const generateNormalizedVector = (seed: number): number[] => {
@@ -41,8 +68,8 @@ describe('⚡ 3-Pose Biometric Calibration & Supabase PostgreSQL Persistence Cir
     const leftPose = generateNormalizedVector(43);
     const rightPose = generateNormalizedVector(44);
     const nowIso = new Date().toISOString();
-    const testPhotoUrl = 'https://res.cloudinary.com/nr1r5044/image/upload/v1/bus-attendance/profiles/STU-24IT001/portrait.jpg';
-    const testPublicId = 'bus-attendance/profiles/STU-24IT001/portrait';
+    const testPhotoUrl = 'https://res.cloudinary.com/nr1r5044/image/upload/v1/bus-attendance/test-check/sample.jpg';
+    const testPublicId = 'bus-attendance/test-check/sample';
 
     // 3. Update student in Supabase PostgreSQL
     const updated = await storage.updateStudent(student!.id, {
@@ -66,7 +93,7 @@ describe('⚡ 3-Pose Biometric Calibration & Supabase PostgreSQL Persistence Cir
     expect(updated?.faceDescriptorRight?.length).toBe(128);
 
     // 4. Query again to verify persistence
-    const reFetched = await storage.getStudentById('STU-24IT001');
+    const reFetched = await storage.getStudentById(testStudentId);
     expect(reFetched).toBeDefined();
     expect(reFetched?.photoUrl).toBe(testPhotoUrl);
     expect(reFetched?.faceDescriptor?.length).toBe(128);
@@ -76,7 +103,7 @@ describe('⚡ 3-Pose Biometric Calibration & Supabase PostgreSQL Persistence Cir
   });
 
   it('Circuit 3: Cloud AI Face Verification engine verifies registered student photo', async () => {
-    const student = await storage.getStudentById('STU-24IT001');
+    const student = await storage.getStudentById(testStudentId);
     expect(student?.photoUrl).toBeDefined();
 
     const res = await faceVerificationEngine.verifyFaceMatchAsync(student!.photoUrl!, student!.photoUrl!);
@@ -91,7 +118,7 @@ describe('⚡ 3-Pose Biometric Calibration & Supabase PostgreSQL Persistence Cir
 
   it('Circuit 4: Commuter Roster queries with zero reliance on JSON files', async () => {
     const allStudents = await storage.getStudents();
-    expect(allStudents.length).toBeGreaterThanOrEqual(4);
+    expect(allStudents.length).toBeGreaterThanOrEqual(1);
 
     const bus06Students = await storage.getStudentsByBusId('BUS06');
     expect(bus06Students.length).toBeGreaterThanOrEqual(1);

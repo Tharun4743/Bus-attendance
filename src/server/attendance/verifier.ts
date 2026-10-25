@@ -78,9 +78,9 @@ export class AttendanceVerifier {
       sessionId = activeDynamicSession.id;
       sessionType = activeDynamicSession.sessionType;
       isGroundMode = activeDynamicSession.attendanceMode === 'GROUND';
-      requiresGps = activeDynamicSession.verificationMethod === 'CODE_GPS' && isGroundMode;
-      targetRadius = activeDynamicSession.radiusMeters || 10;
-      maxAccuracy = activeDynamicSession.maxGpsAccuracyMeters || 20;
+      requiresGps = activeDynamicSession.verificationMethod !== 'CODE_ONLY';
+      targetRadius = activeDynamicSession.radiusMeters || (isGroundMode ? (settings.location.radiusMeters || 35) : 1000);
+      maxAccuracy = activeDynamicSession.maxGpsAccuracyMeters || (isGroundMode ? (settings.location.maxGpsAccuracyMeters || 60) : 1500);
 
 
       // 4c. Bus Isolation Security check: Student must belong to the active session bus
@@ -263,7 +263,7 @@ export class AttendanceVerifier {
         busId: student.busId,
         attendanceDate: todayDate,
         sessionType,
-        attendanceMode: 'GROUND',
+        attendanceMode: activeDynamicSession?.attendanceMode || 'GROUND',
         sessionId,
         status: 'PRESENT',
         codeUsed: req.code?.trim(),
@@ -292,7 +292,9 @@ export class AttendanceVerifier {
     } else {
       return {
         status: 'INVALID_LOCATION',
-        message: `Outside attendance boundary (${avgDistance}m away). Stay within ${targetRadius}m of ${targetName}.`,
+        message: isGroundMode
+          ? `Outside stationary bus bay boundary (${avgDistance}m away). Stay within ${targetRadius}m of ${targetName}.`
+          : `Outside travelling transit boundary (${avgDistance}m away). Allowable transit motion radius is ${targetRadius}m.`,
         distanceMeters: avgDistance,
         accuracyMeters: avgAccuracy,
       };

@@ -19,6 +19,7 @@ interface InchargeMapPickerModalProps {
   onClose: () => void;
   bus: Bus;
   initialSessionType?: SessionType;
+  initialAttendanceMode?: 'GROUND' | 'TRAVELLING';
   onSessionStarted: () => void;
 }
 
@@ -27,13 +28,15 @@ export const InchargeMapPickerModal: React.FC<InchargeMapPickerModalProps> = ({
   onClose,
   bus,
   initialSessionType = 'MORNING',
+  initialAttendanceMode = 'TRAVELLING',
   onSessionStarted,
 }) => {
   const [sessionType, setSessionType] = useState<SessionType>(initialSessionType);
+  const [attendanceMode, setAttendanceMode] = useState<'GROUND' | 'TRAVELLING'>(initialAttendanceMode);
   const [locationName, setLocationName] = useState<string>(bus.routeName || '');
   const [latitude, setLatitude] = useState<number>(0);
   const [longitude, setLongitude] = useState<number>(0);
-  const [radiusMeters, setRadiusMeters] = useState<number>(100);
+  const [radiusMeters, setRadiusMeters] = useState<number>(initialAttendanceMode === 'GROUND' ? 35 : 1000);
   const [campusLocation, setCampusLocation] = useState<{ name: string; lat: number; lon: number } | null>(null);
   const [checkpoints, setCheckpoints] = useState<CampusCheckpoint[]>([]);
   const [isLocating, setIsLocating] = useState<boolean>(false);
@@ -50,6 +53,9 @@ export const InchargeMapPickerModal: React.FC<InchargeMapPickerModalProps> = ({
     if (!isOpen) return;
 
     setErrorMsg(null);
+    const initialMode = initialAttendanceMode || 'TRAVELLING';
+    setAttendanceMode(initialMode);
+    setRadiusMeters(initialMode === 'GROUND' ? 35 : 1000);
 
     // Fetch live geofence settings and checkpoints from database
     Promise.all([
@@ -63,18 +69,17 @@ export const InchargeMapPickerModal: React.FC<InchargeMapPickerModalProps> = ({
           lat: settings.location.latitude,
           lon: settings.location.longitude,
         });
-        setLocationName(bus.routeName || settings.location.name || 'Campus Bus Bay');
+        setLocationName(bus.routeName || (initialMode === 'GROUND' ? settings.location.name : `Travelling Bus (${bus.busNumber})`));
         setLatitude(settings.location.latitude);
         setLongitude(settings.location.longitude);
-        if (settings.location.radiusMeters) {
-          setRadiusMeters(settings.location.radiusMeters);
-        }
+        const defaultR = initialMode === 'GROUND' ? (settings.location.radiusMeters || 35) : 1000;
+        setRadiusMeters(defaultR);
         if (mapInstanceRef.current && markerRef.current && circleRef.current) {
           const latlng: L.LatLngExpression = [settings.location.latitude, settings.location.longitude];
           markerRef.current.setLatLng(latlng);
           circleRef.current.setLatLng(latlng);
-          circleRef.current.setRadius(settings.location.radiusMeters || 100);
-          mapInstanceRef.current.setView(latlng, 16);
+          circleRef.current.setRadius(defaultR);
+          mapInstanceRef.current.setView(latlng, initialMode === 'GROUND' ? 17 : 14);
         }
       }
     }).catch(() => {});
@@ -248,7 +253,7 @@ export const InchargeMapPickerModal: React.FC<InchargeMapPickerModalProps> = ({
         },
         body: JSON.stringify({
           sessionType,
-          attendanceMode: 'TRAVELLING',
+          attendanceMode,
           verificationMethod: 'FACE_GPS',
           busId: bus.id,
           locationName: locationName.trim(),
@@ -410,6 +415,82 @@ export const InchargeMapPickerModal: React.FC<InchargeMapPickerModalProps> = ({
             </div>
           </div>
 
+          {/* Operational Attendance Mode Selector (Stationary vs Travelling) */}
+          <div className="space-y-2 p-4 rounded-2xl bg-zinc-50/70 dark:bg-[#181820]/70 border border-zinc-200/80 dark:border-zinc-800">
+            <div className="flex items-center justify-between">
+              <label className="block text-[11px] font-extrabold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
+                Transit Attendance Mode *
+              </label>
+              <span className="text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400">
+                {attendanceMode === 'TRAVELLING' ? '🚌 Large Radius (In Motion)' : '🛑 Strict Radius (Parked / Bus Bay)'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Option 1: Stationary / Campus Stop Mode */}
+              <button
+                type="button"
+                onClick={() => {
+                  setAttendanceMode('GROUND');
+                  setRadiusMeters(35);
+                  if (circleRef.current) circleRef.current.setRadius(35);
+                  if (mapInstanceRef.current) mapInstanceRef.current.setView([latitude, longitude], 17);
+                }}
+                className={`p-3.5 rounded-2xl border text-left transition flex items-start gap-3 cursor-pointer ${
+                  attendanceMode === 'GROUND'
+                    ? 'bg-amber-500/10 border-amber-500 ring-2 ring-amber-500/20 shadow-sm'
+                    : 'bg-white dark:bg-[#121216] border-zinc-200 dark:border-zinc-800 hover:border-zinc-300'
+                }`}
+              >
+                <div className={`p-2 rounded-xl text-lg shrink-0 ${attendanceMode === 'GROUND' ? 'bg-amber-500 text-white shadow-xs' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600'}`}>
+                  🛑
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-zinc-900 dark:text-white">Stationary / Bus Bay</span>
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 uppercase">
+                      Strict ~35m
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-snug">
+                    Bus parked at campus terminal or designated stop. Commuters must be physically at the bus door.
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 2: Travelling / En Route Mode */}
+              <button
+                type="button"
+                onClick={() => {
+                  setAttendanceMode('TRAVELLING');
+                  setRadiusMeters(1000);
+                  if (circleRef.current) circleRef.current.setRadius(1000);
+                  if (mapInstanceRef.current) mapInstanceRef.current.setView([latitude, longitude], 14);
+                }}
+                className={`p-3.5 rounded-2xl border text-left transition flex items-start gap-3 cursor-pointer ${
+                  attendanceMode === 'TRAVELLING'
+                    ? 'bg-amber-500/10 border-amber-500 ring-2 ring-amber-500/20 shadow-sm'
+                    : 'bg-white dark:bg-[#121216] border-zinc-200 dark:border-zinc-800 hover:border-zinc-300'
+                }`}
+              >
+                <div className={`p-2 rounded-xl text-lg shrink-0 ${attendanceMode === 'TRAVELLING' ? 'bg-amber-500 text-white shadow-xs' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600'}`}>
+                  🚌
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-zinc-900 dark:text-white">Travelling / Highway</span>
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 uppercase">
+                      Motion ~1000m
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-snug">
+                    Bus is in motion along route. Large perimeter absorbs vehicle velocity and mobile GPS latency.
+                  </p>
+                </div>
+              </button>
+            </div>
+          </div>
+
           {/* Location Name & Geofence Boundary Controls */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-zinc-50/60 dark:bg-[#181820]/60 p-4 rounded-2xl border border-zinc-200/80 dark:border-zinc-800">
             {/* Location Label */}
@@ -433,23 +514,30 @@ export const InchargeMapPickerModal: React.FC<InchargeMapPickerModalProps> = ({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300">
-                  Geofence Radius Ring
+                  {attendanceMode === 'TRAVELLING' ? 'Highway Motion Radius Ring' : 'Stationary Bay Radius Ring'}
                 </label>
                 <span className="text-xs font-mono font-black text-amber-600 dark:text-amber-400">
                   {radiusMeters}m
                 </span>
               </div>
 
+              {/* Dynamic Preset Chips matching current Mode */}
               <div className="flex items-center gap-1.5">
-                {[20, 50, 100, 200, 500].map((m) => (
+                {(attendanceMode === 'GROUND'
+                  ? [15, 25, 35, 50]
+                  : [500, 800, 1000, 1500, 2000]
+                ).map((m) => (
                   <button
                     key={m}
                     type="button"
-                    onClick={() => setRadiusMeters(m)}
+                    onClick={() => {
+                      setRadiusMeters(m);
+                      if (circleRef.current) circleRef.current.setRadius(m);
+                    }}
                     className={`flex-1 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                       radiusMeters === m
                         ? 'bg-amber-500 text-white shadow-sm shadow-amber-500/20'
-                        : 'bg-white dark:bg-[#101014] border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100'
+                        : 'bg-white dark:bg-[#101014] border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                     }`}
                   >
                     {m}m
@@ -457,7 +545,9 @@ export const InchargeMapPickerModal: React.FC<InchargeMapPickerModalProps> = ({
                 ))}
               </div>
               <p className="text-[10px] text-zinc-400">
-                Students within {radiusMeters} meters of the bus pin will be marked Present.
+                {attendanceMode === 'TRAVELLING'
+                  ? `Extended ~${radiusMeters}m perimeter allows commuters to mark attendance while traveling on the moving bus.`
+                  : `Strict ~${radiusMeters}m perimeter prevents students from marking attendance from classrooms or dorms.`}
               </p>
             </div>
           </div>
