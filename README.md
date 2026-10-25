@@ -164,8 +164,8 @@ cp .env.example .env
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud namespace | `your-cloud-name` |
 | `CLOUDINARY_API_KEY` | Cloudinary public API key | `your-cloudinary-api-key` |
 | `CLOUDINARY_API_SECRET` | Cloudinary private API secret | `your-cloudinary-api-secret` |
-| `EDENAI_API_KEY` | Eden AI Live API Key strictly used for AWS Rekognition & Face++ comparison | `your_edenai_api_key_here` |
-| `GROQ_API_KEYS` | Groq API Keys (comma-separated) for fast LLM inference | `your_groq_api_keys_here` |
+| `GEMINI_API_KEY` | Google Gemini Vision API Key for high-accuracy biometric verification | `your_gemini_api_key_here` |
+| `GROQ_API_KEY` | Groq Cloud Qwen 27B Vision API Key for load-balanced biometric verification | `your_groq_api_key_here` |
 | `DEFAULT_CAMPUS_LAT` | Campus reference latitude for geofence validation | `10.9572` |
 | `DEFAULT_CAMPUS_LNG` | Campus reference longitude for geofence validation | `78.0766` |
 | `DEFAULT_GEOFENCE_RADIUS_METERS`| Permissible boarding distance radius in meters | `150` |
@@ -181,7 +181,8 @@ cp .env.example .env
 * **Supabase PostgreSQL**: Live database pooler connection
 * **Brevo Account**: Verified sender email and API v3 key
 * **Cloudinary Account**: Cloud name and API credentials
-* **Eden AI Account**: API key from [Eden AI Dashboard](https://app.edenai.run/settings/api-keys)
+* **Google AI Studio**: Free API key from [aistudio.google.com](https://aistudio.google.com/app/apikey)
+* **Groq Cloud Account**: Free API key from [console.groq.com](https://console.groq.com/keys)
 
 ### Step-by-Step Setup
 ```bash

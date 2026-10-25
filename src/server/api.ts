@@ -1184,7 +1184,7 @@ apiRouter.post(
         selfieUrl = uploadRes.secureUrl;
         selfiePublicId = uploadRes.publicId;
 
-        // Cloud AI Face Verification strictly using ENV API Key (Eden AI AWS Rekognition / Face++ / Vision)
+        // Dual-Cloud Load-Balanced AI Face Verification strictly using ENV API Keys (Google Gemini 2.5 Flash & Groq Qwen Vision)
         const faceResult = await faceVerificationEngine.verifyFaceMatchAsync(
           selfieUrl,
           referencePhoto
