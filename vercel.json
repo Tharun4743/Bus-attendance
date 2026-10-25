@@ -1,21 +1,9 @@
 {
   "version": 2,
+  "framework": "vite",
+  "installCommand": "npm ci",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "crons": [
-    {
-      "path": "/api/cron/open-session",
-      "schedule": "20 11 * * *"
-    },
-    {
-      "path": "/api/cron/close-session",
-      "schedule": "25 11 * * *"
-    },
-    {
-      "path": "/api/cron/generate-report",
-      "schedule": "27 11 * * *"
-    }
-  ],
   "rewrites": [
     {
       "source": "/api/(.*)",

@@ -1,0 +1,64 @@
+name: Vercel Auto Deploy & CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    name: Build, Verify & Auto-Deploy to Vercel
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 📦 Install Dependencies
+        run: npm ci
+
+      - name: 🧪 Run System Lifecycle Tests
+        run: npm test
+
+      - name: 🧪 Run Vitest Regression Suite
+        run: npx vitest run
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+
+      - name: 🏗️ Build Production Bundle
+        run: npm run build
+
+      - name: 🚀 Auto Deploy via Vercel Deploy Hook (If Configured)
+        if: env.VERCEL_DEPLOY_HOOK != ''
+        env:
+          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          echo "Triggering Vercel Deploy Hook..."
+          curl -s -X POST "$VERCEL_DEPLOY_HOOK"
+          echo "Deploy hook triggered successfully."
+
+      - name: 🚀 Auto Deploy via Vercel CLI (If Vercel Token Configured)
+        if: env.VERCEL_TOKEN != ''
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          echo "Deploying directly to Vercel Production..."
+          if [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
+            npx vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+            npx vercel build --prod --token=$VERCEL_TOKEN
+            npx vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+          else
+            npx vercel deploy --prod --yes --token=$VERCEL_TOKEN
+          fi

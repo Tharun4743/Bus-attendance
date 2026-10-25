@@ -237,7 +237,33 @@ Once running:
 
 ---
 
-## 9. 👨‍💻 Engineering Author
+## 9. 🚀 Automated Vercel Deployment & CI/CD Pipeline
+
+The project is pre-configured for automated continuous deployment (CI/CD) to **Vercel** with zero manual build steps:
+
+### Native Vercel Integration
+1. Connect your repository (`campusvsb/Bus-attendance` or `Tharun4743/Bus-attendance`) in your [Vercel Dashboard](https://vercel.com/dashboard).
+2. Set the Framework Preset to **Vite** (automatically detected via `vercel.json`).
+3. Add your production environment variables under **Settings &rarr; Environment Variables**:
+   * `DATABASE_URL`: Supabase PostgreSQL pooled connection URI
+   * `JWT_SECRET`: Minimum 32-character cryptographic string
+   * `BREVO_API_KEY`: Brevo Transactional Email API Key
+   * `GEMINI_API_KEY`: Google Gemini Flash Vision API Key
+   * `GROQ_API_KEY`: Groq Cloud Vision API Key
+4. Every push to `main` automatically triggers an instant production deployment.
+
+### GitHub Actions Workflow (`.github/workflows/vercel-deploy.yml`)
+Every push to `main` triggers an automated GitHub Actions pipeline that:
+* Performs dependency verification via `npm ci`
+* Executes system lifecycle test suites (`npm test`)
+* Runs Vitest end-to-end regression tests (`npx vitest run`)
+* Compiles production bundles via `npm run build`
+* Optionally dispatches to Vercel Deploy Hook (`VERCEL_DEPLOY_HOOK`) or Vercel CLI (`VERCEL_TOKEN`)
+
+---
+
+## 10. 👨‍💻 Engineering Author
+
 
 <table border="0" itemscope itemtype="https://schema.org/Person">
   <tr>
