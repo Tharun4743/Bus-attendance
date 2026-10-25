@@ -124,6 +124,9 @@ describe('⚡ 3-Pose Biometric Calibration & Supabase PostgreSQL Persistence Cir
     const student = await storage.getStudentById(testStudentId);
     expect(student?.photoUrl).toBeDefined();
 
+    const prevGemini = process.env.GEMINI_API_KEY;
+    process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'ci_mock_gemini_key';
+
     const originalFetch = global.fetch;
     global.fetch = vi.fn().mockImplementation((url: string) => {
       if (typeof url === 'string' && (url.includes('googleapis.com') || url.includes('api.groq.com'))) {
@@ -181,6 +184,7 @@ describe('⚡ 3-Pose Biometric Calibration & Supabase PostgreSQL Persistence Cir
       expect(res.engine).toBeDefined();
     } finally {
       global.fetch = originalFetch;
+      process.env.GEMINI_API_KEY = prevGemini;
     }
   });
 
