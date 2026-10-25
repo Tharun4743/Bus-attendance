@@ -71,18 +71,18 @@ describe('Super Admin Bus Management & Strict Eden AI Face Verification Suite', 
     });
 
     it('strictly reads EDENAI_API_KEY from environment and ignores OPENAI_API_KEY', () => {
-      process.env.EDENAI_API_KEY = 'eden_ai_test_live_key_xyz123';
+      process.env.EDENAI_API_KEY = 'mock_test_key';
       (process.env as any).OPENAI_API_KEY = 'should_never_be_accessed';
 
       const key = faceVerificationEngine.getEdenAiApiKey();
-      expect(key).toBe('eden_ai_test_live_key_xyz123');
+      expect(key).toBe('mock_test_key');
 
       // Verify engine has no method or getter for OpenAI
       expect((faceVerificationEngine as any).getOpenAiApiKey).toBeUndefined();
     });
 
     it('invokes Eden AI face_compare API with amazon and facepp providers when EDENAI_API_KEY is present', async () => {
-      process.env.EDENAI_API_KEY = 'eden_secret_token_abc';
+      process.env.EDENAI_API_KEY = 'mock_test_key';
 
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -108,7 +108,7 @@ describe('Super Admin Bus Management & Strict Eden AI Face Verification Suite', 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       const callArgs = mockFetch.mock.calls[0];
       expect(callArgs[0]).toBe('https://api.edenai.run/v2/image/face_compare');
-      expect(callArgs[1].headers.Authorization).toBe('Bearer eden_secret_token_abc');
+      expect(callArgs[1].headers.Authorization).toBe('Bearer mock_test_key');
 
       const body = JSON.parse(callArgs[1].body);
       expect(body.providers).toBe('amazon,facepp');
@@ -122,7 +122,7 @@ describe('Super Admin Bus Management & Strict Eden AI Face Verification Suite', 
     });
 
     it('rejects match when Eden AI confidence is below threshold (< 70%)', async () => {
-      process.env.EDENAI_API_KEY = 'eden_secret_token_abc';
+      process.env.EDENAI_API_KEY = 'mock_test_key';
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -150,7 +150,7 @@ describe('Super Admin Bus Management & Strict Eden AI Face Verification Suite', 
     });
 
     it('gracefully uses fallback structural verification if cloud call fails', async () => {
-      process.env.EDENAI_API_KEY = 'eden_secret_token_abc';
+      process.env.EDENAI_API_KEY = 'mock_test_key';
 
       global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 

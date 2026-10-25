@@ -20,40 +20,7 @@ export class MemoryStorageAdapter implements StorageAdapter {
   private activeSession: ActiveSession | null = null;
   private notifications: Notification[] = [];
   private reports: FinalReport[] = [];
-  private checkpoints: CampusCheckpoint[] = [
-    {
-      id: 'CP-1',
-      name: 'Main Bus Bay & Departure Hub',
-      latitude: 10.9575,
-      longitude: 78.0770,
-      radiusMeters: 15,
-      description: 'Central student transport departure bay',
-    },
-    {
-      id: 'CP-2',
-      name: 'Campus Main Entrance Gate',
-      latitude: 10.9568,
-      longitude: 78.0758,
-      radiusMeters: 12,
-      description: 'Primary security barrier and boarding checkpoint',
-    },
-    {
-      id: 'CP-3',
-      name: 'College Ground & Sports Pavilion',
-      latitude: 10.9580,
-      longitude: 78.0780,
-      radiusMeters: 25,
-      description: 'Official evening assembly zone',
-    },
-    {
-      id: 'CP-4',
-      name: 'Central Academic Block Entrance',
-      latitude: 10.9572,
-      longitude: 78.0766,
-      radiusMeters: 15,
-      description: 'Main academic concourse',
-    },
-  ];
+  private checkpoints: CampusCheckpoint[] = [];
   private settings: AttendanceSettings = {
     sessionType: 'EVENING',
     startTime: '16:50',
@@ -144,7 +111,7 @@ export class MemoryStorageAdapter implements StorageAdapter {
       email,
       name: data.name.trim(),
       phone: data.phone?.trim(),
-      password: data.password || 'aarthi123',
+      password: data.password || '',
       role: 'INCHARGE',
       assignedBusId: busId,
       busNumber: rawBusNo,
@@ -288,7 +255,7 @@ export class MemoryStorageAdapter implements StorageAdapter {
       studentId,
       name: data.name,
       email,
-      password: data.password || '123456',
+      password: data.password || '',
       role: 'STUDENT',
       assignedBusId: data.preferredBusId,
       status: 'PENDING',

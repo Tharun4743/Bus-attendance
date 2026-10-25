@@ -12,7 +12,8 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = '0.0.0.0';
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // API routing
 app.use('/api', apiRouter);

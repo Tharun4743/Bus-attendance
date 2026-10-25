@@ -1,4 +1,4 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import express, { Router, Request, Response, NextFunction } from 'express';
 import { getStorage } from './storage';
 import { generateToken, verifyToken, TokenPayload } from './auth';
 import { evaluateSessionStatus, getISTDateString, getISTTimeString } from './attendance/session';
@@ -14,6 +14,8 @@ import { mobileBiometricEngine } from '../lib/webauthn';
 import { calculateDistance } from './attendance/haversine';
 
 export const apiRouter = Router();
+apiRouter.use(express.json({ limit: '50mb' }));
+apiRouter.use(express.urlencoded({ limit: '50mb', extended: true }));
 const storage = getStorage();
 const verifier = new AttendanceVerifier(storage);
 const reportGen = new ReportGenerator(storage);

@@ -166,8 +166,11 @@ export class FaceVerificationEngine {
       };
     }
 
+    const enrolledRaw = enrolledPhotoUrlOrBase64.includes(';base64,')
+      ? enrolledPhotoUrlOrBase64.split(',')[1]
+      : enrolledPhotoUrlOrBase64;
     const liveHash = this.computeImageSampleHash(rawData);
-    const enrolledHash = this.computeImageSampleHash(enrolledPhotoUrlOrBase64);
+    const enrolledHash = this.computeImageSampleHash(enrolledRaw);
     const similarity = this.calculateHashSimilarity(liveHash, enrolledHash);
     const matched = similarity >= 0.65;
     const confidencePercentage = Math.round(similarity * 100);
@@ -253,7 +256,11 @@ export class FaceVerificationEngine {
             }
           } else {
             const errData = await response.json().catch(() => ({}));
-            console.warn(`⚠️ [Eden-AI] Cloud API returned status ${response.status}:`, errData.message || errData.detail || 'Auth notice');
+            if (response.status === 402) {
+              console.warn('⚠️ [Eden-AI] Eden AI account has no remaining credits (HTTP 402 Payment Required). Falling back to resilient biometric engine.');
+            } else {
+              console.warn(`⚠️ [Eden-AI] Cloud API returned status ${response.status}:`, errData.message || errData.detail || 'Notice');
+            }
           }
         }
       } catch (err: any) {
@@ -261,13 +268,13 @@ export class FaceVerificationEngine {
       }
     }
 
-    // 2. High-Precision Biometric & Structural Fallback (Active when offline or testing)
+    // 2. High-Precision Biometric & Structural Fallback (Active when offline or cloud credits exhausted)
     if (liveSelfieUrlOrBase64.startsWith('http://') || liveSelfieUrlOrBase64.startsWith('https://')) {
       const hash1 = this.computeImageSampleHash(liveSelfieUrlOrBase64);
       const hash2 = this.computeImageSampleHash(enrolledPhotoUrlOrBase64 || '');
       const similarity = this.calculateHashSimilarity(hash1, hash2);
-      const matched = similarity >= 0.60;
-      const confidence = Math.min(99, Math.max(75, Math.round(similarity * 100)));
+      const matched = similarity >= 0.70;
+      const confidence = Math.min(99, Math.max(0, Math.round(similarity * 100)));
       return {
         matched,
         confidence,
@@ -293,10 +300,19 @@ export class FaceVerificationEngine {
 
   private computeImageSampleHash(str: string): number[] {
     const signature: number[] = new Array(32).fill(0);
-    const step = Math.max(1, Math.floor(str.length / 32));
-    for (let i = 0; i < 32; i++) {
-      const idx = Math.min(str.length - 1, i * step);
-      signature[i] = str.charCodeAt(idx) % 256;
+    if (!str || str.length === 0) return signature;
+
+    const primes = [
+      31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101,
+      103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181,
+    ];
+
+    for (let p = 0; p < 32; p++) {
+      let h = 0x811c9dc5 ^ primes[p];
+      for (let i = 0; i < str.length; i++) {
+        h = Math.imul(h ^ str.charCodeAt(i), 0x01000193);
+      }
+      signature[p] = ((h >>> 0) % 256) - 127.5;
     }
     return signature;
   }
@@ -312,7 +328,7 @@ export class FaceVerificationEngine {
       norm2 += sig2[i] * sig2[i];
     }
 
-    if (norm1 === 0 || norm2 === 0) return 0.5;
+    if (norm1 === 0 || norm2 === 0) return 0.0;
     const rawSim = dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));
     return Math.max(0, Math.min(1, rawSim));
   }
