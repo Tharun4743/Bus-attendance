@@ -1,4 +1,4 @@
-import { describe, it, expect, afterAll } from 'vitest';
+import { describe, it, expect, afterAll, vi } from 'vitest';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -106,14 +106,63 @@ describe('⚡ 3-Pose Biometric Calibration & Supabase PostgreSQL Persistence Cir
     const student = await storage.getStudentById(testStudentId);
     expect(student?.photoUrl).toBeDefined();
 
-    const res = await faceVerificationEngine.verifyFaceMatchAsync(student!.photoUrl!, student!.photoUrl!);
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (typeof url === 'string' && (url.includes('googleapis.com') || url.includes('api.groq.com'))) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    {
+                      text: JSON.stringify({
+                        matched: true,
+                        confidence: 95,
+                        reason: 'Enrolled photo matches reference facial landmarks perfectly.',
+                        biometricDetails: { facialStructure: 'Complete landmark correspondence', antiSpoofingPassed: true },
+                      }),
+                    },
+                  ],
+                },
+              },
+            ],
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    matched: true,
+                    confidence: 95,
+                    reason: 'Enrolled photo matches reference facial landmarks perfectly.',
+                  }),
+                },
+              },
+            ],
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+        headers: new Headers({ 'content-type': 'image/jpeg' }),
+      });
+    });
 
-    expect(res).toBeDefined();
-    expect(res.matched).toBe(true);
-    expect(typeof res.confidence).toBe('number');
-    expect(res.confidence).toBeGreaterThanOrEqual(70);
-    expect(res.confidence).toBeLessThanOrEqual(100);
-    expect(res.engine).toBeDefined();
+    try {
+      const res = await faceVerificationEngine.verifyFaceMatchAsync(student!.photoUrl!, student!.photoUrl!);
+
+      expect(res).toBeDefined();
+      expect(res.matched).toBe(true);
+      expect(typeof res.confidence).toBe('number');
+      expect(res.confidence).toBeGreaterThanOrEqual(70);
+      expect(res.confidence).toBeLessThanOrEqual(100);
+      expect(res.engine).toBeDefined();
+    } finally {
+      global.fetch = originalFetch;
+    }
   });
 
   it('Circuit 4: Commuter Roster queries with zero reliance on JSON files', async () => {

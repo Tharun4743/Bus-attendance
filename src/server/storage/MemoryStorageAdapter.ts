@@ -38,17 +38,7 @@ export class MemoryStorageAdapter implements StorageAdapter {
   };
 
   constructor() {
-    // Default constant admin for system tests
-    this.users.push({
-      id: 'ADMIN-THARUN-001',
-      name: 'Tharun',
-      email: 'tharun@gmail.com',
-      password: '474743',
-      role: 'ADMIN',
-      active: true,
-      approved: true,
-      status: 'APPROVED',
-    });
+    // Pure empty initial memory state - zero hardcoded constant users or passwords
   }
 
   // Users

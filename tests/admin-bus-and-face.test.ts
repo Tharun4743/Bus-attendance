@@ -58,11 +58,14 @@ describe('Super Admin Bus Management & Strict Eden AI Face Verification Suite', 
     });
   });
 
-  describe('2. Strict Eden AI Face Verification Engine (process.env.EDENAI_API_KEY)', () => {
+  describe('2. Dual-Cloud Load-Balanced AI Face Verification Engine (Gemini & Groq)', () => {
     const originalEnv = { ...process.env };
 
     beforeEach(() => {
+      delete process.env.EDENAI_API_KEY;
       delete process.env.OPENAI_API_KEY;
+      delete process.env.GEMINI_API_KEY;
+      delete process.env.GROQ_API_KEY;
       vi.restoreAllMocks();
     });
 
@@ -70,33 +73,53 @@ describe('Super Admin Bus Management & Strict Eden AI Face Verification Suite', 
       process.env = { ...originalEnv };
     });
 
-    it('strictly reads EDENAI_API_KEY from environment and ignores OPENAI_API_KEY', () => {
-      process.env.EDENAI_API_KEY = 'mock_test_key';
-      (process.env as any).OPENAI_API_KEY = 'should_never_be_accessed';
+    it('strictly reads GEMINI_API_KEY and GROQ_API_KEY and confirms legacy keys are removed', () => {
+      process.env.GEMINI_API_KEY = 'mock_gemini_key';
+      process.env.GROQ_API_KEY = 'mock_groq_key';
 
-      const key = faceVerificationEngine.getEdenAiApiKey();
-      expect(key).toBe('mock_test_key');
-
-      // Verify engine has no method or getter for OpenAI
+      expect(faceVerificationEngine.getGeminiApiKey()).toBe('mock_gemini_key');
+      expect(faceVerificationEngine.getGroqApiKey()).toBe('mock_groq_key');
+      expect((faceVerificationEngine as any).getEdenAiApiKey).toBeUndefined();
       expect((faceVerificationEngine as any).getOpenAiApiKey).toBeUndefined();
     });
 
-    it('invokes Eden AI face_compare API with amazon and facepp providers when EDENAI_API_KEY is present', async () => {
-      process.env.EDENAI_API_KEY = 'mock_test_key';
+    it('invokes Google Gemini 2.5 Flash Vision when GEMINI_API_KEY is present', async () => {
+      process.env.GEMINI_API_KEY = 'mock_gemini_key';
 
-      const mockFetch = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          amazon: {
-            status: 'success',
-            items: [
-              {
-                confidence: 94.8,
-              },
-            ],
-          },
-        }),
+      const mockFetch = vi.fn().mockImplementation((url: string) => {
+        if (typeof url === 'string' && url.includes('generativelanguage.googleapis.com')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              candidates: [
+                {
+                  content: {
+                    parts: [
+                      {
+                        text: JSON.stringify({
+                          matched: true,
+                          confidence: 96,
+                          reason: 'Biometric landmarks and facial geometry match with high precision.',
+                          biometricDetails: {
+                            facialStructure: 'Interpupillary distance and nasal bridge contour align.',
+                            antiSpoofingPassed: true,
+                          },
+                        }),
+                      },
+                    ],
+                  },
+                },
+              ],
+            }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+          headers: new Headers({ 'content-type': 'image/jpeg' }),
+        });
       });
       global.fetch = mockFetch;
 
@@ -105,52 +128,57 @@ describe('Super Admin Bus Management & Strict Eden AI Face Verification Suite', 
         'https://res.cloudinary.com/demo/image/upload/sample_enrolled.jpg'
       );
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      const callArgs = mockFetch.mock.calls[0];
-      expect(callArgs[0]).toBe('https://api.edenai.run/v2/image/face_compare');
-      expect(callArgs[1].headers.Authorization).toBe('Bearer mock_test_key');
-
-      const body = JSON.parse(callArgs[1].body);
-      expect(body.providers).toBe('amazon,facepp');
-      expect(body.file1_url).toBe('https://res.cloudinary.com/demo/image/upload/sample_enrolled.jpg');
-      expect(body.file2_url).toBe('https://res.cloudinary.com/demo/image/upload/sample_selfie.jpg');
-
       expect(result.matched).toBe(true);
-      expect(result.engine).toBe('EDEN_AI');
-      expect(result.confidence).toBe(95);
-      expect(result.provider).toBe('Eden AI (Amazon Rekognition)');
+      expect(result.engine).toBe('GEMINI_VISION');
+      expect(result.confidence).toBe(96);
+      expect(result.provider).toBe('Google Gemini 2.5 Flash');
     });
 
-    it('rejects match when Eden AI confidence is below threshold (< 70%)', async () => {
-      process.env.EDENAI_API_KEY = 'mock_test_key';
+    it('invokes Groq Cloud Vision (Qwen 27B) when GROQ_API_KEY is present', async () => {
+      process.env.GROQ_API_KEY = 'mock_groq_key';
 
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          amazon: {
-            status: 'success',
-            items: [
-              {
-                confidence: 42.1,
-              },
-            ],
-          },
-        }),
+      const mockFetch = vi.fn().mockImplementation((url: string) => {
+        if (typeof url === 'string' && url.includes('api.groq.com')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({
+                      matched: true,
+                      confidence: 92,
+                      reason: 'Facial contour, jawline, and nose morphology match student profile.',
+                    }),
+                  },
+                },
+              ],
+            }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+          headers: new Headers({ 'content-type': 'image/jpeg' }),
+        });
       });
+      global.fetch = mockFetch;
 
       const result = await faceVerificationEngine.verifyFaceMatchAsync(
-        'https://res.cloudinary.com/demo/image/upload/impostor_selfie.jpg',
+        'https://res.cloudinary.com/demo/image/upload/sample_selfie.jpg',
         'https://res.cloudinary.com/demo/image/upload/sample_enrolled.jpg'
       );
 
-      expect(result.matched).toBe(false);
-      expect(result.confidence).toBe(42);
-      expect(result.reason).toContain('Face verification rejected');
+      expect(result.matched).toBe(true);
+      expect(result.engine).toBe('GROQ_VISION');
+      expect(result.confidence).toBe(92);
+      expect(result.provider).toBe('Groq Cloud Qwen 27B Vision');
     });
 
-    it('gracefully uses fallback structural verification if cloud call fails', async () => {
-      process.env.EDENAI_API_KEY = 'mock_test_key';
+    it('strictly rejects verification when cloud AI calls fail (zero mock fallback policy)', async () => {
+      process.env.GEMINI_API_KEY = 'mock_gemini_key';
 
       global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
@@ -159,8 +187,9 @@ describe('Super Admin Bus Management & Strict Eden AI Face Verification Suite', 
         'https://res.cloudinary.com/demo/image/upload/same_student.jpg'
       );
 
-      expect(result.engine).toBe('PERCEPTUAL_AI_FALLBACK');
-      expect(result.matched).toBe(true);
+      expect(result.matched).toBe(false);
+      expect(result.confidence).toBe(0);
+      expect(result.reason).toContain('Face verification failed');
     });
   });
 

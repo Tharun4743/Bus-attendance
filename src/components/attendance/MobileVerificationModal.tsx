@@ -198,19 +198,17 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
               rawId: credential.id,
               signature: 'webauthn-assertion-verified',
             };
+          } else {
+            setErrorMsg('Device biometric prompt was dismissed or failed to authenticate.');
+            return;
           }
-        } catch (credErr) {
-          // If native passkey prompt dismissed or simulated, send fallback token
-          biometricPayload = {
-            credentialId: 'phone-biometric-token',
-            signature: 'phone-sensor-authenticated',
-          };
+        } catch (credErr: any) {
+          setErrorMsg(credErr.message || 'Phone biometric sensor verification failed or was cancelled.');
+          return;
         }
       } else {
-        biometricPayload = {
-          credentialId: 'phone-biometric-token',
-          signature: 'phone-sensor-authenticated',
-        };
+        setErrorMsg('Hardware biometrics (Fingerprint/FaceID) not supported on this browser. Please use Face & Location verification.');
+        return;
       }
 
       // 3. Dispatch to verify-mobile endpoint
