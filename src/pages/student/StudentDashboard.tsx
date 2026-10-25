@@ -56,18 +56,10 @@ export const StudentDashboard: React.FC = () => {
 
   const [hasAutoOpenedModal, setHasAutoOpenedModal] = useState(false);
 
-  const userKey = student?.id || user?.id || user?.studentId || '';
   const isFaceEnrolled = Boolean(
-    student?.faceDescriptor &&
-    Array.isArray(student.faceDescriptor) &&
-    student.faceDescriptor.length === 128
+    student?.photoUrl &&
+    student?.faceEnrolledAt
   );
-
-  useEffect(() => {
-    if (student && !isFaceEnrolled && userKey) {
-      localStorage.removeItem(`face_enrolled_${userKey}`);
-    }
-  }, [student, isFaceEnrolled, userKey]);
 
   // Auto-prompt first-time biometric enrollment if profile has no face descriptor
   useEffect(() => {
@@ -80,6 +72,22 @@ export const StudentDashboard: React.FC = () => {
   const handleRefresh = () => {
     setIsRefreshing(true);
     fetchStudentData();
+  };
+
+  const handleResetFace = async () => {
+    if (!window.confirm('Are you sure you want to reset your registered Face ID? You will be prompted to capture a new baseline portrait.')) {
+      return;
+    }
+    try {
+      setIsRefreshing(true);
+      await api.resetFace();
+      await fetchStudentData();
+      setIsEnrollModalOpen(true);
+    } catch (err: any) {
+      alert(err.message || 'Failed to reset Face ID');
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   if (isLoading) {
@@ -131,9 +139,20 @@ export const StudentDashboard: React.FC = () => {
         <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
           {/* Face ID Status Badge or Registration Trigger */}
           {isFaceEnrolled ? (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-xs font-bold text-emerald-700 dark:text-emerald-400">
-              <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              <span>Face ID Registered</span>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                <span>Face ID Registered</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleResetFace}
+                title="Reset registered face to capture a new photo"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-[#1f1f26] dark:hover:bg-[#282832] text-zinc-600 dark:text-zinc-300 text-xs font-bold transition active:scale-95 cursor-pointer"
+              >
+                <Camera className="w-3.5 h-3.5 text-zinc-400" />
+                <span>Re-register</span>
+              </button>
             </div>
           ) : (
             <button
@@ -302,7 +321,11 @@ export const StudentDashboard: React.FC = () => {
 
               <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-[#1e1e26] text-xs font-mono font-bold text-zinc-600 dark:text-zinc-300">
                 <MapPin className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Geofenced Boundary: 100m</span>
+                <span>
+                  {activeSession?.attendanceMode === 'TRAVELLING'
+                    ? `🚌 Highway Transit: ~${activeSession?.radiusMeters || 1000}m`
+                    : `🛑 Stationary Bay: ~${activeSession?.radiusMeters || 35}m`}
+                </span>
               </div>
             </div>
 
@@ -469,16 +492,12 @@ export const StudentDashboard: React.FC = () => {
         isOpen={isEnrollModalOpen}
         onClose={() => setIsEnrollModalOpen(false)}
         studentName={student?.name || user?.name}
-        registerNumber={student?.registerNumber || user?.studentId || ''}
-        onSuccess={(photoUrl, updatedStudent) => {
-          if (userKey) localStorage.setItem(`face_enrolled_${userKey}`, 'true');
+        onSuccess={async (_photoUrl, updatedStudent) => {
           if (updatedStudent) {
             setStudent(updatedStudent);
-          } else {
-            setStudent((prev) => (prev ? { ...prev, profilePhotoUrl: photoUrl, photoUrl, faceDescriptor: new Array(128).fill(0.1) } : prev));
           }
           setIsEnrollModalOpen(false);
-          fetchStudentData();
+          await fetchStudentData();
         }}
       />
     </div>

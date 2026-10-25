@@ -84,13 +84,20 @@ class ApiClient {
     });
   }
 
+  async getAvailableBuses(): Promise<{ success: boolean; buses: Array<{ id: string; busNumber: string; routeName: string; hasIncharge: boolean; inchargeName: string }> }> {
+    return this.request('/auth/available-buses');
+  }
+
   async requestOtp(data: {
+    role?: 'STUDENT' | 'INCHARGE';
     name: string;
-    registerNumber: string;
+    registerNumber?: string;
     email: string;
     password: string;
     phone?: string;
     preferredBusId?: string;
+    busNumber?: string;
+    routeName?: string;
   }): Promise<{ success: boolean; message: string; expiresInSeconds?: number }> {
     return this.request('/auth/signup/request-otp', {
       method: 'POST',
@@ -101,7 +108,7 @@ class ApiClient {
   async verifyOtp(
     email: string,
     otp: string
-  ): Promise<{ success: boolean; message: string; student: any }> {
+  ): Promise<{ success: boolean; message: string; role?: 'STUDENT' | 'INCHARGE'; student?: any; user?: any }> {
     return this.request('/auth/signup/verify-otp', {
       method: 'POST',
       body: JSON.stringify({ email, otp }),
@@ -168,6 +175,24 @@ class ApiClient {
     });
   }
 
+  // Admin: Bus In-Charge Approvals
+  async getPendingIncharges(): Promise<{ success: boolean; incharges: User[] }> {
+    return this.request('/admin/incharges/pending');
+  }
+
+  async approveIncharge(id: string, busNumber?: string): Promise<{ success: boolean; message: string; user: User }> {
+    return this.request(`/admin/incharges/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ busNumber }),
+    });
+  }
+
+  async rejectIncharge(id: string): Promise<{ success: boolean; message: string }> {
+    return this.request(`/admin/incharges/${id}/reject`, {
+      method: 'POST',
+    });
+  }
+
   // Attendance & Session
   async getSessionInfo(): Promise<SessionInfo> {
     return this.request<SessionInfo>('/attendance/session');
@@ -223,6 +248,13 @@ class ApiClient {
         faceDescriptorRight,
         faceEnrollmentQuality,
       }),
+    });
+  }
+
+  async resetFace(studentId?: string): Promise<{ success: boolean; message: string; student: Student }> {
+    return this.request('/attendance/reset-face', {
+      method: 'POST',
+      body: JSON.stringify({ studentId }),
     });
   }
 

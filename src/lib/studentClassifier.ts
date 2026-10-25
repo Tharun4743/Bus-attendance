@@ -82,7 +82,7 @@ export class StudentClassifierEngine {
       return true;
     } catch (err) {
       console.warn('⚠️ [StudentClassifier] Model files not present. Initializing deterministic in-memory neural weights.');
-      this.classes = ['STU-24IT001', 'STU-24IT002', 'STU-24IT003', 'STU-24IT004'];
+      this.classes = ['CLASS_0', 'CLASS_1', 'CLASS_2', 'CLASS_3'];
       const numClasses = this.classes.length;
       this.hidden1 = 64;
       this.hidden2 = 32;

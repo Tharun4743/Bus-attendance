@@ -22,7 +22,7 @@ Content-Type: application/json
 
 {
   "email": "tharunkumark4743@gmail.com",
-  "password": "{{$dotenv ADMIN_PASSWORD}}"
+  "password": "your_admin_password"
 }
 
 ### 4. Brevo Transactional Email: Request 6-Digit OTP Signup
@@ -35,7 +35,7 @@ Content-Type: application/json
   "registerNumber": "24IT101",
   "email": "campusvsb4743@gmail.com",
   "phone": "+91 9876543210",
-  "password": "{{$dotenv STUDENT_PASSWORD}}",
+  "password": "your_student_password",
   "preferredBusId": "BUS06"
 }
 

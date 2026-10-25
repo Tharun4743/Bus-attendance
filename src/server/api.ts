@@ -24,12 +24,15 @@ interface StoredOtp {
   expiresAt: number;
   attempts: number;
   signupData: {
+    role: 'STUDENT' | 'INCHARGE';
     name: string;
-    registerNumber: string;
     email: string;
     phone?: string;
     password: string;
+    registerNumber?: string;
     preferredBusId?: string;
+    busNumber?: string;
+    routeName?: string;
   };
 }
 const otpStore = new Map<string, StoredOtp>();
@@ -147,18 +150,107 @@ apiRouter.post('/auth/signup', async (req: Request, res: Response) => {
   }
 });
 
-// Request 6-digit OTP via Brevo API
+// Public helper: Get buses with assigned In-Charges for registration selection
+apiRouter.get('/auth/available-buses', async (_req: Request, res: Response) => {
+  try {
+    const buses = await storage.getBuses();
+    const users = await storage.getUsers();
+
+    const available = buses
+      .filter((b) => b.active)
+      .map((b) => {
+        const incharge = users.find(
+          (u) =>
+            u.id === b.inchargeId ||
+            (u.role === 'INCHARGE' && u.assignedBusId === b.id && u.status === 'APPROVED')
+        );
+        return {
+          id: b.id,
+          busNumber: b.busNumber,
+          routeName: b.routeName,
+          hasIncharge: Boolean(incharge),
+          inchargeName: incharge ? incharge.name : 'Pending Assignment',
+        };
+      })
+      .filter((b) => b.hasIncharge);
+
+    return res.json({ success: true, buses: available });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to fetch available buses.' });
+  }
+});
+
+// Request 6-digit OTP via Brevo API (Supports STUDENT & INCHARGE)
 apiRouter.post('/auth/signup/request-otp', async (req: Request, res: Response) => {
   try {
-    const { name, registerNumber, email, phone, password, preferredBusId } = req.body;
-    if (!name || !registerNumber || !email || !password) {
+    const { role = 'STUDENT', name, registerNumber, email, phone, password, preferredBusId, busNumber, routeName } = req.body;
+    const cleanRole = (role || 'STUDENT').toUpperCase();
+
+    if (!name || !email || !password) {
       return res.status(400).json({
-        error: 'Full Name, Register Number, Real Email, and Password are required.',
+        error: 'Full Name, Email, and Password are required.',
       });
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const cleanRegNo = registerNumber.trim().toUpperCase();
+
+    // Check if user with email already exists
+    const existingUser = await storage.getUserByEmail(cleanEmail);
+    if (existingUser) {
+      return res.status(400).json({ error: `An account with email ${cleanEmail} already exists.` });
+    }
+
+    // Role-specific validations
+    if (cleanRole === 'INCHARGE') {
+      const cleanBusNumber = (busNumber || preferredBusId || '').trim();
+      if (!cleanBusNumber) {
+        return res.status(400).json({ error: 'Bus Number is mandatory for Bus In-Charge registration.' });
+      }
+
+      // Generate cryptographic 6-digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+      otpStore.set(cleanEmail, {
+        otp,
+        expiresAt,
+        attempts: 0,
+        signupData: {
+          role: 'INCHARGE',
+          name: name.trim(),
+          email: cleanEmail,
+          phone: phone?.trim(),
+          password,
+          busNumber: cleanBusNumber,
+          routeName: routeName?.trim() || `${cleanBusNumber} Route`,
+        },
+      });
+
+      // Also persist in PostgreSQL otp_verifications table if available
+      try {
+        if ('saveOtp' in storage && typeof (storage as any).saveOtp === 'function') {
+          await (storage as any).saveOtp(cleanEmail, otp, new Date(expiresAt));
+        }
+      } catch (dbErr) {
+        console.warn('⚠️ Could not write OTP to PostgreSQL, proceeding with active memory store:', dbErr);
+      }
+
+      // Dispatch via Brevo API
+      const dispatchResult = await brevoMailer.sendOtpEmail(cleanEmail, name.trim(), otp);
+
+      return res.json({
+        success: true,
+        message: `A 6-digit verification code has been dispatched to ${cleanEmail}.`,
+        expiresInSeconds: 600,
+        emailSent: dispatchResult.success,
+      });
+    }
+
+    // Student Registration
+    const cleanRegNo = registerNumber?.trim().toUpperCase();
+    if (!cleanRegNo) {
+      return res.status(400).json({ error: 'Register Number is required for Student registration.' });
+    }
 
     // Check if student with registerNumber already exists
     const existingStudent = await storage.getStudentByRegisterNumber(cleanRegNo);
@@ -166,10 +258,37 @@ apiRouter.post('/auth/signup/request-otp', async (req: Request, res: Response) =
       return res.status(400).json({ error: `Register number ${cleanRegNo} is already registered.` });
     }
 
-    // Check if user with email already exists
-    const existingUser = await storage.getUserByEmail(cleanEmail);
-    if (existingUser) {
-      return res.status(400).json({ error: `An account with email ${cleanEmail} already exists.` });
+    // Validate preferredBusId corresponds to an existing Bus In-Charge bus
+    const cleanBusInput = (preferredBusId || busNumber || '').trim();
+    if (!cleanBusInput) {
+      return res.status(400).json({
+        error: 'Bus selection is mandatory. Students can only register for an assigned Bus In-Charge bus.',
+      });
+    }
+
+    const buses = await storage.getBuses();
+    const matchedBus = buses.find(
+      (b) =>
+        b.id.toLowerCase() === cleanBusInput.toLowerCase() ||
+        b.busNumber.toLowerCase() === cleanBusInput.toLowerCase()
+    );
+
+    if (!matchedBus) {
+      return res.status(400).json({
+        error: `Bus '${cleanBusInput}' is not recognized. Students must register for an operational Bus In-Charge bus.`,
+      });
+    }
+
+    // Verify the bus has an In-Charge associated
+    const users = await storage.getUsers();
+    const hasAssignedIncharge =
+      Boolean(matchedBus.inchargeId && matchedBus.inchargeId.length > 0) ||
+      users.some((u) => u.role === 'INCHARGE' && u.assignedBusId === matchedBus.id);
+
+    if (!hasAssignedIncharge) {
+      return res.status(400).json({
+        error: `Bus '${matchedBus.busNumber}' does not have an approved Bus In-Charge assigned yet. Please select an operational In-Charge bus.`,
+      });
     }
 
     // Generate cryptographic 6-digit OTP
@@ -181,12 +300,13 @@ apiRouter.post('/auth/signup/request-otp', async (req: Request, res: Response) =
       expiresAt,
       attempts: 0,
       signupData: {
+        role: 'STUDENT',
         name: name.trim(),
         registerNumber: cleanRegNo,
         email: cleanEmail,
         phone: phone?.trim(),
         password,
-        preferredBusId,
+        preferredBusId: matchedBus.id,
       },
     });
 
@@ -243,13 +363,48 @@ apiRouter.post('/auth/signup/verify-otp', async (req: Request, res: Response) =>
       return res.status(400).json({ error: 'Invalid verification code. Please check and try again.' });
     }
 
+    if (record.signupData.role === 'INCHARGE') {
+      const incharge = await storage.signupIncharge({
+        name: record.signupData.name,
+        email: record.signupData.email,
+        phone: record.signupData.phone,
+        password: record.signupData.password,
+        busNumber: record.signupData.busNumber || '',
+        routeName: record.signupData.routeName,
+      });
+      otpStore.delete(cleanEmail);
+
+      return res.status(201).json({
+        success: true,
+        message: `Email verified successfully! Your Bus In-Charge registration for Bus ${record.signupData.busNumber} has been submitted for Admin approval.`,
+        role: 'INCHARGE',
+        user: {
+          id: incharge.id,
+          name: incharge.name,
+          email: incharge.email,
+          role: incharge.role,
+          status: incharge.status,
+          assignedBusId: incharge.assignedBusId,
+          busNumber: incharge.busNumber,
+        },
+      });
+    }
+
     // Create student in storage
-    const student = await storage.signupStudent(record.signupData);
+    const student = await storage.signupStudent({
+      name: record.signupData.name,
+      registerNumber: record.signupData.registerNumber!,
+      email: record.signupData.email,
+      phone: record.signupData.phone,
+      password: record.signupData.password,
+      preferredBusId: record.signupData.preferredBusId,
+    });
     otpStore.delete(cleanEmail);
 
     return res.status(201).json({
       success: true,
       message: 'Email verified successfully! Your account is submitted for Admin approval.',
+      role: 'STUDENT',
       student: {
         id: student.id,
         name: student.name,
@@ -433,6 +588,33 @@ apiRouter.post('/auth/login', async (req: Request, res: Response) => {
       }
     }
 
+    if (user.role === 'INCHARGE') {
+      const status = user.status || 'PENDING';
+      const isApproved = user.approved ?? (status === 'APPROVED');
+      const isActive = user.active ?? false;
+
+      if (status === 'PENDING' || !isApproved) {
+        return res.status(403).json({
+          error: 'Your Bus In-Charge account is pending administrative approval.',
+          status: 'PENDING',
+        });
+      }
+
+      if (status === 'REJECTED') {
+        return res.status(403).json({
+          error: 'Your Bus In-Charge registration was rejected by Admin.',
+          status: 'REJECTED',
+        });
+      }
+
+      if (!isActive) {
+        return res.status(403).json({
+          error: 'Your Bus In-Charge account has been deactivated. Please contact your administrator.',
+          status: 'INACTIVE',
+        });
+      }
+    }
+
     const token = generateToken(user);
     const { password: _, ...safeUser } = user;
     return res.json({ token, user: safeUser });
@@ -504,6 +686,52 @@ apiRouter.post('/admin/approvals/:id/reject', requireAuth(['ADMIN']), async (req
     return res.json({ message: 'Student registration rejected.', student: rejected });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------
+// Admin Bus In-Charge Approval Endpoints
+// ----------------------------------------------------------------------
+apiRouter.get('/admin/incharges/pending', requireAuth(['ADMIN']), async (_req: Request, res: Response) => {
+  try {
+    const incharges = await storage.getPendingIncharges();
+    return res.json({ success: true, incharges });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to fetch pending In-Charges.' });
+  }
+});
+
+apiRouter.post('/admin/incharges/:id/approve', requireAuth(['ADMIN']), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { busNumber } = req.body;
+    const approved = await storage.approveIncharge(id, busNumber);
+    if (!approved) {
+      return res.status(404).json({ error: 'Bus In-Charge user not found.' });
+    }
+    return res.json({
+      success: true,
+      message: `Bus In-Charge ${approved.name} approved successfully.`,
+      user: approved,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to approve Bus In-Charge.' });
+  }
+});
+
+apiRouter.post('/admin/incharges/:id/reject', requireAuth(['ADMIN']), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const rejected = await storage.rejectIncharge(id);
+    if (!rejected) {
+      return res.status(404).json({ error: 'Bus In-Charge user not found.' });
+    }
+    return res.json({
+      success: true,
+      message: 'Bus In-Charge registration rejected.',
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to reject Bus In-Charge.' });
   }
 });
 
@@ -590,6 +818,21 @@ const handleStartSession = async (req: AuthRequest, res: Response) => {
     const dynamicCode = generateDynamic6DigitCode();
     const codeExpiresAt = new Date(now + 60 * 1000).toISOString();
 
+    const isTravelling = attendanceMode === 'TRAVELLING';
+    // Dual Attendance Mode Radius Architecture:
+    // Mode 1 (Travelling / En Route): Large radius (default 1000m, acceptable 100m - 3000m)
+    // Mode 2 (Stationary / Non-Travelling): Very small radius (default 35m, acceptable 10m - 100m)
+    let finalRadius: number;
+    let finalMaxGpsAccuracy: number;
+
+    if (isTravelling) {
+      finalRadius = Number(radiusMeters) > 0 ? Number(radiusMeters) : 1000;
+      finalMaxGpsAccuracy = Number(maxGpsAccuracyMeters) > 0 ? Number(maxGpsAccuracyMeters) : 1500;
+    } else {
+      finalRadius = Number(radiusMeters) > 0 ? Math.min(Number(radiusMeters), 100) : (settings.location.radiusMeters || 35);
+      finalMaxGpsAccuracy = Number(maxGpsAccuracyMeters) > 0 ? Math.min(Number(maxGpsAccuracyMeters), 100) : (settings.location.maxGpsAccuracyMeters || 60);
+    }
+
     const activeSession = await storage.saveActiveSession({
       id: sessionId,
       sessionType: sessionType as any,
@@ -601,10 +844,10 @@ const handleStartSession = async (req: AuthRequest, res: Response) => {
       currentCode: dynamicCode,
       codeIssuedAt: nowIso,
       codeExpiresAt,
-      radiusMeters: Number(radiusMeters) || settings.location.radiusMeters || 10,
-      maxGpsAccuracyMeters: Number(maxGpsAccuracyMeters) || settings.location.maxGpsAccuracyMeters || 20,
+      radiusMeters: finalRadius,
+      maxGpsAccuracyMeters: finalMaxGpsAccuracy,
       location: {
-        type: attendanceMode === 'TRAVELLING' ? 'ADMIN_DYNAMIC' : 'FIXED',
+        type: isTravelling ? 'ADMIN_DYNAMIC' : 'FIXED',
         name: locName,
         latitude: locationLat,
         longitude: locationLon,
@@ -756,7 +999,11 @@ apiRouter.post(
         `bus-attendance/profiles/${studentId}`
       );
 
-      const enrolledUrl = uploadRes.secureUrl || selfieBase64;
+      if (!uploadRes.success || !uploadRes.secureUrl) {
+        return res.status(500).json({ error: uploadRes.error || 'Failed to upload photo to Cloudinary.' });
+      }
+
+      const enrolledUrl = uploadRes.secureUrl;
       const enrolledPublicId = uploadRes.publicId;
 
       const updated = await storage.updateStudent(student.id, {
@@ -779,6 +1026,42 @@ apiRouter.post(
       });
     } catch (err: any) {
       return res.status(500).json({ error: err.message || 'Face enrollment failed.' });
+    }
+  }
+);
+
+apiRouter.post(
+  '/attendance/reset-face',
+  requireAuth(['STUDENT', 'ADMIN']),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const studentId = req.body?.studentId || req.user!.studentId || req.user!.id;
+      let student = await storage.getStudentById(studentId);
+      if (!student && req.user!.email) {
+        student = await storage.getStudentById(req.user!.email);
+      }
+      if (!student) {
+        return res.status(404).json({ error: 'Student commuter profile not found.' });
+      }
+
+      const updated = await storage.updateStudent(student.id, {
+        photoUrl: null as any,
+        photoPublicId: null as any,
+        faceDescriptor: null as any,
+        faceDescriptorLeft: null as any,
+        faceDescriptorRight: null as any,
+        faceEnrolledAt: null as any,
+        faceEnrollmentQuality: null as any,
+      });
+
+      console.log(`🗑️ [Face-Reset] Reset Face ID for student ${student.registerNumber} (${student.name}) in Supabase PostgreSQL.`);
+      return res.json({
+        success: true,
+        message: 'Face ID reset successfully. You can now register a fresh face portrait.',
+        student: updated,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || 'Failed to reset Face ID.' });
     }
   }
 );
@@ -830,30 +1113,34 @@ apiRouter.post(
 
       // 2. Geofence Perimeter Calculation (Haversine Formula)
       const settings = await storage.getSettings();
-      const envLat = process.env.DEFAULT_CAMPUS_LAT ? Number(process.env.DEFAULT_CAMPUS_LAT) : 12.9716;
-      const envLng = process.env.DEFAULT_CAMPUS_LNG ? Number(process.env.DEFAULT_CAMPUS_LNG) : 77.5946;
-      const envRadius = process.env.DEFAULT_GEOFENCE_RADIUS_METERS ? Number(process.env.DEFAULT_GEOFENCE_RADIUS_METERS) : 150;
-
-      const targetLat = activeSession.location?.latitude ?? settings.location?.latitude ?? envLat;
-      const targetLng = activeSession.location?.longitude ?? settings.location?.longitude ?? envLng;
-      const radiusMeters = activeSession.radiusMeters || settings.location?.radiusMeters || envRadius;
+      const targetLat = activeSession.location?.latitude ?? settings.location.latitude;
+      const targetLng = activeSession.location?.longitude ?? settings.location.longitude;
+      const isTravelling = activeSession.attendanceMode === 'TRAVELLING';
+      const radiusMeters = activeSession.radiusMeters || (isTravelling ? 1000 : 35);
 
       const distance = calculateDistance(numLat, numLng, targetLat, targetLng);
 
-      // Realistic mobile GPS accuracy tolerance:
-      // Accepts sensor variance up to ±1500m (cellular/indoor Wi-Fi) if physical coordinates are within geofence!
-      const maxAcc = Math.max(activeSession.maxGpsAccuracyMeters || 1500, 1500);
+      // Mobile GPS accuracy tolerance:
+      // Accepts transit sensor variance up to ±1500m when moving; strict ±60m when stationary at campus
+      const maxAcc = isTravelling
+        ? Math.max(activeSession.maxGpsAccuracyMeters || 1500, 1500)
+        : Math.max(activeSession.maxGpsAccuracyMeters || 60, 60);
+
       if (numAcc > maxAcc && distance > radiusMeters) {
         return res.status(400).json({
           status: 'LOCATION_UNAVAILABLE',
-          message: `GPS accuracy too low (±${Math.round(numAcc)}m > ±${maxAcc}m limit). Move to an open area with clear sky and retry.`,
+          message: isTravelling
+            ? `GPS accuracy too low (±${Math.round(numAcc)}m > ±${maxAcc}m transit limit). Move to an area with clear sky and retry.`
+            : `GPS accuracy too low (±${Math.round(numAcc)}m > ±${maxAcc}m stationary boarding limit). Step closer to the bus.`,
         });
       }
 
       if (distance > radiusMeters) {
         return res.status(400).json({
           status: 'INVALID_LOCATION',
-          message: `Outside bus attendance boundary (${Math.round(distance)}m away; max allowable is ${radiusMeters}m). You must be physically at the bus boarding point.`,
+          message: isTravelling
+            ? `Outside travelling transit boundary (${Math.round(distance)}m away; transit radius is ${radiusMeters}m). Vehicle is in motion.`
+            : `Outside stationary bus bay boundary (${Math.round(distance)}m away; strict limit is ${radiusMeters}m). You must be physically at the bus boarding point.`,
           distanceMeters: distance,
         });
       }
@@ -880,19 +1167,24 @@ apiRouter.post(
           });
         }
 
-        // Archive visual presence proof to Cloudinary
+        // Archive visual presence proof strictly to Cloudinary
         const uploadRes = await cloudinaryPipeline.uploadMedia(
           selfieBase64,
           `bus-attendance/selfies/${studentId}`
         );
-        if (uploadRes.success) {
-          selfieUrl = uploadRes.secureUrl;
-          selfiePublicId = uploadRes.publicId;
+        if (!uploadRes.success || !uploadRes.secureUrl) {
+          return res.status(500).json({
+            status: 'FACE_MISMATCH',
+            message: uploadRes.error || 'Failed to archive face proof to Cloudinary.',
+          });
         }
 
-        // Cloud AI Face Verification (Eden AI AWS Rekognition / Face++ / Vision)
-        const faceResult = await faceVerificationEngine.verifyFaceMatch(
-          selfieUrl || selfieBase64,
+        selfieUrl = uploadRes.secureUrl;
+        selfiePublicId = uploadRes.publicId;
+
+        // Cloud AI Face Verification strictly using ENV API Key (Eden AI AWS Rekognition / Face++ / Vision)
+        const faceResult = await faceVerificationEngine.verifyFaceMatchAsync(
+          selfieUrl,
           referencePhoto
         );
 
@@ -1208,17 +1500,27 @@ apiRouter.get('/admin/incharges', requireAuth(['ADMIN']), async (_req: Request, 
 
 apiRouter.post('/admin/buses', requireAuth(['ADMIN']), async (req: Request, res: Response) => {
   try {
-    const { busNumber, routeName, inchargeId, active } = req.body;
+    const { busNumber, routeName, inchargeId, capacity, active } = req.body;
     if (!busNumber || !routeName) {
       return res.status(400).json({ error: 'Bus number and route name are required.' });
     }
 
+    const cleanBusNo = busNumber.trim().toUpperCase();
+    const cleanRoute = routeName.trim();
+    const busId = cleanBusNo.startsWith('BUS') ? cleanBusNo : `BUS-${cleanBusNo}`;
+
     const newBus = await storage.createBus({
-      busNumber: busNumber.trim().toUpperCase(),
-      routeName: routeName.trim(),
+      id: busId,
+      busNumber: cleanBusNo,
+      routeName: cleanRoute,
       inchargeId: inchargeId || '',
+      capacity: capacity ? Number(capacity) : 60,
       active: active !== undefined ? Boolean(active) : true,
     });
+
+    if (inchargeId) {
+      await storage.updateUser(inchargeId, { assignedBusId: newBus.id });
+    }
 
     return res.status(201).json(newBus);
   } catch (err: any) {

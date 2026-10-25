@@ -55,6 +55,7 @@ export const InchargeDashboard: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PRESENT' | 'NOT_PRESENT'>('ALL');
   const [previewSelfie, setPreviewSelfie] = useState<{ url: string; name: string; reg: string; confidence?: number | null } | null>(null);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+  const [selectedModeForModal, setSelectedModeForModal] = useState<'GROUND' | 'TRAVELLING'>('TRAVELLING');
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -233,6 +234,9 @@ export const InchargeDashboard: React.FC = () => {
                     <Radio className="w-3.5 h-3.5 animate-pulse text-emerald-200" />
                     ATTENDANCE ACTIVE • {activeSession.sessionType}
                   </span>
+                  <span className="text-xs font-mono font-bold text-amber-700 dark:text-amber-400 bg-amber-100/60 dark:bg-amber-950/40 px-2.5 py-0.5 rounded-full border border-amber-300/60 dark:border-amber-800">
+                    {activeSession.attendanceMode === 'TRAVELLING' ? '🚌 Travelling Highway Mode' : '🛑 Stationary Bus Bay Mode'}
+                  </span>
                   <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-300/60 dark:border-emerald-800">
                     📸 Face & Biometric Check Open
                   </span>
@@ -240,7 +244,10 @@ export const InchargeDashboard: React.FC = () => {
                 <div className="text-xs text-zinc-600 dark:text-zinc-300 flex items-center gap-3 pt-1">
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                    Geofence: <strong>{activeSession.radiusMeters || 100}m Radius</strong>
+                    Geofence: <strong>{activeSession.radiusMeters || (activeSession.attendanceMode === 'TRAVELLING' ? 1000 : 35)}m Radius</strong>
+                    <span className="text-zinc-400 font-normal">
+                      {activeSession.attendanceMode === 'TRAVELLING' ? '(Extended Motion Tolerance)' : '(Strict Boarding Perimeter)'}
+                    </span>
                   </span>
                   <span>•</span>
                   <span className="flex items-center gap-1 font-mono">
@@ -265,21 +272,21 @@ export const InchargeDashboard: React.FC = () => {
             </div>
           </div>
         ) : (
-          /* IDLE / CLOSED SESSION CARD */
-          <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          /* IDLE / CLOSED SESSION CARD WITH DUAL-MODE DISPATCH */
+          <div className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                   SESSION CLOSED
                 </span>
-                <span className="text-xs text-zinc-500 font-medium">Students cannot mark attendance until you start transit.</span>
+                <span className="text-xs text-zinc-500 font-medium">Choose starting mode based on whether bus is parked or travelling.</span>
               </div>
               <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-                Ready to begin boarding for {data.bus.busNumber}?
+                Ready to begin passenger boarding for {data.bus.busNumber}?
               </h3>
             </div>
 
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
               <select
                 value={sessionType}
                 onChange={(e) => setSessionType(e.target.value as 'MORNING' | 'EVENING')}
@@ -289,14 +296,32 @@ export const InchargeDashboard: React.FC = () => {
                 <option value="EVENING">Evening Transit</option>
               </select>
 
+              {/* Mode Option 1: Stationary / Bus Bay Mode (~35m) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedModeForModal('GROUND');
+                  setIsMapModalOpen(true);
+                }}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold border border-emerald-500/30 bg-emerald-50/70 hover:bg-emerald-100/70 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                title="Strict ~35m radius when bus is parked at campus terminal or designated stop"
+              >
+                <span>🛑 Stationary Bay (~35m)</span>
+              </button>
+
+              {/* Mode Option 2: Highway Transit Mode (~1000m) */}
               <Button
-                onClick={() => setIsMapModalOpen(true)}
+                onClick={() => {
+                  setSelectedModeForModal('TRAVELLING');
+                  setIsMapModalOpen(true);
+                }}
                 variant="primary"
                 size="md"
                 className="font-black bg-amber-500 hover:bg-amber-400 active:scale-95 text-white shadow-md shadow-amber-500/20"
+                title="Extended ~1000m motion radius when bus is en route"
               >
                 <MapPin className="w-4 h-4 fill-current" />
-                <span>Select Location on Map & Start</span>
+                <span>🚌 Travelling Transit (~1000m)</span>
               </Button>
             </div>
           </div>
@@ -525,6 +550,7 @@ export const InchargeDashboard: React.FC = () => {
           onClose={() => setIsMapModalOpen(false)}
           bus={data.bus}
           initialSessionType={sessionType}
+          initialAttendanceMode={selectedModeForModal}
           onSessionStarted={refreshAll}
         />
       )}

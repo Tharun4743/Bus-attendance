@@ -1,11 +1,11 @@
 -- ============================================================================
--- 🚌 COLLEGE BUS ATTENDANCE MANAGEMENT SYSTEM — DATABASE SCHEMA
--- Target Engine: PostgreSQL 15+ / Supabase
--- Features: 3-Tier RBAC, Geofencing, Dynamic Verification Codes, RLS Policies
--- Single-Click Execution Compatible with VSCode Database Client & Supabase Studio
+-- 🚌 COLLEGE BUS ATTENDANCE MANAGEMENT SYSTEM — SUPABASE POSTGRESQL SCHEMA
+-- Target Engine: PostgreSQL 15+ / Supabase Studio
+-- Features: 3-Tier RBAC, Dynamic Codes, GPS Geofencing, Cloudinary Media URLs, RLS
+-- Ready for 1-Click Execution in Supabase SQL Editor & VSCode Database Client
 -- ============================================================================
 
--- Enable UUID extension if not enabled
+-- Enable required cryptographic and UUID extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     name TEXT NOT NULL,
+    phone TEXT,
     role user_role NOT NULL DEFAULT 'STUDENT',
     assigned_bus_id TEXT,
     student_id TEXT,
@@ -81,7 +82,7 @@ CREATE TABLE IF NOT EXISTS public.buses (
 );
 
 -- ============================================================================
--- 4. STUDENTS TABLE (Commuter Roster & Verification State)
+-- 4. STUDENTS TABLE (Commuter Roster & Cloudinary Face ID Profile)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.students (
     id TEXT PRIMARY KEY,
@@ -112,7 +113,41 @@ CREATE TABLE IF NOT EXISTS public.students (
 );
 
 -- ============================================================================
--- 5. ACTIVE_SESSIONS TABLE (Transit Attendance Windows & Dynamic Codes)
+-- 5. CHECKPOINTS TABLE (Campus Transit Stops & Hubs)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.checkpoints (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    latitude DOUBLE PRECISION NOT NULL,
+    longitude DOUBLE PRECISION NOT NULL,
+    radius_meters NUMERIC NOT NULL DEFAULT 15,
+    description TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- ============================================================================
+-- 6. GEOFENCE_SETTINGS TABLE (Transit Geofence & Session Timers)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.geofence_settings (
+    id TEXT PRIMARY KEY DEFAULT 'default',
+    location_name TEXT NOT NULL DEFAULT 'VSB Engineering College Campus',
+    campus_latitude DOUBLE PRECISION NOT NULL DEFAULT 10.9572,
+    campus_longitude DOUBLE PRECISION NOT NULL DEFAULT 78.0766,
+    radius_meters NUMERIC NOT NULL DEFAULT 150,
+    max_gps_accuracy_meters NUMERIC NOT NULL DEFAULT 80,
+    start_time TEXT NOT NULL DEFAULT '16:50',
+    end_time TEXT NOT NULL DEFAULT '16:55',
+    report_time TEXT NOT NULL DEFAULT '16:57',
+    timezone TEXT NOT NULL DEFAULT 'Asia/Kolkata',
+    code_rotation_seconds INTEGER NOT NULL DEFAULT 60,
+    enforce_gps BOOLEAN NOT NULL DEFAULT true,
+    simulation_enabled BOOLEAN NOT NULL DEFAULT false,
+    simulated_time TEXT,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- ============================================================================
+-- 7. ACTIVE_SESSIONS TABLE (Live Transit Windows & Rotating Dynamic Codes)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.active_sessions (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -136,7 +171,7 @@ CREATE TABLE IF NOT EXISTS public.active_sessions (
 );
 
 -- ============================================================================
--- 6. ATTENDANCE_RECORDS TABLE (Student Boarding Logs & GPS Audits)
+-- 8. ATTENDANCE_RECORDS TABLE (Verified Transit Check-ins & Cloudinary Proofs)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.attendance_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -165,7 +200,7 @@ CREATE TABLE IF NOT EXISTS public.attendance_records (
 );
 
 -- ============================================================================
--- 7. OTP_VERIFICATIONS TABLE (Brevo 6-Digit Email OTP Handshake)
+-- 9. OTP_VERIFICATIONS TABLE (Brevo 6-Digit Email OTP Storage)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.otp_verifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -178,7 +213,7 @@ CREATE TABLE IF NOT EXISTS public.otp_verifications (
 );
 
 -- ============================================================================
--- 8. PASSWORD_RESETS TABLE (Cryptographic Token Password Recovery)
+-- 10. PASSWORD_RESETS TABLE (Cryptographic Token Password Recovery)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.password_resets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -190,41 +225,7 @@ CREATE TABLE IF NOT EXISTS public.password_resets (
 );
 
 -- ============================================================================
--- 9. GEOFENCE_SETTINGS TABLE (Transit Parameters)
--- ============================================================================
-CREATE TABLE IF NOT EXISTS public.geofence_settings (
-    id TEXT PRIMARY KEY DEFAULT 'default',
-    location_name TEXT NOT NULL DEFAULT 'VSB Engineering College Campus',
-    campus_latitude DOUBLE PRECISION NOT NULL DEFAULT 10.9572,
-    campus_longitude DOUBLE PRECISION NOT NULL DEFAULT 78.0766,
-    radius_meters NUMERIC NOT NULL DEFAULT 150,
-    max_gps_accuracy_meters NUMERIC NOT NULL DEFAULT 80,
-    start_time TEXT NOT NULL DEFAULT '16:50',
-    end_time TEXT NOT NULL DEFAULT '16:55',
-    report_time TEXT NOT NULL DEFAULT '16:57',
-    timezone TEXT NOT NULL DEFAULT 'Asia/Kolkata',
-    code_rotation_seconds INTEGER NOT NULL DEFAULT 60,
-    enforce_gps BOOLEAN NOT NULL DEFAULT true,
-    simulation_enabled BOOLEAN NOT NULL DEFAULT false,
-    simulated_time TEXT,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
-);
-
--- ============================================================================
--- 9B. CHECKPOINTS TABLE (Live Campus & Transit Waypoints)
--- ============================================================================
-CREATE TABLE IF NOT EXISTS public.checkpoints (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    latitude DOUBLE PRECISION NOT NULL,
-    longitude DOUBLE PRECISION NOT NULL,
-    radius_meters NUMERIC NOT NULL DEFAULT 15,
-    description TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
-);
-
--- ============================================================================
--- 10. NOTIFICATIONS TABLE (System Broadcasts & Commuter Alerts)
+-- 11. NOTIFICATIONS TABLE (Transit Broadcasts & Student Alerts)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -238,7 +239,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 );
 
 -- ============================================================================
--- 11. DAILY_REPORTS TABLE (Archived Transit Presence Analytics)
+-- 12. DAILY_REPORTS TABLE (Archived Presence Analytics in IST)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.daily_reports (
     id TEXT PRIMARY KEY,
@@ -255,7 +256,7 @@ CREATE TABLE IF NOT EXISTS public.daily_reports (
 );
 
 -- ============================================================================
--- 11. INDEXES FOR HIGH-THROUGHPUT QUERIES
+-- 13. INDEXES FOR HIGH-THROUGHPUT REAL-TIME QUERIES
 -- ============================================================================
 CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
 CREATE INDEX IF NOT EXISTS idx_students_reg_no ON public.students(register_number);
@@ -268,7 +269,7 @@ CREATE INDEX IF NOT EXISTS idx_otp_email ON public.otp_verifications(email, expi
 CREATE INDEX IF NOT EXISTS idx_password_resets_token ON public.password_resets(token);
 
 -- ============================================================================
--- 12. ROW-LEVEL SECURITY (RLS) POLICIES
+-- 14. ROW-LEVEL SECURITY (RLS) POLICIES
 -- ============================================================================
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
@@ -277,8 +278,12 @@ ALTER TABLE public.active_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.attendance_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.geofence_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.checkpoints ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.otp_verifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.password_resets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.daily_reports ENABLE ROW LEVEL SECURITY;
 
--- Service Role (Full Access for Backend API Worker)
+-- Service Role Full Access (API Server Backend Worker)
 DROP POLICY IF EXISTS "Service role full access users" ON public.users;
 CREATE POLICY "Service role full access users" ON public.users FOR ALL USING (true);
 
@@ -299,3 +304,22 @@ CREATE POLICY "Service role full access geofence_settings" ON public.geofence_se
 
 DROP POLICY IF EXISTS "Service role full access checkpoints" ON public.checkpoints;
 CREATE POLICY "Service role full access checkpoints" ON public.checkpoints FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Service role full access otp_verifications" ON public.otp_verifications;
+CREATE POLICY "Service role full access otp_verifications" ON public.otp_verifications FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Service role full access password_resets" ON public.password_resets;
+CREATE POLICY "Service role full access password_resets" ON public.password_resets FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Service role full access notifications" ON public.notifications;
+CREATE POLICY "Service role full access notifications" ON public.notifications FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Service role full access daily_reports" ON public.daily_reports;
+CREATE POLICY "Service role full access daily_reports" ON public.daily_reports FOR ALL USING (true);
+
+-- User Authenticated Read Access
+DROP POLICY IF EXISTS "Authenticated users view buses" ON public.buses;
+CREATE POLICY "Authenticated users view buses" ON public.buses FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Authenticated users view checkpoints" ON public.checkpoints;
+CREATE POLICY "Authenticated users view checkpoints" ON public.checkpoints FOR SELECT TO authenticated USING (true);

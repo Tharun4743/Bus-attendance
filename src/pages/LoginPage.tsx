@@ -135,7 +135,7 @@ export const LoginPage: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="student@college.edu or 24IT001"
+                  placeholder="you@college.edu or Register No."
                   className="block w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
                 />
               </div>
@@ -162,7 +162,7 @@ export const LoginPage: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   className="block w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
                 />
               </div>
@@ -186,17 +186,17 @@ export const LoginPage: React.FC = () => {
             </Button>
           </form>
 
-          {/* Student Signup Link */}
+          {/* Signup Link */}
           <div className="pt-4 border-t border-zinc-100 dark:border-[#26262e] text-center space-y-2">
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              New student riding the college bus?
+              Don't have an account?
             </p>
             <Link
               to="/signup"
               className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-zinc-200 dark:border-[#26262e] bg-zinc-100 dark:bg-[#1a1a20] hover:bg-zinc-200 dark:hover:bg-[#26262e] text-zinc-900 dark:text-white font-bold text-xs sm:text-sm transition active:scale-[0.98]"
             >
               <UserPlus className="w-4 h-4 text-emerald-600 dark:text-[#4ade80]" />
-              <span>Create Student Account</span>
+              <span>Sign Up</span>
             </Link>
           </div>
         </div>

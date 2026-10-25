@@ -19,6 +19,17 @@ export interface StorageAdapter {
   createUser(user: User): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | null>;
   hasAdmin(): Promise<boolean>;
+  signupIncharge(data: {
+    name: string;
+    email: string;
+    phone?: string;
+    password?: string;
+    busNumber: string;
+    routeName?: string;
+  }): Promise<User>;
+  getPendingIncharges(): Promise<User[]>;
+  approveIncharge(userId: string, busNumber?: string): Promise<User | null>;
+  rejectIncharge(userId: string): Promise<boolean>;
 
   // Students
   getStudents(filter?: {

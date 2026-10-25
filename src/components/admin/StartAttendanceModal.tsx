@@ -363,8 +363,11 @@ export const StartAttendanceModal: React.FC<StartAttendanceModalProps> = ({
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
-                onClick={() => setAttendanceMode('TRAVELLING')}
-                className={`p-2.5 sm:p-3 rounded-xl border text-left transition flex items-center justify-between ${
+                onClick={() => {
+                  setAttendanceMode('TRAVELLING');
+                  if (radiusMeters < 100) setRadiusMeters(1000);
+                }}
+                className={`p-2.5 sm:p-3 rounded-xl border text-left transition flex items-center justify-between cursor-pointer ${
                   attendanceMode === 'TRAVELLING'
                     ? 'border-brand-500 bg-brand-50/70 ring-1 ring-brand-500/30 shadow-sm'
                     : 'border-[#EAE2D2] hover:bg-[#FAF7F0]'
@@ -376,7 +379,7 @@ export const StartAttendanceModal: React.FC<StartAttendanceModalProps> = ({
                   </div>
                   <div>
                     <p className="text-xs font-bold text-slate-900">Travelling Bus</p>
-                    <p className="text-[10px] text-slate-500">Dynamic 6-digit code</p>
+                    <p className="text-[10px] text-slate-500">In-motion transit (~1000m)</p>
                   </div>
                 </div>
                 {attendanceMode === 'TRAVELLING' && <span className="h-2 w-2 rounded-full bg-brand-600" />}
@@ -384,8 +387,11 @@ export const StartAttendanceModal: React.FC<StartAttendanceModalProps> = ({
 
               <button
                 type="button"
-                onClick={() => setAttendanceMode('GROUND')}
-                className={`p-2.5 sm:p-3 rounded-xl border text-left transition flex items-center justify-between ${
+                onClick={() => {
+                  setAttendanceMode('GROUND');
+                  if (radiusMeters > 100) setRadiusMeters(35);
+                }}
+                className={`p-2.5 sm:p-3 rounded-xl border text-left transition flex items-center justify-between cursor-pointer ${
                   attendanceMode === 'GROUND'
                     ? 'border-slate-800 bg-slate-100 ring-1 ring-slate-800/30 shadow-sm'
                     : 'border-[#EAE2D2] hover:bg-[#FAF7F0]'
@@ -397,7 +403,7 @@ export const StartAttendanceModal: React.FC<StartAttendanceModalProps> = ({
                   </div>
                   <div>
                     <p className="text-xs font-bold text-slate-900">College Ground</p>
-                    <p className="text-[10px] text-slate-500">Campus ground geofence</p>
+                    <p className="text-[10px] text-slate-500">Strict stationary bay (~35m)</p>
                   </div>
                 </div>
                 {attendanceMode === 'GROUND' && <span className="h-2 w-2 rounded-full bg-slate-800" />}
@@ -452,40 +458,68 @@ export const StartAttendanceModal: React.FC<StartAttendanceModalProps> = ({
           </div>
 
           {/* Step 4: Bus & Radius Selection */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Target Bus
-              </label>
-              <select
-                value={selectedBusId}
-                onChange={(e) => setSelectedBusId(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-xl border border-[#EAE2D2] bg-[#FAF7F0] font-bold text-slate-800 focus:bg-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30 outline-none"
-              >
-                {buses.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.id} — {b.busNumber} ({b.routeName})
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Target Bus
+                </label>
+                <select
+                  value={selectedBusId}
+                  onChange={(e) => setSelectedBusId(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-[#EAE2D2] bg-[#FAF7F0] font-bold text-slate-800 focus:bg-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30 outline-none"
+                >
+                  {buses.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.id} — {b.busNumber} ({b.routeName})
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                Radius (Metres)
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min="3"
-                  max="100"
-                  value={radiusMeters}
-                  onChange={(e) => setRadiusMeters(parseInt(e.target.value, 10))}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-[#EAE2D2] bg-[#FAF7F0] font-mono font-bold text-slate-800 focus:bg-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30 outline-none"
-                />
-                <span className="text-[11px] font-bold text-slate-500">Meters</span>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                    {attendanceMode === 'TRAVELLING' ? 'Highway Motion Radius' : 'Stationary Bay Radius'}
+                  </label>
+                  <span className="text-xs font-mono font-bold text-brand-600">{radiusMeters}m</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="10"
+                    max="3000"
+                    value={radiusMeters}
+                    onChange={(e) => setRadiusMeters(parseInt(e.target.value, 10) || (attendanceMode === 'TRAVELLING' ? 1000 : 35))}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-[#EAE2D2] bg-[#FAF7F0] font-mono font-bold text-slate-800 focus:bg-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30 outline-none"
+                  />
+                  <span className="text-[11px] font-bold text-slate-500">Meters</span>
+                </div>
               </div>
             </div>
+
+            {/* Quick Radius Preset Chips */}
+            <div className="flex items-center gap-1.5">
+              {(attendanceMode === 'GROUND' ? [15, 25, 35, 50] : [500, 800, 1000, 1500, 2000]).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setRadiusMeters(m)}
+                  className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                    radiusMeters === m
+                      ? 'bg-brand-600 text-white shadow-xs'
+                      : 'bg-[#FAF7F0] border border-[#EAE2D2] text-slate-600 hover:bg-[#F3EFE6]'
+                  }`}
+                >
+                  {m}m
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-slate-400">
+              {attendanceMode === 'TRAVELLING'
+                ? 'Large radius (~1000m) absorbs GPS jitter and fast vehicle highway velocity.'
+                : 'Tight radius (~35m) restricts check-in strictly to passengers standing at the bus stop / campus bay.'}
+            </p>
           </div>
 
           {/* Start Action Button */}

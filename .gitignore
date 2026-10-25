@@ -38,3 +38,5 @@ lerna-debug.log*
 *.sw?
 *.tmp
 .vercel/
+scratch/
+

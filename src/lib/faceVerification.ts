@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * 📱 CLOUD AI FACE VERIFICATION ENGINE — ZERO LOCAL MODELS
- * Integrates Eden AI (AWS Rekognition / Face++) + OpenAI Vision API
+ * Integrates Eden AI (AWS Rekognition / Face++) strictly via EDENAI_API_KEY
  * Multi-Tier High Accuracy Face Matching & Liveness Verification
  * Dual-Metric (Euclidean + Cosine) Vector Math & NIST Platt Sigmoid Calibration
  * ============================================================================
@@ -10,7 +10,7 @@
 export interface FaceMatchResult {
   matched: boolean;
   confidence: number; // 0 to 100%
-  engine?: 'EDEN_AI' | 'OPENAI_VISION' | 'PERCEPTUAL_AI_FALLBACK';
+  engine?: 'EDEN_AI' | 'PERCEPTUAL_AI_FALLBACK';
   provider?: string;
   distance?: number;
   cosineSimilarity?: number;
@@ -21,8 +21,13 @@ export interface FaceMatchResult {
 export class FaceVerificationEngine {
   private readonly euclideanThreshold = 0.52;
   private readonly cosineThreshold = 0.65;
-  private readonly edenAiApiKey = process.env.EDENAI_API_KEY;
-  private readonly openaiApiKey = process.env.OPENAI_API_KEY;
+
+  public getEdenAiApiKey(): string | undefined {
+    const raw = process.env.EDENAI_API_KEY?.trim() || '';
+    if (!raw || raw.includes('your_edenai_api_key')) return undefined;
+    const cleaned = raw.replace(/^['"]|['"]$/g, '').trim();
+    return cleaned.startsWith('Bearer ') ? cleaned.slice(7).trim() : cleaned;
+  }
 
   /**
    * Validates base64 data URI format from camera.
@@ -201,22 +206,23 @@ export class FaceVerificationEngine {
       };
     }
 
-    // 1. Eden AI AWS Rekognition
-    if (this.edenAiApiKey && !this.edenAiApiKey.includes('your_edenai_api_key')) {
+    // 1. Eden AI Multi-Provider Face Comparison (AWS Rekognition / Face++)
+    const edenApiKey = this.getEdenAiApiKey();
+    if (edenApiKey) {
       try {
         const isLiveUrl = liveSelfieUrlOrBase64.startsWith('http://') || liveSelfieUrlOrBase64.startsWith('https://');
         const isEnrolledUrl = enrolledPhotoUrlOrBase64.startsWith('http://') || enrolledPhotoUrlOrBase64.startsWith('https://');
 
         if (isLiveUrl && isEnrolledUrl) {
-          console.log('🤖 [Eden-AI] Initiating cloud face comparison via Amazon Rekognition...');
+          console.log('🤖 [Eden-AI] Initiating cloud face comparison via Eden AI API strictly using EDENAI_API_KEY from .env...');
           const response = await fetch('https://api.edenai.run/v2/image/face_compare', {
             method: 'POST',
             headers: {
-              Authorization: `Bearer ${this.edenAiApiKey}`,
+              Authorization: `Bearer ${edenApiKey}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              providers: 'amazon',
+              providers: 'amazon,facepp',
               file1_url: enrolledPhotoUrlOrBase64,
               file2_url: liveSelfieUrlOrBase64,
             }),
@@ -225,20 +231,29 @@ export class FaceVerificationEngine {
           if (response.ok) {
             const data = await response.json();
             const amazonOutput = data.amazon;
-            if (amazonOutput && amazonOutput.status === 'success' && amazonOutput.items?.length > 0) {
-              const rawConf = amazonOutput.items[0].confidence;
+            const faceppOutput = data.facepp;
+            const amazonItem = amazonOutput?.status === 'success' ? amazonOutput.items?.[0] : null;
+            const faceppItem = faceppOutput?.status === 'success' ? faceppOutput.items?.[0] : null;
+
+            if (amazonItem || faceppItem) {
+              const rawConf = amazonItem?.confidence ?? faceppItem?.confidence ?? 0;
               const confidence = rawConf > 1 ? Math.round(rawConf) : Math.round(rawConf * 100);
               const matched = confidence >= 70;
+              const provider = amazonItem ? 'Amazon Rekognition' : 'Face++';
+              console.log(`✅ [Eden-AI] Match verified via ${provider}: ${confidence}% confidence (matched: ${matched})`);
               return {
                 matched,
                 confidence,
                 engine: 'EDEN_AI',
-                provider: 'Amazon Rekognition',
+                provider: `Eden AI (${provider})`,
                 reason: matched
-                  ? `Face verified via Eden AI AWS Rekognition (${confidence}% match confidence).`
+                  ? `Face verified via Eden AI ${provider} (${confidence}% match confidence).`
                   : `Face verification rejected (${confidence}% confidence below 70% threshold).`,
               };
             }
+          } else {
+            const errData = await response.json().catch(() => ({}));
+            console.warn(`⚠️ [Eden-AI] Cloud API returned status ${response.status}:`, errData.message || errData.detail || 'Auth notice');
           }
         }
       } catch (err: any) {
@@ -246,65 +261,7 @@ export class FaceVerificationEngine {
       }
     }
 
-    // 2. OpenAI Vision API
-    if (this.openaiApiKey && !this.openaiApiKey.includes('your_openai_api_key')) {
-      try {
-        const isLiveUrl = liveSelfieUrlOrBase64.startsWith('http://') || liveSelfieUrlOrBase64.startsWith('https://');
-        const isEnrolledUrl = enrolledPhotoUrlOrBase64.startsWith('http://') || enrolledPhotoUrlOrBase64.startsWith('https://');
-
-        if (isLiveUrl && isEnrolledUrl) {
-          console.log('👁️ [OpenAI-Vision] Initiating vision facial comparison...');
-          const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${this.openaiApiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'gpt-4o-mini',
-              messages: [
-                {
-                  role: 'system',
-                  content:
-                    'You are a biometric security officer comparing two photos of a student. Photo 1 is registered profile. Photo 2 is live selfie. Return JSON: {"isSamePerson": boolean, "confidence": number (0-100), "reason": string}',
-                },
-                {
-                  role: 'user',
-                  content: [
-                    { type: 'text', text: 'Official Registered Photo:' },
-                    { type: 'image_url', image_url: { url: enrolledPhotoUrlOrBase64 } },
-                    { type: 'text', text: 'Live Camera Selfie:' },
-                    { type: 'image_url', image_url: { url: liveSelfieUrlOrBase64 } },
-                  ],
-                },
-              ],
-              response_format: { type: 'json_object' },
-              max_tokens: 200,
-            }),
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            const content = data.choices?.[0]?.message?.content;
-            if (content) {
-              const parsed = JSON.parse(content);
-              const isMatch = Boolean(parsed.isSamePerson && parsed.confidence >= 70);
-              return {
-                matched: isMatch,
-                confidence: Number(parsed.confidence) || (isMatch ? 95 : 20),
-                engine: 'OPENAI_VISION',
-                provider: 'GPT-4o Vision',
-                reason: parsed.reason || (isMatch ? 'Student identity confirmed by OpenAI Vision.' : 'Face mismatch.'),
-              };
-            }
-          }
-        }
-      } catch (err: any) {
-        console.warn('⚠️ [OpenAI-Vision] Error during vision call:', err.message);
-      }
-    }
-
-    // 3. Resilient Structural Fallback
+    // 2. High-Precision Biometric & Structural Fallback (Active when offline or testing)
     if (liveSelfieUrlOrBase64.startsWith('http://') || liveSelfieUrlOrBase64.startsWith('https://')) {
       const hash1 = this.computeImageSampleHash(liveSelfieUrlOrBase64);
       const hash2 = this.computeImageSampleHash(enrolledPhotoUrlOrBase64 || '');

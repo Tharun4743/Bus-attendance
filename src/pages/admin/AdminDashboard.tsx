@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
-import { Bus, Student, SessionInfo, ActiveSession } from '../../types';
+import { Bus, Student, SessionInfo, ActiveSession, User } from '../../types';
 import { formatISTTime } from '../../utils/time';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { StatCard } from '../../components/ui/StatCard';
@@ -59,6 +60,7 @@ export const AdminDashboard: React.FC = () => {
 
   // Pending Approvals List
   const [pendingStudents, setPendingStudents] = useState<Student[]>([]);
+  const [pendingIncharges, setPendingIncharges] = useState<User[]>([]);
   const [selectedBusesForApproval, setSelectedBusesForApproval] = useState<Record<string, string>>({});
   const [isProcessingApproval, setIsProcessingApproval] = useState<string | null>(null);
 
@@ -98,11 +100,15 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Fetch Pending Student Approvals
+  // Fetch Pending Student & Incharge Approvals
   const fetchPendingApprovals = async () => {
     try {
-      const pending = await api.getPendingApprovals();
+      const [pending, incRes] = await Promise.all([
+        api.getPendingApprovals(),
+        api.getPendingIncharges(),
+      ]);
       setPendingStudents(pending || []);
+      setPendingIncharges(incRes?.incharges || []);
     } catch (err) {
       console.error('Failed to load pending approvals:', err);
     }
@@ -555,9 +561,9 @@ export const AdminDashboard: React.FC = () => {
             >
               <UserCheck className="w-3.5 h-3.5" />
               <span>Approvals</span>
-              {pendingStudents.length > 0 && (
+              {pendingStudents.length + pendingIncharges.length > 0 && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white">
-                  {pendingStudents.length}
+                  {pendingStudents.length + pendingIncharges.length}
                 </span>
               )}
             </button>
@@ -722,8 +728,25 @@ export const AdminDashboard: React.FC = () => {
 
         {/* TAB 2: PENDING APPROVALS */}
         {activeTab === 'approvals' && (
-          <div className="p-4 sm:p-6 space-y-3">
-            {pendingStudents.length === 0 ? (
+          <div className="p-4 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-zinc-50 dark:bg-[#1a1a20] border border-zinc-200 dark:border-[#26262e]">
+              <div>
+                <p className="text-xs font-bold text-zinc-900 dark:text-white">
+                  Pending Review: {pendingIncharges.length} Bus In-Charge{pendingIncharges.length === 1 ? '' : 's'}, {pendingStudents.length} Student{pendingStudents.length === 1 ? '' : 's'}
+                </p>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  Full registration details, in-charge bus assignments, and Brevo OTP statuses are managed in the Approvals Center.
+                </p>
+              </div>
+              <Link
+                to="/admin/approvals"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-xs hover:opacity-90 transition self-start sm:self-auto"
+              >
+                <span>Open Approvals Center →</span>
+              </Link>
+            </div>
+
+            {pendingStudents.length === 0 && pendingIncharges.length === 0 ? (
               <div className="text-center py-12 space-y-2">
                 <CheckCheck className="w-10 h-10 text-emerald-500 mx-auto" />
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-white">No Pending Approvals</h3>
