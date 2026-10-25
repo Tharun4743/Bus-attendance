@@ -1,9 +1,9 @@
 <div align="center">
 
 # 🚌 College Bus Attendance System — Real-Time Transit & Cloud AI Presence PWA
-### *Progressive Web Application for Morning & Evening Transit Attendance Verification, Cloud AI Face Verification (Eden AI & Vision), Geofencing & Fleet Analytics*
+### *Progressive Web Application for Morning & Evening Transit Attendance Verification, Dual-Cloud AI Face Verification (Gemini 2.5 Flash & Groq Qwen 27B Vision), WebAuthn Smartphone Biometrics, Geofencing & Fleet Analytics*
 
-[![Type](https://img.shields.io/badge/Type-PWA-FF6B6B?style=for-the-badge&logo=pwa&logoColor=white)](#) [![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=white)](#) [![Backend](https://img.shields.io/badge/Backend-Node.js%20%2B%20Express-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](#) [![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](#) [![Email](https://img.shields.io/badge/Mailer-Brevo%20Transactional%20API-0B996F?style=for-the-badge&logo=brevo&logoColor=white)](#) [![Media](https://img.shields.io/badge/Media-Cloudinary-3448C5?style=for-the-badge&logo=cloudinary&logoColor=white)](#) [![AI Vision](https://img.shields.io/badge/AI%20Vision-Eden%20AI%20(AWS%20Rekognition)-FF9900?style=for-the-badge&logo=amazonwebservices&logoColor=white)](#) [![Timezone](https://img.shields.io/badge/Timezone-Asia%2FKolkata%20(IST)-4B0082?style=for-the-badge)](#)
+[![Type](https://img.shields.io/badge/Type-PWA-FF6B6B?style=for-the-badge&logo=pwa&logoColor=white)](#) [![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=white)](#) [![Backend](https://img.shields.io/badge/Backend-Node.js%20%2B%20Express-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](#) [![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](#) [![Email](https://img.shields.io/badge/Mailer-Brevo%20Transactional%20API-0B996F?style=for-the-badge&logo=brevo&logoColor=white)](#) [![Media](https://img.shields.io/badge/Media-Cloudinary-3448C5?style=for-the-badge&logo=cloudinary&logoColor=white)](#) [![Dual-AI Vision](https://img.shields.io/badge/Dual--AI%20Vision-Gemini%202.5%20%2B%20Groq%20Qwen-4285F4?style=for-the-badge&logo=google&logoColor=white)](#) [![Biometrics](https://img.shields.io/badge/Biometrics-WebAuthn%20%2B%20128--D%20Vectors-6366F1?style=for-the-badge)](#) [![Timezone](https://img.shields.io/badge/Timezone-Asia%2FKolkata%20(IST)-4B0082?style=for-the-badge)](#)
 
 <p align="center">
   <a href="https://github.com/Tharun4743/Bus-attendance">📦 <b>Official GitHub Repository: Tharun4743/Bus-attendance</b></a>
@@ -26,13 +26,14 @@ Educational transport departments managing fleet logistics and hundreds of stude
 ---
 
 ## 2. 🔍 Solution Architecture Matrix
-| Operational Dimension | Paper Rosters & WhatsApp | On-Bus RFID Terminals | 🚌 Bus Attendance System (Cloud AI) |
+| Operational Dimension | Paper Rosters & WhatsApp | On-Bus RFID Terminals | 🚌 Bus Attendance System (Dual-Cloud AI) |
 | :--- | :---: | :---: | :---: |
 | **Hardware Equipment Cost** | ❌ None (Manual Paper) | 💸 High ($500+ per Bus) | ✅ Zero (Runs in standard web browser on existing smartphones/PCs) |
-| **Identity Verification** | ❌ None | ⚠️ Badge Swapping Possible | ✅ Cloud AI Face Compare (Amazon Rekognition / Face++ via Eden AI) |
+| **Identity Verification** | ❌ None | ⚠️ Badge Swapping Possible | ✅ Dual-Cloud AI Vision (Google Gemini 2.5 Flash + Groq Qwen 27B) |
 | **Proxy Prevention** | ❌ Trivial Buddy Punching | ⚠️ Swapping RFID Cards | ✅ Multi-Tier AI Vision Matching ($\ge 70\%$) + Dynamic Rotating Codes |
+| **Biometric Options** | ❌ None | ⚠️ RFID Card Only | ✅ Native WebAuthn Fingerprint/FaceID + 128-D Facial Embeddings |
 | **Client Overhead** | ❌ Manual | ⚠️ Dedicated Hardware | ✅ Zero Local Models (0 MB neural downloads, <50ms camera startup) |
-| **Real-Time Fleet Dashboard** | ❌ None | ⚠️ Delayed Batch Sync | ✅ Live Cloud Sync with Supabase PostgreSQL |
+| **Real-Time Fleet Dashboard** | ❌ None | ⚠️ Delayed Batch Sync | ✅ Live Cloud Sync with Supabase PostgreSQL Pooler |
 | **Timezone Precision** | ❌ Inconsistent | ⚠️ Hardware Clocks | ✅ Authoritative Indian Standard Time (`Asia/Kolkata`, UTC+5:30) |
 | **Geographic Validation** | ❌ None | ⚠️ Static Terminal Only | ✅ Haversine GPS Geofencing + Dynamic Checkpoints in PostgreSQL |
 
@@ -40,29 +41,43 @@ Educational transport departments managing fleet logistics and hundreds of stude
 
 ## 3. 💡 Core Architectural Modules
 
-### 1. 🤖 Cloud AI Face Verification Engine (`src/lib/faceVerification.ts`)
-* **Eden AI Universal Face Compare:** Direct integration with `https://api.edenai.run/v2/image/face_compare` strictly utilizing `process.env.EDENAI_API_KEY` to leverage top computer vision providers (**Amazon Rekognition** and **Face++**) to compare the student's official registered portrait with their live camera selfie.
-* **Resilient Perceptual Fallback:** Mathematical histogram and structural analysis ensuring 100% service uptime even if external cloud API credits are exhausted.
-* **Zero Local Models:** Completely eliminated heavy client-side `@vladmandic/face-api` and binary model weights. Production bundle reduced from **2.36 MB down to 1.02 MB** (over 56% size reduction!).
+### 1. 🤖 Dual-Cloud Load-Balanced AI Face Verification (`src/lib/faceVerification.ts`)
+* **Google Gemini 2.5 Flash Vision (`GEMINI_API_KEY`):** Multimodal AI vision model inspecting high-resolution biometric facial landmarks with high precision.
+* **Groq Cloud Qwen 27B Vision (`GROQ_API_KEY`):** Sub-second computer vision inference comparing facial geometry, nasal bridge contours, and jawline curvature.
+* **Intelligent 50/50 Load Balancing & Failover:** Requests alternate dynamically between Gemini and Groq. If either service hits a rate limit or spike (HTTP 429/503), the engine automatically fails over to the sibling engine in under 1 second.
+* **Anti-Spoofing & Liveness Detection:** Strictly detects and rejects mobile screen replays (moiré patterns/screen glare), photo printouts, or paper cutouts.
+* **Zero Mock Fallbacks:** In strict production mode, if both cloud AI services are unreachable, verification strictly fails with an explicit error rather than using mock string hash bypasses.
 
-### 2. 🇮🇳 Authoritative Indian Standard Time Engine (`src/utils/time.ts`)
+### 2. 📱 Native Smartphone Hardware Biometrics (`src/lib/webauthn.ts`)
+* **WebAuthn / FIDO2 Cryptographic Standard:** Allows students to mark attendance using their smartphone's native biometric sensor (**Android Fingerprint / iOS TouchID & FaceID / Windows Hello**).
+* **Cryptographic Challenge Protocol:** Server generates single-use 32-byte cryptographic challenges (`crypto.randomBytes(32)` valid for 5 minutes) signed by the device's secure hardware enclave.
+* **Zero Mock Tokens:** Enforces genuine hardware verification. Dismissed or failed prompts strictly refuse attendance.
+
+### 3. 👤 128-D Multi-Pose Facial Vector Calibration (`src/lib/faceVerification.ts`)
+* **3-Pose Profile Calibration:** Students enroll their face through three calibrated perspectives: Front-facing, Left $30^\circ$, and Right $30^\circ$.
+* **Dual-Metric Vector Geometry:** Evaluates 128-dimensional biometric embeddings using both **Euclidean Distance** ($< 0.52$) and **Cosine Similarity** ($\ge 0.65$).
+* **ISO/NIST Platt Sigmoid Score Calibration:** Calibrates distance metrics to standardized confidence percentages:
+  $$\text{Confidence} = \frac{1}{1 + e^{12.5 \cdot (\text{distance} - 0.52)}} \times 100\%$$
+* **Adaptive Rolling Vector:** Updates baseline vectors on high-confidence matches ($< 0.35$ distance, $\alpha = 0.08$) to account for natural changes (haircut, glasses, lighting) over the academic year.
+
+### 4. 🇮🇳 Authoritative Indian Standard Time Engine (`src/utils/time.ts`)
 * **Strict `Asia/Kolkata` Standardization:** All timestamps, session windows, CSV exports, in-app notifications, and audit records strictly format in IST (UTC+5:30).
 * **Deterministic Session Logic:** Attendance time windows (`16:50` to `16:55` IST) and report deadlines (`16:57` IST) evaluate using Indian Standard Time regardless of client OS or browser locale.
 
-### 3. 🗄️ Native Supabase PostgreSQL Engine (`src/server/storage/PostgresStorageAdapter.ts`)
+### 5. 🗄️ Native Supabase PostgreSQL Engine (`src/server/storage/PostgresStorageAdapter.ts`)
 * **Direct Connection Pooling:** Direct SSL connection pool via `pg.Pool` to Supabase PostgreSQL for high-speed queries.
 * **100% Live Database Persistence:** Zero static arrays, constants, or mock fallbacks. Checkpoints, buses, commuters, sessions, and attendance records are stored in PostgreSQL tables (`db/schema.sql`).
 * **Dynamic Checkpoints (`public.checkpoints`):** Custom campus waypoints and transit stops saved and managed directly by administrators from the web UI.
 
-### 4. ✉️ Brevo Transactional Email Engine (`src/lib/brevo.ts`)
+### 6. ✉️ Brevo Transactional Email Engine (`src/lib/brevo.ts`)
 * **Live 6-Digit OTP Student Registration:** Generates cryptographic 6-digit numeric OTPs with an exact 10-minute expiry window dispatched directly via the official Brevo REST API v3.
 * **Cryptographic Password Recovery:** 64-character hex reset tokens stored in PostgreSQL with short expiration timestamps dispatched via Brevo reset emails.
 
-### 5. 📍 Haversine Geofencing & 60s Dynamic Codes
+### 7. 📍 Haversine Geofencing & 60s Dynamic Codes
 * **Haversine Distance Engine:** Validates that commuters are physically within the configurable campus or bus stop radius ($\le 150\text{m}$).
 * **Rotating Dynamic Codes:** Generates dynamic 6-digit verification codes that rotate every 60 seconds on the operator/in-charge screen to prevent off-bus attendance fraud.
 
-### 6. 👥 Role-Based Access Control (RBAC)
+### 8. 👥 Role-Based Access Control (RBAC)
 * **SuperAdmin / Admin:** Fleet management, route creation, commuter approval, real-time presence audit logs, and custom checkpoint configuration.
 * **Operator / Bus In-Charge:** Session opening (Morning/Evening), live 60-second code display, student roster presence checklists, and geofence verification.
 * **Student Commuter:** Zero-model camera selfie enrollment, self-attendance marking (camera selfie + dynamic code + GPS), and transit history.
@@ -80,7 +95,8 @@ graph TD
     API --> Auth["RBAC Guard & JWT Session Engine"]
     API --> Brevo["Brevo API v3 (6-Digit OTP & Password Reset)"]
     API --> Cloudinary["Cloudinary API (Signed Media Uploads)"]
-    API --> EdenAI["Eden AI (AWS Rekognition / Face++ Face Compare)"]
+    API --> DualAI["Dual-Cloud AI Vision (Gemini 2.5 Flash + Groq Qwen Vision)"]
+    API --> WebAuthn["WebAuthn FIDO2 Biometric Challenge Engine"]
     API --> DB[("Supabase PostgreSQL (Tables, RLS, Indexes)")]
 ```
 
@@ -89,15 +105,15 @@ graph TD
 flowchart LR
     A["1. Student Signup"] --> B["2. Brevo 6-Digit OTP"]
     B --> C["3. Admin Approval"]
-    C --> D["4. Instant Face ID Enrollment"]
-    D --> E["5. Dynamic Code + GPS Attendance"]
+    C --> D["4. Instant Face & WebAuthn Enrollment"]
+    D --> E["5. Dual-Cloud AI / Biometric Attendance"]
     E --> F["6. Live Presence Dashboard (IST)"]
 ```
 
 1. **Student Registration:** Student registers with their institutional email → Server generates 6-digit cryptographic OTP → Brevo dispatches email → Student enters OTP within 10 minutes to verify.
 2. **Admin Approval:** Transport administrator reviews pending registrations in the Admin Console and assigns the commuter to their authorized bus route (e.g. `BUS06 - Dharapuram`).
-3. **Instant Face ID Enrollment:** Student captures a clean front-camera photo in <50ms without downloading any neural models → Reference portrait uploaded to Cloudinary (`bus-attendance/profiles/[student_id]`) and saved in Supabase PostgreSQL.
-4. **Transit Boarding Verification:** In-charge opens Morning or Evening session → Dynamic 60-second rotating code appears → Student enters code with live GPS and selfie scan → Eden AI (AWS Rekognition) verifies facial match → Attendance recorded in IST.
+3. **Instant Face Enrollment:** Student captures a clean front-camera photo in <50ms without downloading any neural models → Reference portrait uploaded to Cloudinary (`bus-attendance/profiles/[student_id]`) and saved in Supabase PostgreSQL along with 128-D biometric descriptor vectors.
+4. **Transit Boarding Verification:** In-charge opens Morning or Evening session → Dynamic 60-second rotating code appears → Student enters code with live GPS and selfie scan → Dual-Cloud AI Vision (Gemini 2.5 Flash or Groq Qwen 27B) verifies facial match and anti-spoofing → Attendance recorded in IST.
 
 ---
 
@@ -105,7 +121,7 @@ flowchart LR
 This project enforces a strict **Zero-Secret Protocol**:
 
 1. **Untracked Environment Isolation:**
-   - All live secrets, database URLs, Brevo keys, Cloudinary credentials, and Eden AI tokens reside strictly in local untracked `.env` files.
+   - All live secrets, database URLs, Brevo keys, Cloudinary credentials, Gemini API tokens, and Groq keys reside strictly in local untracked `.env` files.
    - `.gitignore` rigorously excludes `.env`, `.env.local`, `.env.*.local`, `*.pem`, `*.key`, and credentials.
 2. **No Hardcoded Passwords in Tracked Files:**
    - `tests/api-tests.http` uses environment variable placeholders (`{{$dotenv ADMIN_PASSWORD}}`).
@@ -123,10 +139,12 @@ Run the automated test suite across all subsystems:
 ```bash
 npx vitest run
 ```
-* **`tests/mobile-verification.test.ts` (15 tests):** Front-camera selfie format validation, cosine and euclidean vector distance comparisons, simulated assertion challenge verification, and Haversine distance geofence tolerances.
+* **`tests/admin-bus-and-face.test.ts` (8 tests):** Dual-Cloud AI Face Verification Engine (Gemini 2.5 Flash & Groq Qwen 27B Vision), 50/50 load balancing, automatic failover, and zero-mock rejection policies.
+* **`tests/mobile-verification.test.ts` (15 tests):** Front-camera selfie format validation, cosine and euclidean vector distance comparisons, WebAuthn assertion verification, and Haversine distance geofence tolerances.
 * **`tests/auth-brevo-flow.test.ts` (7 tests):** Brevo 6-digit OTP dispatch, 10-minute token expiration window, password reset token generation, and live email transmission.
-* **`tests/first-time-biometrics.test.ts` (4 tests):** Cloudinary signed URL generation, Supabase PostgreSQL persistence, Cloud AI face verification, and commuter roster queries.
-* **Result:** `26 passed (100% pass rate)`.
+* **`tests/first-time-biometrics.test.ts` (4 tests):** Cloudinary signed URL generation, Supabase PostgreSQL persistence, Dual-Cloud AI face verification, and commuter roster queries.
+* **`tests/dual-mode-attendance.test.ts` (3 tests):** Dynamic dual-radius attendance architecture, bus-in-motion mobile tracking, and campus checkpoint enforcement.
+* **Result:** `37 passed (100% pass rate in ~7s)`.
 
 ### 🧪 System Verification Suite (`tests/verify-system.ts`)
 Run the full business logic lifecycle test:
@@ -205,7 +223,7 @@ npm run dev
 
 # 6. Run automated test suites
 npm test            # System logic lifecycle tests (24 tests)
-npx vitest run      # Vitest regression circuits (26 tests)
+npx vitest run      # Vitest regression circuits (37 tests)
 npx tsc --noEmit    # TypeScript strict type-check (0 errors)
 
 # 7. Build production bundle
