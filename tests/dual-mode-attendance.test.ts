@@ -20,6 +20,16 @@ describe('⚡ Dynamic Dual-Radius Attendance Architecture Circuit', () => {
         await (storage as any).pool.query("DELETE FROM public.students WHERE id = $1", [testStudentId]);
         await (storage as any).pool.query("DELETE FROM public.users WHERE email = $1", [testEmail]);
         await (storage as any).pool.query("DELETE FROM public.active_sessions WHERE started_by = 'Test Dual Runner'");
+      } else {
+        if ('attendance' in (storage as any)) {
+          (storage as any).attendance = (storage as any).attendance.filter((a: any) => a.studentId !== testStudentId);
+        }
+        if ('students' in (storage as any)) {
+          (storage as any).students = (storage as any).students.filter((s: any) => s.id !== testStudentId);
+        }
+        if ('users' in (storage as any)) {
+          (storage as any).users = (storage as any).users.filter((u: any) => u.email !== testEmail);
+        }
       }
     } catch {
       // Ignore cleanup error
@@ -63,6 +73,18 @@ describe('⚡ Dynamic Dual-Radius Attendance Architecture Circuit', () => {
   });
 
   it('Circuit 3: AttendanceVerifier applies mode-specific radius and boundary enforcement', async () => {
+    // 0. Ensure assigned bus exists and is active
+    let bus = await storage.getBusById('BUS06');
+    if (!bus) {
+      await storage.createBus({
+        busNumber: 'BUS06',
+        routeName: 'Karur - Campus Transit',
+        inchargeId: '',
+        capacity: 50,
+        active: true,
+      });
+    }
+
     // 1. Ensure test student exists
     let student = await storage.getStudentById(testStudentId);
     if (!student) {
@@ -143,6 +165,8 @@ describe('⚡ Dynamic Dual-Radius Attendance Architecture Circuit', () => {
     // Delete today's attendance record for re-test with travelling session
     if ('pool' in (storage as any)) {
       await (storage as any).pool.query("DELETE FROM public.attendance_records WHERE student_id = $1", [testStudentId]);
+    } else if ('attendance' in (storage as any)) {
+      (storage as any).attendance = (storage as any).attendance.filter((a: any) => a.studentId !== testStudentId);
     }
 
     const travellingSession = await storage.saveActiveSession({
