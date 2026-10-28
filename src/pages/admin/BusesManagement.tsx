@@ -120,7 +120,7 @@ export const BusesManagement: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto">
+    <div className="space-y-4 max-w-[1600px] w-full mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#141418] rounded-2xl p-5 sm:p-6 shadow-xs border border-zinc-200/90 dark:border-[#26262e] transition-all">
         <div>
