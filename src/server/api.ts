@@ -82,7 +82,8 @@ apiRouter.get('/auth/setup-status', async (_req: Request, res: Response) => {
     const hasAdmin = await storage.hasAdmin();
     return res.json({ needsSetup: !hasAdmin });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    console.warn('⚠️ [/auth/setup-status] Failed to determine admin status, defaulting to needsSetup: true:', err?.message || err);
+    return res.json({ needsSetup: true });
   }
 });
 
