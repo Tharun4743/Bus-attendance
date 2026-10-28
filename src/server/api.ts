@@ -1807,7 +1807,7 @@ apiRouter.get('/admin/reports/:date', requireAuth(['ADMIN']), async (req: Reques
   }
 });
 
-apiRouter.get('/admin/notifications', requireAuth(['ADMIN']), async (_req: Request, res: Response) => {
+apiRouter.get('/admin/notifications', requireAuth(['ADMIN', 'INCHARGE', 'STUDENT']), async (_req: Request, res: Response) => {
   try {
     const notifs = await storage.getNotifications();
     const unreadCount = notifs.filter((n) => !n.read).length;
@@ -1819,7 +1819,7 @@ apiRouter.get('/admin/notifications', requireAuth(['ADMIN']), async (_req: Reque
 
 apiRouter.put(
   '/admin/notifications/:id/read',
-  requireAuth(['ADMIN']),
+  requireAuth(['ADMIN', 'INCHARGE', 'STUDENT']),
   async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
@@ -1833,11 +1833,38 @@ apiRouter.put(
 
 apiRouter.put(
   '/admin/notifications/read-all',
-  requireAuth(['ADMIN']),
+  requireAuth(['ADMIN', 'INCHARGE', 'STUDENT']),
   async (_req: Request, res: Response) => {
     try {
       await storage.markAllNotificationsAsRead();
       return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+apiRouter.delete(
+  '/admin/notifications/clear-all',
+  requireAuth(['ADMIN', 'INCHARGE', 'STUDENT']),
+  async (_req: Request, res: Response) => {
+    try {
+      await storage.clearAllNotifications();
+      return res.json({ success: true, message: 'All notifications cleared.' });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+apiRouter.delete(
+  '/admin/notifications/:id',
+  requireAuth(['ADMIN', 'INCHARGE', 'STUDENT']),
+  async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteNotification(id);
+      return res.json({ success: true, message: 'Notification deleted.' });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }

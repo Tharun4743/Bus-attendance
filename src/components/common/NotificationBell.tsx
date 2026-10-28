@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, CheckCheck, Trash2, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import { Notification } from '../../types';
@@ -15,7 +15,7 @@ export const NotificationBell: React.FC = () => {
     try {
       const res = await api.getNotifications();
       setUnreadCount(res.unreadCount);
-      setNotifications(res.notifications.slice(0, 5));
+      setNotifications(res.notifications.slice(0, 10));
     } catch (err) {
       console.error('Failed to fetch notifications:', err);
     }
@@ -24,13 +24,20 @@ export const NotificationBell: React.FC = () => {
   useEffect(() => {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 15000);
-    return () => clearInterval(interval);
+    const handleUpdate = () => fetchNotifications();
+    window.addEventListener('notifications-updated', handleUpdate);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notifications-updated', handleUpdate);
+    };
   }, []);
 
   const handleNotificationClick = async (notif: Notification) => {
     try {
-      await api.markNotificationRead(notif.id);
-      fetchNotifications();
+      if (!notif.read) {
+        await api.markNotificationRead(notif.id);
+        window.dispatchEvent(new Event('notifications-updated'));
+      }
       setIsOpen(false);
       if (notif.link) {
         navigate(notif.link);
@@ -39,6 +46,51 @@ export const NotificationBell: React.FC = () => {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleMarkAllRead = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await api.markAllNotificationsRead();
+      await fetchNotifications();
+      window.dispatchEvent(new Event('notifications-updated'));
+    } catch (err) {
+      console.error('Failed to mark all as read:', err);
+    }
+  };
+
+  const handleClearAll = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm('Clear all notifications?')) return;
+    try {
+      await api.clearAllNotifications();
+      await fetchNotifications();
+      window.dispatchEvent(new Event('notifications-updated'));
+    } catch (err) {
+      console.error('Failed to clear notifications:', err);
+    }
+  };
+
+  const handleMarkSingleRead = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    try {
+      await api.markNotificationRead(id);
+      await fetchNotifications();
+      window.dispatchEvent(new Event('notifications-updated'));
+    } catch (err) {
+      console.error('Failed to mark notification as read:', err);
+    }
+  };
+
+  const handleDeleteSingle = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    try {
+      await api.deleteNotification(id);
+      await fetchNotifications();
+      window.dispatchEvent(new Event('notifications-updated'));
+    } catch (err) {
+      console.error('Failed to delete notification:', err);
     }
   };
 
@@ -70,41 +122,94 @@ export const NotificationBell: React.FC = () => {
                   </span>
                 )}
               </div>
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  navigate('/admin/notifications');
-                }}
-                className="text-xs text-blue-600 dark:text-sky-400 font-bold hover:underline cursor-pointer"
-              >
-                View all
-              </button>
+
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={handleMarkAllRead}
+                    title="Mark all as read"
+                    className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-[#4ade80] hover:bg-emerald-50 dark:hover:bg-emerald-950/30 px-1.5 py-0.5 rounded-md transition cursor-pointer"
+                  >
+                    <CheckCheck className="w-3.5 h-3.5" />
+                    <span>Read all</span>
+                  </button>
+                )}
+
+                {notifications.length > 0 && (
+                  <button
+                    onClick={handleClearAll}
+                    title="Clear all"
+                    className="flex items-center gap-1 text-[11px] font-bold text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 px-1.5 py-0.5 rounded-md transition cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Clear</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    navigate('/admin/notifications');
+                  }}
+                  className="text-xs text-blue-600 dark:text-sky-400 font-bold hover:underline cursor-pointer ml-1"
+                >
+                  View all
+                </button>
+              </div>
             </div>
 
             <div className="divide-y divide-zinc-100 dark:divide-[#26262e] max-h-72 overflow-y-auto">
               {notifications.length === 0 ? (
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-6">No notifications</p>
+                <div className="text-center py-8">
+                  <Bell className="w-7 h-7 mx-auto text-zinc-300 dark:text-zinc-600 mb-2 stroke-[1.5]" />
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">No notifications</p>
+                </div>
               ) : (
                 notifications.map((n) => (
                   <div
                     key={n.id}
                     onClick={() => handleNotificationClick(n)}
-                    className={`p-2.5 rounded-xl cursor-pointer transition text-left ${
+                    className={`p-2.5 rounded-xl cursor-pointer transition text-left group ${
                       !n.read
                         ? 'bg-zinc-50 dark:bg-[#202028] hover:bg-zinc-100 dark:hover:bg-[#26262e]'
                         : 'hover:bg-zinc-50 dark:hover:bg-[#141418]'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs font-bold text-zinc-900 dark:text-white">{n.title}</p>
-                      {!n.read && (
-                        <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0 mt-1" />
-                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-zinc-900 dark:text-white">{n.title}</p>
+                          {!n.read && (
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-xs text-zinc-600 dark:text-zinc-300 mt-0.5 line-clamp-2 leading-relaxed">
+                          {n.message}
+                        </p>
+                        <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1 font-mono">
+                          {formatISTTime(n.createdAt)}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100 transition">
+                        {!n.read && (
+                          <button
+                            onClick={(e) => handleMarkSingleRead(e, n.id)}
+                            title="Mark as read"
+                            className="p-1 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded transition"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => handleDeleteSingle(e, n.id)}
+                          title="Delete"
+                          className="p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-300 mt-1 line-clamp-2">{n.message}</p>
-                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1.5 font-mono">
-                      {formatISTTime(n.createdAt)}
-                    </p>
                   </div>
                 ))
               )}

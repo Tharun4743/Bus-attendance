@@ -1317,6 +1317,16 @@ export class PostgresStorageAdapter implements StorageAdapter {
     return true;
   }
 
+  async clearAllNotifications(): Promise<boolean> {
+    await this.pool.query(`DELETE FROM public.notifications;`);
+    return true;
+  }
+
+  async deleteNotification(id: string): Promise<boolean> {
+    await this.pool.query(`DELETE FROM public.notifications WHERE id::text = $1;`, [id]);
+    return true;
+  }
+
   // ==========================================================================
   // 8. FINAL REPORTS
   // ==========================================================================

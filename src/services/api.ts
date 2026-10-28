@@ -437,6 +437,18 @@ class ApiClient {
     });
   }
 
+  async clearAllNotifications(): Promise<{ success: boolean; message?: string }> {
+    return this.request('/admin/notifications/clear-all', {
+      method: 'DELETE',
+    });
+  }
+
+  async deleteNotification(id: string): Promise<{ success: boolean; message?: string }> {
+    return this.request(`/admin/notifications/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Bus Incharge
   async getInchargeAttendance(): Promise<{
     bus: Bus;

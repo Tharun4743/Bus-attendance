@@ -5,12 +5,13 @@ import { Notification } from '../../types';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { Bell, CheckCheck, FileSpreadsheet, ArrowRight } from 'lucide-react';
+import { Bell, CheckCheck, FileSpreadsheet, ArrowRight, Trash2, Check } from 'lucide-react';
 
 export const NotificationsPage: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const navigate = useNavigate();
 
   const fetchNotifications = async () => {
@@ -27,20 +28,70 @@ export const NotificationsPage: React.FC = () => {
 
   useEffect(() => {
     fetchNotifications();
+    const handleUpdate = () => fetchNotifications();
+    window.addEventListener('notifications-updated', handleUpdate);
+    return () => {
+      window.removeEventListener('notifications-updated', handleUpdate);
+    };
   }, []);
 
   const handleMarkAllRead = async () => {
+    setIsProcessing(true);
     try {
       await api.markAllNotificationsRead();
-      fetchNotifications();
+      await fetchNotifications();
+      window.dispatchEvent(new Event('notifications-updated'));
     } catch (err) {
       console.error('Failed to mark all as read:', err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (!window.confirm('Are you sure you want to clear all system notifications?')) {
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      await api.clearAllNotifications();
+      await fetchNotifications();
+      window.dispatchEvent(new Event('notifications-updated'));
+    } catch (err) {
+      console.error('Failed to clear notifications:', err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleMarkSingleRead = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    try {
+      await api.markNotificationRead(id);
+      await fetchNotifications();
+      window.dispatchEvent(new Event('notifications-updated'));
+    } catch (err) {
+      console.error('Failed to mark notification read:', err);
+    }
+  };
+
+  const handleDeleteNotification = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    try {
+      await api.deleteNotification(id);
+      await fetchNotifications();
+      window.dispatchEvent(new Event('notifications-updated'));
+    } catch (err) {
+      console.error('Failed to delete notification:', err);
     }
   };
 
   const handleNotificationClick = async (notif: Notification) => {
     try {
-      await api.markNotificationRead(notif.id);
+      if (!notif.read) {
+        await api.markNotificationRead(notif.id);
+        window.dispatchEvent(new Event('notifications-updated'));
+      }
       if (notif.link) {
         navigate(notif.link);
       }
@@ -55,13 +106,11 @@ export const NotificationsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#141418] rounded-2xl p-5 sm:p-6 shadow-xs border border-zinc-200/90 dark:border-[#26262e] transition-all">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <Badge variant="blue">
-              ALERTS & LOGS
-            </Badge>
-            {unreadCount > 0 && (
-              <Badge variant="rose">
-                {unreadCount} unread
-              </Badge>
+            <Badge variant="blue">ALERTS & LOGS</Badge>
+            {unreadCount > 0 ? (
+              <Badge variant="rose">{unreadCount} unread</Badge>
+            ) : (
+              <Badge variant="emerald">All caught up</Badge>
             )}
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
@@ -72,17 +121,33 @@ export const NotificationsPage: React.FC = () => {
           </p>
         </div>
 
-        {unreadCount > 0 && (
-          <Button
-            onClick={handleMarkAllRead}
-            variant="secondary"
-            size="sm"
-            className="self-start sm:self-auto"
-          >
-            <CheckCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-[#4ade80]" />
-            <span>Mark All Read</span>
-          </Button>
-        )}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {unreadCount > 0 && (
+            <Button
+              onClick={handleMarkAllRead}
+              variant="secondary"
+              size="sm"
+              disabled={isProcessing}
+              className="cursor-pointer"
+            >
+              <CheckCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-[#4ade80]" />
+              <span>Mark All Read</span>
+            </Button>
+          )}
+
+          {notifications.length > 0 && (
+            <Button
+              onClick={handleClearAll}
+              variant="outline"
+              size="sm"
+              disabled={isProcessing}
+              className="text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 border-rose-200 dark:border-rose-900/50 cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Clear All</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Notifications List */}
@@ -97,7 +162,7 @@ export const NotificationsPage: React.FC = () => {
             <EmptyState
               icon={Bell}
               title="No notifications"
-              description="You have no notifications at this time. Daily departure reports will appear here automatically."
+              description="You have no notifications at this time. Daily departure reports and live alerts will appear here automatically."
             />
           </div>
         ) : (
@@ -106,7 +171,7 @@ export const NotificationsPage: React.FC = () => {
               <div
                 key={notif.id}
                 onClick={() => handleNotificationClick(notif)}
-                className={`p-4 transition cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                className={`p-4 transition cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 group ${
                   !notif.read
                     ? 'bg-zinc-50 dark:bg-[#1a1a20] hover:bg-zinc-100 dark:hover:bg-[#202028]'
                     : 'hover:bg-zinc-50/70 dark:hover:bg-[#141418]/80'
@@ -139,9 +204,27 @@ export const NotificationsPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-sky-400 sm:self-center shrink-0">
-                  <span>View</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-2 sm:self-center shrink-0">
+                  {!notif.read && (
+                    <button
+                      onClick={(e) => handleMarkSingleRead(e, notif.id)}
+                      title="Mark as read"
+                      className="p-1.5 text-zinc-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg transition"
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button
+                    onClick={(e) => handleDeleteNotification(e, notif.id)}
+                    title="Delete notification"
+                    className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <div className="flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-sky-400 pl-1">
+                    <span>View</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </div>
                 </div>
               </div>
             ))}
