@@ -8,7 +8,9 @@
     "dev": "concurrently \"tsx watch server.ts\" \"vite\"",
     "dev:server": "tsx watch server.ts",
     "dev:client": "vite",
-    "build": "tsc && vite build",
+    "build:client": "tsc && vite build",
+    "build:serverless": "esbuild src/server/serverless.ts --bundle --platform=node --format=esm --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=api/index.js --external:pg-native",
+    "build": "npm run build:client && npm run build:serverless",
     "preview": "vite preview",
     "test": "tsx tests/verify-system.ts",
     "test:vitest": "vitest run"
@@ -48,6 +50,7 @@
     "@types/node": "^20.14.2",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "esbuild": "^0.28.2"
   }
 }

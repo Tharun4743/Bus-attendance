@@ -32,6 +32,10 @@ export class PostgresStorageAdapter implements StorageAdapter {
       connectionTimeoutMillis: 10000,
     });
 
+    this.pool.on('error', (err) => {
+      console.error('⚠️ [PostgresStorageAdapter Pool Error]:', err);
+    });
+
     console.log('⚡ [PostgresStorageAdapter] Connected to live Supabase PostgreSQL Pooler');
   }
 
@@ -216,8 +220,13 @@ export class PostgresStorageAdapter implements StorageAdapter {
   }
 
   async hasAdmin(): Promise<boolean> {
-    const res = await this.pool.query(`SELECT 1 FROM public.users WHERE role = 'ADMIN' LIMIT 1;`);
-    return res.rows.length > 0;
+    try {
+      const res = await this.pool.query(`SELECT 1 FROM public.users WHERE role = 'ADMIN' LIMIT 1;`);
+      return res.rows.length > 0;
+    } catch (err: any) {
+      console.warn('⚠️ [PostgresStorageAdapter] hasAdmin query failed or database not ready, defaulting to false:', err?.message || err);
+      return false;
+    }
   }
 
   async signupIncharge(data: {
