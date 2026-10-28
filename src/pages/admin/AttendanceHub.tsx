@@ -63,7 +63,7 @@ export const AttendanceHub: React.FC<AttendanceHubProps> = ({ initialTab }) => {
   };
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto">
+    <div className="space-y-4 max-w-[1600px] w-full mx-auto">
       {/* ========================================================================= */}
       {/* 1. UNIFIED EXECUTIVE HEADER                                               */}
       {/* ========================================================================= */}
@@ -606,7 +606,7 @@ export const TodayLiveSessionView: React.FC = () => {
       </div>
 
       {/* 4 Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Total Students"
           value={data?.stats.total ?? 0}
@@ -1045,7 +1045,7 @@ export const DailyReportsView: React.FC<{ preselectedDate?: string }> = ({ prese
               </div>
 
               {/* Stats Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
                 <StatCard title="Total Students" value={selectedReport.totalStudents} icon={<Users className="w-4.5 h-4.5" />} color="indigo" />
                 <StatCard title="Present" value={selectedReport.present} icon={<CheckCircle2 className="w-4.5 h-4.5" />} color="emerald" />
                 <StatCard title="Not Present" value={selectedReport.notPresent} icon={<XCircle className="w-4.5 h-4.5" />} color="rose" />

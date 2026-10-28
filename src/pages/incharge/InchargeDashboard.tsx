@@ -202,7 +202,7 @@ export const InchargeDashboard: React.FC = () => {
   const isCurrentBusSessionActive = activeSession && activeSession.busId === data.bus.id;
 
   return (
-    <div className="space-y-4 sm:space-y-5 max-w-7xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
+    <div className="space-y-4 sm:space-y-5 max-w-[1600px] w-full mx-auto px-1 sm:px-2 py-1 sm:py-2">
       {/* ========================================================================= */}
       {/* 1. HEADER SECTION                                                         */}
       {/* ========================================================================= */}
@@ -286,9 +286,9 @@ export const InchargeDashboard: React.FC = () => {
           </div>
         ) : (
           /* IDLE / CLOSED SESSION CARD WITH DUAL-MODE DISPATCH */
-          <div className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="p-4 sm:p-5 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
             <div className="space-y-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                   SESSION CLOSED
                 </span>
@@ -299,11 +299,11 @@ export const InchargeDashboard: React.FC = () => {
               </h3>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-2.5 shrink-0 w-full sm:w-auto">
               <select
                 value={sessionType}
                 onChange={(e) => setSessionType(e.target.value as 'MORNING' | 'EVENING')}
-                className="text-xs font-bold bg-zinc-50 dark:bg-[#1a1a20] border border-zinc-200 dark:border-[#2e2e38] rounded-xl px-3 py-2.5 text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                className="w-full sm:w-auto text-xs font-bold bg-zinc-50 dark:bg-[#1a1a20] border border-zinc-200 dark:border-[#2e2e38] rounded-xl px-2.5 sm:px-3 lg:px-3.5 py-2 sm:py-2.5 text-zinc-800 dark:text-zinc-200 focus:outline-none shrink-0"
               >
                 <option value="MORNING">Morning Transit</option>
                 <option value="EVENING">Evening Transit</option>
@@ -316,7 +316,7 @@ export const InchargeDashboard: React.FC = () => {
                   setSelectedModeForModal('GROUND');
                   setIsMapModalOpen(true);
                 }}
-                className="flex-1 sm:flex-none px-3.5 py-2.5 rounded-xl text-xs font-black border border-emerald-500/40 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                className="w-full sm:w-auto px-2.5 sm:px-3 lg:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-black border border-emerald-500/40 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95 sm:whitespace-nowrap sm:shrink-0"
                 title="Strict ~35m radius when bus is parked at campus terminal or designated stop"
               >
                 <span>🛑 Stationary Bay (~35m)</span>
@@ -329,7 +329,7 @@ export const InchargeDashboard: React.FC = () => {
                   setSelectedModeForModal('TRAVELLING');
                   setIsMapModalOpen(true);
                 }}
-                className="flex-1 sm:flex-none px-3.5 py-2.5 rounded-xl text-xs font-black border border-amber-500/40 bg-amber-500 hover:bg-amber-400 text-white transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/20 active:scale-95"
+                className="w-full sm:w-auto px-2.5 sm:px-3 lg:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-black border border-amber-500/40 bg-amber-500 hover:bg-amber-400 text-white transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/20 active:scale-95 sm:whitespace-nowrap sm:shrink-0"
                 title="Extended ~1000m motion radius when bus is en route"
               >
                 <MapPin className="w-3.5 h-3.5 fill-current shrink-0" />

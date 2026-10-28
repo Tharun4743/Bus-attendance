@@ -121,7 +121,7 @@ export const StudentDashboard: React.FC = () => {
   const isSessionActive = sessionInfo?.status === 'ACTIVE' || isTargetBusActive;
 
   return (
-    <div className="space-y-4 max-w-4xl mx-auto px-2 sm:px-4 pb-10">
+    <div className="space-y-4 max-w-[1600px] w-full mx-auto px-1 sm:px-2 pb-10">
       {/* ========================================================================= */}
       {/* 1. STUDENT EXECUTIVE CONSOLE HEADER                                       */}
       {/* ========================================================================= */}

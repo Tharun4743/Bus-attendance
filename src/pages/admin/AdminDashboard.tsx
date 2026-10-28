@@ -260,7 +260,7 @@ export const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto">
+    <div className="space-y-4 max-w-[1600px] w-full mx-auto">
       {/* ========================================================================= */}
       {/* 1. EXECUTIVE COMMAND HEADER                                               */}
       {/* ========================================================================= */}
@@ -480,7 +480,7 @@ export const AdminDashboard: React.FC = () => {
       {/* ========================================================================= */}
       {/* 3. OPERATIONAL METRICS (4 KPI Cards)                                      */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Total Students"
           value={data?.stats.total ?? 0}
