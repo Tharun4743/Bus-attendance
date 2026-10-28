@@ -98,6 +98,8 @@ export interface StorageAdapter {
   createNotification(notification: Omit<Notification, 'id' | 'createdAt'>): Promise<Notification>;
   markNotificationAsRead(id: string): Promise<boolean>;
   markAllNotificationsAsRead(): Promise<boolean>;
+  clearAllNotifications(): Promise<boolean>;
+  deleteNotification(id: string): Promise<boolean>;
 
   // Reports
   getReports(): Promise<FinalReport[]>;

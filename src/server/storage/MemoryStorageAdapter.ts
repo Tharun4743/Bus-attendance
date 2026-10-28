@@ -533,6 +533,16 @@ export class MemoryStorageAdapter implements StorageAdapter {
     return true;
   }
 
+  async clearAllNotifications(): Promise<boolean> {
+    this.notifications = [];
+    return true;
+  }
+
+  async deleteNotification(id: string): Promise<boolean> {
+    this.notifications = this.notifications.filter((n) => n.id !== id);
+    return true;
+  }
+
   // Reports
   async getReports(): Promise<FinalReport[]> {
     return [...this.reports];
