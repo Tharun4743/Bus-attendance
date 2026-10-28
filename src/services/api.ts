@@ -70,6 +70,9 @@ class ApiClient {
     return res;
   }
 
+  /**
+   * @deprecated Legacy direct signup is deprecated for security. Use requestOtp & verifyOtp.
+   */
   async signupStudent(data: {
     name: string;
     registerNumber: string;

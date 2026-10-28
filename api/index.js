@@ -35482,33 +35482,53 @@ var FaceVerificationEngine = class _FaceVerificationEngine {
   /**
    * Synchronous validation for camera capture payload formats
    */
-  verifyFaceMatch(liveSelfieBase64, enrolledPhotoUrlOrBase64) {
+  validateCapturePayload(liveSelfieBase64, enrolledPhotoUrlOrBase64) {
     if (!this.isValidImagePayload(liveSelfieBase64)) {
       return {
-        matched: false,
-        confidence: 0,
+        valid: false,
         reason: "Invalid camera selfie image format."
       };
     }
     const rawData = liveSelfieBase64.split(",")[1];
     if (!rawData || rawData.length < 500) {
       return {
-        matched: false,
-        confidence: 0,
+        valid: false,
         reason: "Camera capture contains insufficient pixel data. Retake with good lighting."
       };
     }
     if (!enrolledPhotoUrlOrBase64) {
       return {
-        matched: false,
-        confidence: 0,
+        valid: false,
         reason: "Face not registered! You must enroll your face photo in your profile before marking attendance."
       };
     }
+    return { valid: true };
+  }
+  /**
+   * Synchronous face match check: validates payload formatting and performs bitwise
+   * identity matching. For disparate images, rejects synchronous mock bypass and requires
+   * verifyFaceMatchAsync (cloud dual-AI vision) or compareBiometricDescriptors (128-D vectors).
+   */
+  verifyFaceMatch(liveSelfieBase64, enrolledPhotoUrlOrBase64) {
+    const validation = this.validateCapturePayload(liveSelfieBase64, enrolledPhotoUrlOrBase64);
+    if (!validation.valid) {
+      return {
+        matched: false,
+        confidence: 0,
+        reason: validation.reason
+      };
+    }
+    if (liveSelfieBase64 === enrolledPhotoUrlOrBase64) {
+      return {
+        matched: true,
+        confidence: 100,
+        reason: "Identical camera capture payload verified."
+      };
+    }
     return {
-      matched: true,
-      confidence: 100,
-      reason: "Face capture payload format validated."
+      matched: false,
+      confidence: 0,
+      reason: "Disparate photo verification requires asynchronous cloud AI (verifyFaceMatchAsync) or 128-D vector matching (compareBiometricDescriptors)."
     };
   }
   /**
@@ -35897,36 +35917,12 @@ apiRouter.post("/auth/setup", async (req, res) => {
     return res.status(500).json({ error: err.message || "Setup failed." });
   }
 });
-apiRouter.post("/auth/signup", async (req, res) => {
-  try {
-    const { name, registerNumber, email, phone, password, preferredBusId } = req.body;
-    if (!name || !registerNumber || !password) {
-      return res.status(400).json({
-        error: "Full Name, Register Number, and Password are required."
-      });
-    }
-    const student = await storage.signupStudent({
-      name: name.trim(),
-      registerNumber: registerNumber.trim().toUpperCase(),
-      email: email?.trim(),
-      phone: phone?.trim(),
-      password,
-      preferredBusId
-    });
-    return res.status(201).json({
-      message: "Your registration has been submitted for Admin approval.",
-      student: {
-        id: student.id,
-        name: student.name,
-        registerNumber: student.registerNumber,
-        email: student.email,
-        status: student.status,
-        approved: student.approved
-      }
-    });
-  } catch (err) {
-    return res.status(400).json({ error: err.message || "Signup failed." });
-  }
+apiRouter.post("/auth/signup", async (_req, res) => {
+  return res.status(403).json({
+    error: "Direct registration is deprecated for security. All registrations must complete Brevo 6-digit OTP verification via /api/auth/signup/request-otp and /api/auth/signup/verify-otp.",
+    code: "REGISTRATION_OTP_REQUIRED",
+    deprecated: true
+  });
 });
 apiRouter.get("/auth/available-buses", async (_req, res) => {
   try {
@@ -36935,7 +36931,7 @@ apiRouter.post(
       const newStudent = await storage.createStudent({
         registerNumber: registerNumber.trim().toUpperCase(),
         name: name.trim(),
-        email: email ? email.trim().toLowerCase() : `${registerNumber.toLowerCase()}@example.com`,
+        email: email ? email.trim().toLowerCase() : `${registerNumber.toLowerCase()}@student.college.edu`,
         phone: phone ? phone.trim() : "",
         busId,
         role: "STUDENT",
@@ -37416,12 +37412,52 @@ function requireCronSecret(req, res, next) {
   return res.status(401).json({ error: "Unauthorized cron request." });
 }
 apiRouter.all("/cron/open-session", requireCronSecret, async (_req, res) => {
-  const time = getISTTimeString();
-  return res.json({ message: "Session open cron executed.", timeIST: time, status: "ACTIVE" });
+  try {
+    const time = getISTTimeString();
+    const settings = await storage.getSettings();
+    const activeSession = await storage.getActiveSession();
+    return res.json({
+      message: "Automated scheduled session window verified.",
+      timeIST: time,
+      sessionStatus: activeSession ? "ACTIVE" : "IDLE",
+      activeSessionId: activeSession ? activeSession.id : null,
+      scheduledWindow: {
+        startTimeIST: settings.startTime,
+        endTimeIST: settings.endTime
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 });
 apiRouter.all("/cron/close-session", requireCronSecret, async (_req, res) => {
-  const time = getISTTimeString();
-  return res.json({ message: "Session close cron executed.", timeIST: time, status: "CLOSED" });
+  try {
+    const time = getISTTimeString();
+    const activeSession = await storage.getActiveSession();
+    if (activeSession) {
+      await storage.endActiveSession(activeSession.id);
+      await storage.createNotification({
+        title: "\u{1F68C} Automated Scheduled Close",
+        message: `Attendance session ${activeSession.id} closed automatically by scheduler at ${time} IST.`,
+        type: "SYSTEM",
+        date: getISTDateString(),
+        read: false
+      });
+      return res.json({
+        message: "Active session closed by scheduler cron.",
+        sessionId: activeSession.id,
+        timeIST: time,
+        status: "CLOSED"
+      });
+    }
+    return res.json({
+      message: "No active attendance session currently running.",
+      timeIST: time,
+      status: "IDLE"
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 });
 apiRouter.all("/cron/generate-report", requireCronSecret, async (_req, res) => {
   try {

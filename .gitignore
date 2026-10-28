@@ -39,6 +39,7 @@ lerna-debug.log*
 *.tmp
 .vercel/
 scratch/
+.agents/
 
 
 .vercel
