@@ -23,12 +23,14 @@ export const NotificationBell: React.FC = () => {
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 15000);
+    const interval = setInterval(fetchNotifications, 45000);
     const handleUpdate = () => fetchNotifications();
     window.addEventListener('notifications-updated', handleUpdate);
+    window.addEventListener('focus', handleUpdate);
     return () => {
       clearInterval(interval);
       window.removeEventListener('notifications-updated', handleUpdate);
+      window.removeEventListener('focus', handleUpdate);
     };
   }, []);
 

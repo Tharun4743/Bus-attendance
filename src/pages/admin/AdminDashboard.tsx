@@ -56,6 +56,7 @@ export const AdminDashboard: React.FC = () => {
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [selectedBusId, setSelectedBusId] = useState<string>('ALL');
   const [sessionType, setSessionType] = useState<'MORNING' | 'EVENING'>('MORNING');
+  const [attendanceMode, setAttendanceMode] = useState<'GROUND' | 'TRAVELLING'>('GROUND');
   const [isStarting, setIsStarting] = useState<boolean>(false);
   const [isEnding, setIsEnding] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -124,8 +125,17 @@ export const AdminDashboard: React.FC = () => {
       fetchDashboardData();
       fetchSessionData();
       fetchPendingApprovals();
-    }, 6000);
-    return () => clearInterval(interval);
+    }, 25000);
+    const onFocus = () => {
+      fetchDashboardData();
+      fetchSessionData();
+      fetchPendingApprovals();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
   // 1-Click Start Attendance (Location Geofence Mode)
@@ -135,6 +145,20 @@ export const AdminDashboard: React.FC = () => {
     setFeedback(null);
 
     try {
+      let lat = undefined;
+      let lon = undefined;
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        try {
+          const pos = await new Promise<any>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 6000 });
+          });
+          lat = Math.round(pos.coords.latitude * 1000000) / 1000000;
+          lon = Math.round(pos.coords.longitude * 1000000) / 1000000;
+        } catch {
+          // Continue if permission denied
+        }
+      }
+
       const res = await fetch('/api/admin/attendance/start', {
         method: 'POST',
         headers: {
@@ -143,10 +167,12 @@ export const AdminDashboard: React.FC = () => {
         },
         body: JSON.stringify({
           sessionType,
-          attendanceMode: 'GROUND',
+          attendanceMode,
           verificationMethod: 'CODE_GPS',
           busId: selectedBusId,
-          radiusMeters: 50,
+          latitude: lat,
+          longitude: lon,
+          radiusMeters: attendanceMode === 'TRAVELLING' ? 1000 : 35,
         }),
       });
 
@@ -377,6 +403,33 @@ export const AdminDashboard: React.FC = () => {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="flex items-center gap-1 bg-zinc-100 dark:bg-[#1a1a20] p-1 rounded-xl border border-zinc-200 dark:border-[#26262e]">
+                <button
+                  type="button"
+                  onClick={() => setAttendanceMode('GROUND')}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    attendanceMode === 'GROUND'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                  }`}
+                  title="Stationary Bay (~35m radius)"
+                >
+                  <span>🛑 Bay (~35m)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAttendanceMode('TRAVELLING')}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    attendanceMode === 'TRAVELLING'
+                      ? 'bg-amber-500 text-white shadow-xs'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                  }`}
+                  title="Highway Transit (~1000m radius)"
+                >
+                  <span>🚌 Transit (~1000m)</span>
+                </button>
               </div>
 
               <div className="flex items-center gap-1 bg-zinc-100 dark:bg-[#1a1a20] p-1 rounded-xl border border-zinc-200 dark:border-[#26262e]">

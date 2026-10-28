@@ -32,10 +32,13 @@ export const Sidebar: React.FC = () => {
     };
 
     fetchPending();
-    const interval = setInterval(fetchPending, 12000);
+    const interval = setInterval(fetchPending, 45000);
+    const onFocus = () => fetchPending();
+    window.addEventListener('focus', onFocus);
     return () => {
       isMounted = false;
       clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
     };
   }, []);
 
