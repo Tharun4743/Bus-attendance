@@ -1,10 +1,18 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { apiRouter } from '../src/server/api';
+import { apiRouter } from './api';
 
 const app = express();
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Quick health check routes
+app.get('/health', (_req: Request, res: Response) => {
+  res.json({ status: 'ok', service: 'bus-attendance-api', timestamp: new Date().toISOString() });
+});
+app.get('/api/health', (_req: Request, res: Response) => {
+  res.json({ status: 'ok', service: 'bus-attendance-api', timestamp: new Date().toISOString() });
+});
 
 // Support both /api/auth/... and direct /auth/... rewrites from vercel.json
 app.use('/api', apiRouter);
@@ -17,4 +25,3 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 export default app;
-
