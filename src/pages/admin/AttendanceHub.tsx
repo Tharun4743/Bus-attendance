@@ -171,6 +171,7 @@ export const TodayLiveSessionView: React.FC = () => {
   // Quick Launcher State
   const [selectedBusId, setSelectedBusId] = useState<string>('ALL');
   const [sessionType, setSessionType] = useState<'MORNING' | 'EVENING'>('MORNING');
+  const [attendanceMode, setAttendanceMode] = useState<'GROUND' | 'TRAVELLING'>('GROUND');
   const [isStarting, setIsStarting] = useState<boolean>(false);
   const [isEnding, setIsEnding] = useState<boolean>(false);
   const [sessionFeedback, setSessionFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -220,8 +221,16 @@ export const TodayLiveSessionView: React.FC = () => {
     const interval = setInterval(() => {
       fetchAttendance();
       fetchSession();
-    }, 6000);
-    return () => clearInterval(interval);
+    }, 25000);
+    const onFocus = () => {
+      fetchAttendance();
+      fetchSession();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
   // Start Session
@@ -231,6 +240,20 @@ export const TodayLiveSessionView: React.FC = () => {
     setSessionFeedback(null);
 
     try {
+      let lat = undefined;
+      let lon = undefined;
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        try {
+          const pos = await new Promise<any>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 6000 });
+          });
+          lat = Math.round(pos.coords.latitude * 1000000) / 1000000;
+          lon = Math.round(pos.coords.longitude * 1000000) / 1000000;
+        } catch {
+          // Continue if permission denied
+        }
+      }
+
       const res = await fetch('/api/admin/attendance/start', {
         method: 'POST',
         headers: {
@@ -239,10 +262,12 @@ export const TodayLiveSessionView: React.FC = () => {
         },
         body: JSON.stringify({
           sessionType,
-          attendanceMode: 'GROUND',
+          attendanceMode,
           verificationMethod: 'CODE_GPS',
           busId: selectedBusId,
-          radiusMeters: 50,
+          latitude: lat,
+          longitude: lon,
+          radiusMeters: attendanceMode === 'TRAVELLING' ? 1000 : 35,
         }),
       });
 
@@ -516,6 +541,33 @@ export const TodayLiveSessionView: React.FC = () => {
               <div className="flex items-center gap-1 bg-zinc-100 dark:bg-[#1a1a20] p-1 rounded-xl border border-zinc-200 dark:border-[#26262e]">
                 <button
                   type="button"
+                  onClick={() => setAttendanceMode('GROUND')}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    attendanceMode === 'GROUND'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                  }`}
+                  title="Stationary Bay (~35m radius)"
+                >
+                  <span>🛑 Bay (~35m)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAttendanceMode('TRAVELLING')}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    attendanceMode === 'TRAVELLING'
+                      ? 'bg-amber-500 text-white shadow-xs'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                  }`}
+                  title="Highway Transit (~1000m radius)"
+                >
+                  <span>🚌 Transit (~1000m)</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1 bg-zinc-100 dark:bg-[#1a1a20] p-1 rounded-xl border border-zinc-200 dark:border-[#26262e]">
+                <button
+                  type="button"
                   onClick={() => setSessionType('MORNING')}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                     sessionType === 'MORNING'
@@ -645,8 +697,8 @@ export const TodayLiveSessionView: React.FC = () => {
           </div>
         </div>
 
-        {/* Roster Table */}
-        <div className="overflow-x-auto">
+        {/* Roster Table (Desktop) */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-zinc-50/80 dark:bg-[#101014] text-zinc-500 dark:text-zinc-400 font-black uppercase tracking-wider text-[10px] border-b border-zinc-200 dark:border-[#26262e]">
               <tr>
@@ -710,6 +762,45 @@ export const TodayLiveSessionView: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Roster Mobile Cards (< 640px) */}
+        <div className="block sm:hidden divide-y divide-zinc-100 dark:divide-[#24242e]">
+          {filteredRoster.length === 0 ? (
+            <div className="p-8 text-center text-xs text-zinc-400">
+              No matching student records found.
+            </div>
+          ) : (
+            filteredRoster.map((stu) => (
+              <div key={stu.studentId} className="p-3.5 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h4 className="text-xs font-black text-zinc-900 dark:text-white leading-tight">{stu.name}</h4>
+                    <p className="text-[11px] font-mono font-bold text-blue-600 dark:text-sky-400">{stu.registerNumber}</p>
+                    <p className="text-[10px] text-zinc-400">{stu.busNumber} • {stu.routeName}</p>
+                  </div>
+                  <StatusBadge status={stu.status} size="sm" />
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-zinc-500 font-mono pt-1">
+                  <span>{stu.verifiedAt ? formatISTTime(stu.verifiedAt) : 'Unverified'}</span>
+                  {stu.distanceMeters != null && (
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      {stu.distanceMeters}m
+                    </span>
+                  )}
+                </div>
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenOverride(stu)}
+                    className="w-full py-1.5 px-3 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 rounded-xl transition border border-zinc-200 dark:border-zinc-700 cursor-pointer"
+                  >
+                    Admin Override Status
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -1225,8 +1316,9 @@ export const AttendanceHistoryView: React.FC = () => {
             />
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <>
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
               <thead className="bg-zinc-50/80 dark:bg-[#101014] text-zinc-500 dark:text-zinc-400 font-black uppercase tracking-wider text-[10px] border-b border-zinc-200 dark:border-[#26262e]">
                 <tr>
                   <th className="px-5 py-3.5">Date</th>
@@ -1272,8 +1364,33 @@ export const AttendanceHistoryView: React.FC = () => {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+
+          {/* History Mobile Cards */}
+          <div className="block sm:hidden divide-y divide-zinc-100 dark:divide-[#24242e]">
+            {history.map((record) => (
+              <div key={record.id} className="p-3.5 space-y-1.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h4 className="text-xs font-black text-zinc-900 dark:text-white leading-tight">{record.studentName}</h4>
+                    <p className="text-[11px] font-mono font-bold text-blue-600 dark:text-sky-400">{record.registerNumber}</p>
+                    <p className="text-[10px] text-zinc-400">{record.busNumber} • {record.attendanceDate}</p>
+                  </div>
+                  <StatusBadge status={record.status} size="sm" />
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-zinc-500 font-mono pt-1">
+                  <span>{record.verifiedAt ? formatISTTime(record.verifiedAt) : '—'}</span>
+                  {record.distanceMeters != null && (
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      {record.distanceMeters}m
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
     </div>
   );
 };

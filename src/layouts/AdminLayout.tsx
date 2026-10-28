@@ -9,7 +9,7 @@ export const AdminLayout: React.FC = () => {
       <Navbar />
       <div className="flex-1 flex flex-col lg:flex-row max-w-[1440px] w-full mx-auto">
         <Sidebar />
-        <main className="flex-1 p-3 sm:p-5 lg:p-6 min-w-0">
+        <main className="flex-1 p-2.5 sm:p-5 lg:p-6 min-w-0 w-full max-w-full overflow-x-hidden">
           <Outlet />
         </main>
       </div>
