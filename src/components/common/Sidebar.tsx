@@ -3,7 +3,11 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   UserCheck,
+  Users,
   Bus,
+  CalendarCheck,
+  History,
+  MapPin,
   FileSpreadsheet,
 } from 'lucide-react';
 
@@ -11,7 +15,11 @@ export const Sidebar: React.FC = () => {
   const navItems = [
     { to: '/admin/dashboard', label: 'All-in-One Dashboard', icon: LayoutDashboard },
     { to: '/admin/approvals', label: 'Student Approvals', icon: UserCheck },
+    { to: '/admin/students', label: 'Students Directory', icon: Users },
     { to: '/admin/buses', label: 'Buses', icon: Bus },
+    { to: '/admin/attendance', label: 'Today Attendance', icon: CalendarCheck },
+    { to: '/admin/attendance/history', label: 'Attendance History', icon: History },
+    { to: '/admin/settings/geofence', label: 'Geofence Settings', icon: MapPin },
     { to: '/admin/reports', label: 'Attendance Reports', icon: FileSpreadsheet },
   ];
 

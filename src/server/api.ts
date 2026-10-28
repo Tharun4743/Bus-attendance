@@ -119,38 +119,17 @@ apiRouter.post('/auth/setup', async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.post('/auth/signup', async (req: Request, res: Response) => {
-  try {
-    const { name, registerNumber, email, phone, password, preferredBusId } = req.body;
-    if (!name || !registerNumber || !password) {
-      return res.status(400).json({
-        error: 'Full Name, Register Number, and Password are required.',
-      });
-    }
-
-    const student = await storage.signupStudent({
-      name: name.trim(),
-      registerNumber: registerNumber.trim().toUpperCase(),
-      email: email?.trim(),
-      phone: phone?.trim(),
-      password,
-      preferredBusId,
-    });
-
-    return res.status(201).json({
-      message: 'Your registration has been submitted for Admin approval.',
-      student: {
-        id: student.id,
-        name: student.name,
-        registerNumber: student.registerNumber,
-        email: student.email,
-        status: student.status,
-        approved: student.approved,
-      },
-    });
-  } catch (err: any) {
-    return res.status(400).json({ error: err.message || 'Signup failed.' });
-  }
+/**
+ * @deprecated Legacy direct signup bypass is disabled.
+ * All registrations must complete 2-step verification with Brevo 6-digit cryptographic OTP
+ * via POST /api/auth/signup/request-otp and POST /api/auth/signup/verify-otp.
+ */
+apiRouter.post('/auth/signup', async (_req: Request, res: Response) => {
+  return res.status(403).json({
+    error: 'Direct registration is deprecated for security. All registrations must complete Brevo 6-digit OTP verification via /api/auth/signup/request-otp and /api/auth/signup/verify-otp.',
+    code: 'REGISTRATION_OTP_REQUIRED',
+    deprecated: true,
+  });
 });
 
 // Public helper: Get buses with assigned In-Charges for registration selection
@@ -1401,7 +1380,7 @@ apiRouter.post(
       const newStudent = await storage.createStudent({
         registerNumber: registerNumber.trim().toUpperCase(),
         name: name.trim(),
-        email: email ? email.trim().toLowerCase() : `${registerNumber.toLowerCase()}@example.com`,
+        email: email ? email.trim().toLowerCase() : `${registerNumber.toLowerCase()}@student.college.edu`,
         phone: phone ? phone.trim() : '',
         busId,
         role: 'STUDENT',
@@ -1968,13 +1947,53 @@ function requireCronSecret(req: Request, res: Response, next: NextFunction) {
 }
 
 apiRouter.all('/cron/open-session', requireCronSecret, async (_req: Request, res: Response) => {
-  const time = getISTTimeString();
-  return res.json({ message: 'Session open cron executed.', timeIST: time, status: 'ACTIVE' });
+  try {
+    const time = getISTTimeString();
+    const settings = await storage.getSettings();
+    const activeSession = await storage.getActiveSession();
+    return res.json({
+      message: 'Automated scheduled session window verified.',
+      timeIST: time,
+      sessionStatus: activeSession ? 'ACTIVE' : 'IDLE',
+      activeSessionId: activeSession ? activeSession.id : null,
+      scheduledWindow: {
+        startTimeIST: settings.startTime,
+        endTimeIST: settings.endTime,
+      },
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 apiRouter.all('/cron/close-session', requireCronSecret, async (_req: Request, res: Response) => {
-  const time = getISTTimeString();
-  return res.json({ message: 'Session close cron executed.', timeIST: time, status: 'CLOSED' });
+  try {
+    const time = getISTTimeString();
+    const activeSession = await storage.getActiveSession();
+    if (activeSession) {
+      await storage.endActiveSession(activeSession.id);
+      await storage.createNotification({
+        title: '🚌 Automated Scheduled Close',
+        message: `Attendance session ${activeSession.id} closed automatically by scheduler at ${time} IST.`,
+        type: 'SYSTEM',
+        date: getISTDateString(),
+        read: false,
+      });
+      return res.json({
+        message: 'Active session closed by scheduler cron.',
+        sessionId: activeSession.id,
+        timeIST: time,
+        status: 'CLOSED',
+      });
+    }
+    return res.json({
+      message: 'No active attendance session currently running.',
+      timeIST: time,
+      status: 'IDLE',
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 apiRouter.all('/cron/generate-report', requireCronSecret, async (_req: Request, res: Response) => {

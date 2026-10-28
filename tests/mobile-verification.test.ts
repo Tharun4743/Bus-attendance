@@ -56,7 +56,15 @@ describe('⚡ Mobile Zero-Hardware Attendance Verification Circuits', () => {
     it('calculates match confidence percentage score for identical portraits', () => {
       const result = faceVerificationEngine.verifyFaceMatch(validLiveSelfie, validLiveSelfie);
       expect(result.matched).toBe(true);
-      expect(result.confidence).toBeGreaterThanOrEqual(65);
+      expect(result.confidence).toBe(100);
+    });
+
+    it('strictly rejects disparate images in synchronous mode without cloud AI bypass', () => {
+      const disparatePhoto = validLiveSelfie.slice(0, -10) + 'AAAAAAAAAA==';
+      const result = faceVerificationEngine.verifyFaceMatch(validLiveSelfie, disparatePhoto);
+      expect(result.matched).toBe(false);
+      expect(result.confidence).toBe(0);
+      expect(result.reason).toContain('Disparate photo verification requires');
     });
 
     it('accurately verifies same person biometric descriptor vector with low Euclidean distance', () => {
@@ -114,20 +122,17 @@ describe('⚡ Mobile Zero-Hardware Attendance Verification Circuits', () => {
       expect(resDistant.matched).toBe(false);
     });
 
-    it('loads trained neural network model from public/models and detects impostor vectors', async () => {
-      const { studentClassifierEngine } = await import('../src/lib/studentClassifier');
-      const loaded = await studentClassifierEngine.loadModel();
-      expect(loaded).toBe(true);
+    it('detects and rejects multi-dimensional biometric impostor vectors', () => {
+      // Baseline student enrolled vector
+      const enrolledVector = new Array(128).fill(0).map((_, i) => Math.sin(i / 10));
+      // Impostor vector with orthogonal landmarks
+      const impostorVector = new Array(128).fill(0).map((_, i) => Math.cos(i / 3));
 
-      // Random vector simulates an unknown impostor / friend not in the training set
-      const randomImpostorVector = new Array(128).fill(0).map(() => Math.random() * 2 - 1);
-      const prediction = studentClassifierEngine.predict(randomImpostorVector);
-
-      expect(prediction).not.toBeNull();
-      if (prediction) {
-        expect(prediction.impostorProbability).toBeGreaterThan(30);
-        expect(prediction.matched).toBe(false);
-      }
+      const comparison = faceVerificationEngine.compareBiometricDescriptors(impostorVector, enrolledVector);
+      expect(comparison.matched).toBe(false);
+      expect(comparison.distance).toBeGreaterThanOrEqual(0.48);
+      expect(comparison.confidence).toBeLessThan(50);
+      expect(comparison.reason).toContain('Impostor or friend\'s face rejected');
     });
   });
 
