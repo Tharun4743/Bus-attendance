@@ -40,3 +40,6 @@ lerna-debug.log*
 .vercel/
 scratch/
 
+
+.vercel
+.env*
