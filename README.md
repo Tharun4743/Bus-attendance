@@ -242,7 +242,7 @@ Once running:
 The project is pre-configured for automated continuous deployment (CI/CD) to **Vercel** with zero manual build steps:
 
 ### Native Vercel Integration
-1. Connect your repository (`campusvsb/Bus-attendance` or `Tharun4743/Bus-attendance`) in your [Vercel Dashboard](https://vercel.com/dashboard).
+1. Connect your repository (`Tharun4743/Bus-attendance`) in your [Vercel Dashboard](https://vercel.com/dashboard).
 2. Set the Framework Preset to **Vite** (automatically detected via `vercel.json`).
 3. Add your production environment variables under **Settings &rarr; Environment Variables**:
    * `DATABASE_URL`: Supabase PostgreSQL pooled connection URI
