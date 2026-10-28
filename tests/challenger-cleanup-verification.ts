@@ -161,7 +161,10 @@ async function runChallengerVerification() {
 
   // Extract all NavLink targets from Sidebar
   const navLinkMatches = [...sidebarContent.matchAll(/to:\s*['"]([^'"]+)['"]/g)].map((m) => m[1]);
-  assert(navLinkMatches.length === 8, `Sidebar defines exactly 8 navigation items (found ${navLinkMatches.length})`);
+  assert(
+    navLinkMatches.length === 6,
+    `Sidebar defines exactly 6 streamlined navigation items (found ${navLinkMatches.length})`
+  );
 
   // Expected Admin routes in App.tsx relative to /admin
   for (const navTarget of navLinkMatches) {

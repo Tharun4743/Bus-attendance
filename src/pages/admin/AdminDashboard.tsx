@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import { Bus, Student, SessionInfo, ActiveSession, User } from '../../types';
 import { formatISTTime } from '../../utils/time';
-import { StatusBadge } from '../../components/common/StatusBadge';
 import { StatCard } from '../../components/ui/StatCard';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -15,8 +14,6 @@ import {
   Play,
   Square,
   RefreshCw,
-  Search,
-  Download,
   UserCheck,
   AlertCircle,
   Sun,
@@ -24,6 +21,11 @@ import {
   CheckCheck,
   MapPin,
   Compass,
+  Bus as BusIcon,
+  CalendarCheck,
+  ArrowRight,
+  Clock,
+  Radio,
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -61,14 +63,8 @@ export const AdminDashboard: React.FC = () => {
   // Pending Approvals List
   const [pendingStudents, setPendingStudents] = useState<Student[]>([]);
   const [pendingIncharges, setPendingIncharges] = useState<User[]>([]);
-  const [selectedBusesForApproval, setSelectedBusesForApproval] = useState<Record<string, string>>({});
   const [isProcessingApproval, setIsProcessingApproval] = useState<string | null>(null);
 
-  // UI Navigation & Filters
-  const [activeTab, setActiveTab] = useState<'roster' | 'approvals'>('roster');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [busFilter, setBusFilter] = useState<string>('ALL');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
@@ -128,7 +124,7 @@ export const AdminDashboard: React.FC = () => {
       fetchDashboardData();
       fetchSessionData();
       fetchPendingApprovals();
-    }, 5000);
+    }, 6000);
     return () => clearInterval(interval);
   }, []);
 
@@ -202,25 +198,9 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Fast 1-Click Override (Mark Present / Absent)
-  const handleToggleStudentStatus = async (studentId: string, currentStatus: string) => {
-    try {
-      const newStatus = currentStatus === 'PRESENT' ? 'NOT_PRESENT' : 'PRESENT';
-      await api.adminOverride({
-        studentId,
-        date: data?.date,
-        newStatus,
-        reason: 'Direct Admin override',
-      });
-      await fetchDashboardData();
-    } catch (err: any) {
-      alert(err.message || 'Failed to update attendance.');
-    }
-  };
-
-  // 1-Click Student Approval
-  const handleApproveStudent = async (studentId: string) => {
-    const busId = selectedBusesForApproval[studentId] || data?.buses[0]?.id;
+  // 1-Click Quick Approval from dashboard snapshot
+  const handleQuickApproveStudent = async (studentId: string, preferredBusId?: string | null) => {
+    const busId = preferredBusId || data?.buses[0]?.id;
     if (!busId) {
       alert('Please configure at least one bus before approving student registrations.');
       return;
@@ -236,100 +216,57 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // 1-Click Student Rejection
-  const handleRejectStudent = async (studentId: string) => {
-    if (!confirm('Reject this student registration?')) return;
-    setIsProcessingApproval(studentId);
-    try {
-      await api.rejectStudent(studentId, 'Rejected by Administrator');
-      await fetchPendingApprovals();
-    } catch (err: any) {
-      alert(err.message || 'Failed to reject student.');
-    } finally {
-      setIsProcessingApproval(null);
-    }
-  };
+  // Recent verified check-ins (latest 6 students)
+  const recentCheckIns = (data?.roster || [])
+    .filter((stu) => stu.status === 'PRESENT' && stu.verifiedAt)
+    .sort((a, b) => new Date(b.verifiedAt!).getTime() - new Date(a.verifiedAt!).getTime())
+    .slice(0, 6);
 
-  // CSV Export
-  const handleExportCSV = () => {
-    if (!data || !data.roster.length) return;
-    const headers = ['Register Number', 'Full Name', 'Bus Number', 'Route', 'Status', 'Verified Time'];
-    const rows = data.roster.map((r) => [
-      r.registerNumber,
-      `"${r.name}"`,
-      r.busNumber,
-      `"${r.routeName}"`,
-      r.status,
-      r.verifiedAt || 'N/A',
-    ]);
-    const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `bus_attendance_${data.date}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Filtered Roster
-  const filteredRoster = (data?.roster || []).filter((stu) => {
-    const matchesSearch =
-      stu.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      stu.registerNumber.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesBus = busFilter === 'ALL' || stu.busId === busFilter;
-    const matchesStatus =
-      statusFilter === 'ALL' ||
-      (statusFilter === 'PRESENT' && stu.status === 'PRESENT') ||
-      (statusFilter === 'NOT_PRESENT' && stu.status !== 'PRESENT');
-    return matchesSearch && matchesBus && matchesStatus;
-  });
+  const totalPending = pendingStudents.length + pendingIncharges.length;
 
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 space-y-3">
         <div className="w-9 h-9 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Loading Dashboard...</p>
+        <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Loading Command Dashboard...</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto">
-      {/* Uniform Header Container */}
+      {/* ========================================================================= */}
+      {/* 1. EXECUTIVE COMMAND HEADER                                               */}
+      {/* ========================================================================= */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#141418] rounded-2xl p-5 sm:p-6 shadow-xs border border-zinc-200/90 dark:border-[#26262e] transition-all">
         <div>
-          <Badge variant="emerald" className="mb-2">
-            LIVE MONITORING
-          </Badge>
+          <div className="flex items-center gap-2 mb-2">
+            <Badge variant="emerald">ADMIN COMMAND CENTER</Badge>
+            <span className="text-[11px] font-mono text-zinc-400 font-bold">
+              IST {data?.date || new Date().toISOString().split('T')[0]}
+            </span>
+          </div>
           <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
-            Bus Attendance Console
+            Transport Operations Overview
           </h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-1">
-            Real-time GPS location attendance tracking and live student roster.
+            Real-time transit fleet status, active GPS telemetry, and pending administrative actions.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 self-start sm:self-auto">
-          <Button
-            onClick={refreshAll}
-            disabled={isRefreshing}
-            variant="secondary"
-            size="sm"
-          >
+          <Button onClick={refreshAll} disabled={isRefreshing} variant="secondary" size="sm">
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </Button>
 
-          <Button
-            onClick={handleExportCSV}
-            variant="secondary"
-            size="sm"
+          <Link
+            to="/admin/attendance"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-xs hover:opacity-90 transition active:scale-95"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export CSV</span>
-          </Button>
+            <CalendarCheck className="w-3.5 h-3.5" />
+            <span>Attendance Hub →</span>
+          </Link>
         </div>
       </div>
 
@@ -359,18 +296,17 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 📍 ATTENDANCE SESSION CONTROLLER                                          */}
+      {/* 2. ATTENDANCE SESSION CONTROLLER                                          */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] shadow-xs overflow-hidden transition-all">
         {activeSession && activeSession.status === 'ACTIVE' ? (
-          /* Active Location Session Card */
           <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-50/70 via-teal-50/30 to-emerald-50/50 dark:from-emerald-950/20 dark:via-[#141418] dark:to-emerald-950/10 border-b border-emerald-200 dark:border-emerald-500/20">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black tracking-wider uppercase bg-emerald-600 text-white shadow-xs">
                     <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                    LOCATION ATTENDANCE ACTIVE
+                    LIVE SESSION BROADCASTING
                   </span>
                   <span className="text-[11px] font-bold text-zinc-700 dark:text-zinc-300 uppercase bg-white dark:bg-[#1a1a20] px-2.5 py-0.5 rounded-md border border-zinc-200 dark:border-[#26262e]">
                     {activeSession.sessionType}
@@ -384,17 +320,22 @@ export const AdminDashboard: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Students mark attendance on their personal device via verified GPS geofence.
+                  Live session active with {data?.stats.present || 0} students verified present today.
                 </p>
               </div>
 
-              <div>
+              <div className="flex items-center gap-2.5">
+                <Link
+                  to="/admin/attendance"
+                  className="px-3.5 py-2 text-xs font-bold text-emerald-700 dark:text-[#4ade80] bg-emerald-100/60 dark:bg-emerald-950/40 border border-emerald-300/60 dark:border-emerald-800 rounded-xl hover:bg-emerald-200/60 transition"
+                >
+                  Live Roster →
+                </Link>
                 <Button
                   onClick={handleEndAttendance}
                   disabled={isEnding}
                   variant="danger"
                   size="md"
-                  className="w-full sm:w-auto"
                 >
                   {isEnding ? (
                     <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -407,7 +348,6 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
         ) : (
-          /* Inactive Launcher Form */
           <form onSubmit={handleStartAttendance} className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-[#1a1a20] text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-[#26262e]">
@@ -415,21 +355,20 @@ export const AdminDashboard: React.FC = () => {
               </div>
               <div>
                 <h2 className="text-sm sm:text-base font-black text-zinc-900 dark:text-white tracking-tight">
-                  Start Location Attendance
+                  Launch Attendance Session
                 </h2>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Verify students present within the route geofence
+                  Broadcast verified smartphone geofence attendance for transit buses
                 </p>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              {/* Route Selector */}
               <div className="flex-1 sm:flex-initial min-w-[150px]">
                 <select
                   value={selectedBusId}
                   onChange={(e) => setSelectedBusId(e.target.value)}
-                  className="w-full h-10 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#26262e] bg-zinc-50 dark:bg-[#1a1a20] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none"
+                  className="w-full h-10 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#26262e] bg-zinc-50 dark:bg-[#1a1a20] text-zinc-900 dark:text-white outline-none"
                 >
                   <option value="ALL">All Buses</option>
                   {(data?.buses || []).map((b) => (
@@ -440,7 +379,6 @@ export const AdminDashboard: React.FC = () => {
                 </select>
               </div>
 
-              {/* Session Type */}
               <div className="flex items-center gap-1 bg-zinc-100 dark:bg-[#1a1a20] p-1 rounded-xl border border-zinc-200 dark:border-[#26262e]">
                 <button
                   type="button"
@@ -468,13 +406,11 @@ export const AdminDashboard: React.FC = () => {
                 </button>
               </div>
 
-              {/* Start Button */}
               <Button
                 type="submit"
                 disabled={isStarting}
                 variant="emerald"
                 size="md"
-                className="w-full sm:w-auto"
               >
                 {isStarting ? (
                   <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -489,19 +425,19 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 📊 SUMMARY METRICS                                                        */}
+      {/* 3. OPERATIONAL METRICS (4 KPI Cards)                                      */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
-          title="Total"
+          title="Total Students"
           value={data?.stats.total ?? 0}
           icon={<Users className="w-5 h-5" />}
           color="indigo"
-          subtitle="Registered Students"
+          subtitle="Enrolled Commuters"
         />
 
         <StatCard
-          title="Present"
+          title="Present Today"
           value={data?.stats.present ?? 0}
           icon={<CheckCircle2 className="w-5 h-5" />}
           color="emerald"
@@ -513,7 +449,7 @@ export const AdminDashboard: React.FC = () => {
           value={data?.stats.notPresent ?? 0}
           icon={<XCircle className="w-5 h-5" />}
           color="rose"
-          subtitle="Unverified"
+          subtitle="Unverified / Absent"
         />
 
         <StatCard
@@ -521,303 +457,261 @@ export const AdminDashboard: React.FC = () => {
           value={`${data?.stats.percentage ?? 0}%`}
           icon={<Percent className="w-5 h-5" />}
           color="blue"
-          subtitle="Attendance Rate"
+          subtitle="Today's Attendance Rate"
         />
       </div>
 
       {/* ========================================================================= */}
-      {/* 📑 TABS: LIVE ROSTER vs PENDING APPROVALS                                  */}
+      {/* 4. ESSENTIAL OPERATIONS WORKSPACE GRID                                     */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] shadow-xs overflow-hidden transition-all">
-        {/* Navigation Tabs Header */}
-        <div className="p-3 sm:p-4 border-b border-zinc-200 dark:border-[#26262e] bg-zinc-50/70 dark:bg-[#101014] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 bg-white dark:bg-[#1a1a20] p-1 rounded-xl border border-zinc-200 dark:border-[#26262e] self-start">
-            <button
-              onClick={() => setActiveTab('roster')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer active:scale-95 ${
-                activeTab === 'roster'
-                  ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-xs'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>Live Roster</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                activeTab === 'roster' 
-                  ? 'bg-white/20 text-white dark:bg-zinc-900/20 dark:text-zinc-900' 
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300'
-              }`}>
-                {filteredRoster.length}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Attendance Hub Card */}
+        <Link
+          to="/admin/attendance"
+          className="group p-4 sm:p-5 bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] shadow-xs hover:border-emerald-500/50 hover:shadow-sm transition flex flex-col justify-between"
+        >
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200 dark:border-emerald-800">
+                <CalendarCheck className="w-4.5 h-4.5" />
+              </div>
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-500/30">
+                {activeSession ? 'Session Active' : 'Idle'}
               </span>
-            </button>
+            </div>
+            <h3 className="text-sm font-black text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+              Attendance Hub
+            </h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+              Live roster, daily reports, historical logs, and status overrides.
+            </p>
+          </div>
+          <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+            <span>Open Attendance Hub</span>
+            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+          </div>
+        </Link>
 
-            <button
-              onClick={() => setActiveTab('approvals')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer active:scale-95 ${
-                activeTab === 'approvals'
-                  ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-xs'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-              }`}
-            >
-              <UserCheck className="w-3.5 h-3.5" />
-              <span>Approvals</span>
-              {pendingStudents.length + pendingIncharges.length > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white">
-                  {pendingStudents.length + pendingIncharges.length}
+        {/* Student Approvals Card */}
+        <Link
+          to="/admin/approvals"
+          className="group p-4 sm:p-5 bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] shadow-xs hover:border-purple-500/50 hover:shadow-sm transition flex flex-col justify-between"
+        >
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center border border-purple-200 dark:border-purple-800">
+                <UserCheck className="w-4.5 h-4.5" />
+              </div>
+              {totalPending > 0 ? (
+                <span className="text-[10px] font-black text-white bg-rose-600 px-2 py-0.5 rounded-full animate-pulse">
+                  {totalPending} Action{totalPending === 1 ? '' : 's'}
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">
+                  Up to Date
                 </span>
               )}
-            </button>
+            </div>
+            <h3 className="text-sm font-black text-zinc-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+              Approvals Queue
+            </h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+              Review {pendingStudents.length} student and {pendingIncharges.length} in-charge registrations.
+            </p>
+          </div>
+          <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-purple-600 dark:text-[#c084fc]">
+            <span>Review Approvals</span>
+            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+          </div>
+        </Link>
+
+        {/* Bus Fleet & Routes Card */}
+        <Link
+          to="/admin/buses"
+          className="group p-4 sm:p-5 bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] shadow-xs hover:border-blue-500/50 hover:shadow-sm transition flex flex-col justify-between"
+        >
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-sky-400 flex items-center justify-center border border-blue-200 dark:border-blue-800">
+                <BusIcon className="w-4.5 h-4.5" />
+              </div>
+              <span className="text-[10px] font-bold text-blue-700 dark:text-sky-400 bg-blue-50 dark:bg-blue-500/15 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-500/30">
+                {data?.buses.length || 0} Buses
+              </span>
+            </div>
+            <h3 className="text-sm font-black text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-sky-400 transition-colors">
+              Bus Fleet & Routes
+            </h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+              Configure fleet inventory, routes, in-charge assignments, and stop schedules.
+            </p>
+          </div>
+          <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-sky-400">
+            <span>Manage Fleet</span>
+            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+          </div>
+        </Link>
+
+        {/* Geofence Settings Card */}
+        <Link
+          to="/admin/settings/geofence"
+          className="group p-4 sm:p-5 bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] shadow-xs hover:border-amber-500/50 hover:shadow-sm transition flex flex-col justify-between"
+        >
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-200 dark:border-amber-800">
+                <MapPin className="w-4.5 h-4.5" />
+              </div>
+              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-500/30">
+                {data?.sessionInfo.radiusMeters || 50}m Radius
+              </span>
+            </div>
+            <h3 className="text-sm font-black text-zinc-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+              Geofence Settings
+            </h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+              Configure campus GPS coordinates, perimeter radius, and tolerance boundaries.
+            </p>
+          </div>
+          <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400">
+            <span>Configure Boundary</span>
+            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+          </div>
+        </Link>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 5. DUAL SNAPSHOT: RECENT CHECK-INS & PENDING REVIEW                       */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Left Column: Recent Check-in Activity */}
+        <div className="bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-zinc-200 dark:border-[#26262e] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <h2 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">
+                Recent Verified Check-Ins (Today)
+              </h2>
+            </div>
+            <Link
+              to="/admin/attendance"
+              className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
+            >
+              View Roster →
+            </Link>
           </div>
 
-          {activeTab === 'roster' && (
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Search Box */}
-              <div className="relative flex-1 sm:flex-initial">
-                <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-3" />
-                <input
-                  type="text"
-                  placeholder="Search name / reg no..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full sm:w-48 pl-9 pr-3 py-1.5 text-xs rounded-xl bg-white dark:bg-[#1a1a20] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none focus:ring-1 focus:ring-zinc-400"
-                />
+          <div className="divide-y divide-zinc-100 dark:divide-[#26262e]">
+            {recentCheckIns.length === 0 ? (
+              <div className="py-12 text-center text-zinc-400 space-y-1">
+                <Radio className="w-8 h-8 mx-auto text-zinc-300 dark:text-zinc-600" />
+                <p className="text-xs font-bold">No verified check-ins yet today.</p>
+                <p className="text-[11px] text-zinc-400">Student check-ins will appear here in real-time once a session starts.</p>
               </div>
+            ) : (
+              recentCheckIns.map((stu) => (
+                <div key={stu.studentId} className="p-3.5 sm:px-4 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-[#1a1a20]/60 transition">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs">
+                      ✓
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-zinc-900 dark:text-white">{stu.name}</p>
+                      <p className="text-[10px] text-zinc-400 font-mono">
+                        {stu.registerNumber} • {stu.busNumber}
+                      </p>
+                    </div>
+                  </div>
 
-              {/* Status Filter */}
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-1.5 text-xs font-bold rounded-xl bg-white dark:bg-[#1a1a20] border border-zinc-200 dark:border-[#2e2e38] text-zinc-700 dark:text-zinc-300 outline-none"
-              >
-                <option value="ALL">All Status</option>
-                <option value="PRESENT">Present</option>
-                <option value="NOT_PRESENT">Not Present</option>
-              </select>
-
-              {/* Bus Filter */}
-              <select
-                value={busFilter}
-                onChange={(e) => setBusFilter(e.target.value)}
-                className="px-3 py-1.5 text-xs font-bold rounded-xl bg-white dark:bg-[#1a1a20] border border-zinc-200 dark:border-[#2e2e38] text-zinc-700 dark:text-zinc-300 outline-none"
-              >
-                <option value="ALL">All Buses</option>
-                {(data?.buses || []).map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.busNumber}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+                  <div className="text-right">
+                    <span className="text-[10px] font-mono text-zinc-500 dark:text-zinc-400 block">
+                      {stu.verifiedAt ? formatISTTime(stu.verifiedAt) : 'Verified'}
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-500/30">
+                      {stu.distanceMeters != null ? `${stu.distanceMeters}m` : 'Present'}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
-        {/* TAB 1: LIVE ATTENDANCE ROSTER */}
-        {activeTab === 'roster' && (
-          <div>
-            {filteredRoster.length === 0 ? (
-              <div className="text-center py-16 px-4 space-y-2">
-                <Users className="w-10 h-10 text-zinc-300 dark:text-zinc-600 mx-auto" />
-                <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">No students match current filters.</p>
-                <p className="text-xs text-zinc-500">Try adjusting your search query or route filter.</p>
+        {/* Right Column: Approvals Attention Queue */}
+        <div className="bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-zinc-200 dark:border-[#26262e] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-purple-600 dark:text-[#c084fc]" />
+              <h2 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">
+                Pending Approvals Queue
+              </h2>
+            </div>
+            <Link
+              to="/admin/approvals"
+              className="text-xs font-bold text-purple-600 dark:text-[#c084fc] hover:underline"
+            >
+              Full Approvals ({totalPending}) →
+            </Link>
+          </div>
+
+          <div className="divide-y divide-zinc-100 dark:divide-[#26262e]">
+            {totalPending === 0 ? (
+              <div className="py-12 text-center text-zinc-400 space-y-1">
+                <CheckCheck className="w-8 h-8 mx-auto text-emerald-500" />
+                <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">All Registrations Approved</p>
+                <p className="text-[11px] text-zinc-400">Zero pending student or in-charge accounts waiting in queue.</p>
               </div>
             ) : (
               <>
-                {/* Desktop Table View */}
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="bg-zinc-50/80 dark:bg-[#101014] border-b border-zinc-200 dark:border-[#26262e] text-[10px] font-black uppercase text-zinc-500 dark:text-zinc-400 tracking-wider">
-                        <th className="py-3 px-4">Student</th>
-                        <th className="py-3 px-4">Reg No</th>
-                        <th className="py-3 px-4">Bus Route</th>
-                        <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4">Location Distance</th>
-                        <th className="py-3 px-4">Time</th>
-                        <th className="py-3 px-4 text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-100 dark:divide-[#26262e]">
-                      {filteredRoster.map((stu) => {
-                        const isPresent = stu.status === 'PRESENT';
-                        return (
-                          <tr key={stu.studentId} className="hover:bg-zinc-50/80 dark:hover:bg-[#1a1a20]/60 transition">
-                            <td className="py-3 px-4 font-bold text-zinc-900 dark:text-white">
-                              {stu.name}
-                            </td>
-                            <td className="py-3 px-4 font-mono font-bold text-blue-600 dark:text-sky-400">
-                              {stu.registerNumber}
-                            </td>
-                            <td className="py-3 px-4 text-zinc-600 dark:text-zinc-300 font-medium">
-                              {stu.busNumber || stu.busId}
-                            </td>
-                            <td className="py-3 px-4">
-                              <StatusBadge status={stu.status} />
-                            </td>
-                            <td className="py-3 px-4 text-xs text-zinc-600 dark:text-zinc-300">
-                              {stu.distanceMeters !== null ? (
-                                <span className="font-mono text-emerald-600 dark:text-[#4ade80] font-bold">{stu.distanceMeters}m from bus</span>
-                              ) : isPresent ? (
-                                <span className="text-emerald-600 dark:text-[#4ade80] font-semibold">Location Verified</span>
-                              ) : (
-                                <span className="text-zinc-300 dark:text-zinc-600">—</span>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-xs text-zinc-500 dark:text-zinc-400 font-mono">
-                              {stu.verifiedAt ? formatISTTime(stu.verifiedAt) : '—'}
-                            </td>
-                            <td className="py-3 px-4 text-right">
-                              <button
-                                onClick={() => handleToggleStudentStatus(stu.studentId, stu.status)}
-                                className={`px-3 py-1 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer ${
-                                  isPresent
-                                    ? 'bg-zinc-100 hover:bg-rose-50 dark:bg-zinc-800 dark:hover:bg-rose-950/40 text-zinc-700 dark:text-zinc-300 hover:text-rose-700 dark:hover:text-rose-300 border border-zinc-200 dark:border-zinc-700'
-                                    : 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 text-emerald-700 dark:text-[#4ade80] border border-emerald-200 dark:border-emerald-500/40'
-                                }`}
-                              >
-                                {isPresent ? 'Mark Absent' : 'Mark Present'}
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile Responsive Card List */}
-                <div className="md:hidden divide-y divide-zinc-100 dark:divide-[#26262e]">
-                  {filteredRoster.map((stu) => {
-                    const isPresent = stu.status === 'PRESENT';
-                    return (
-                      <div key={stu.studentId} className="p-3.5 flex items-center justify-between gap-3">
-                        <div className="space-y-1">
-                          <p className="text-xs font-bold text-zinc-900 dark:text-white">{stu.name}</p>
-                          <div className="flex items-center gap-2 text-xs">
-                            <span className="font-mono font-bold text-blue-600 dark:text-sky-400">{stu.registerNumber}</span>
-                            <span className="text-zinc-400">•</span>
-                            <span className="text-zinc-600 dark:text-zinc-400">{stu.busNumber}</span>
-                          </div>
-                          {stu.verifiedAt && (
-                            <p className="text-[10px] text-emerald-600 dark:text-[#4ade80] font-mono">
-                              Verified {formatISTTime(stu.verifiedAt)}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="flex flex-col items-end gap-2 shrink-0">
-                          <StatusBadge status={stu.status} size="sm" />
-                          <button
-                            onClick={() => handleToggleStudentStatus(stu.studentId, stu.status)}
-                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition active:scale-95 cursor-pointer ${
-                              isPresent
-                                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700'
-                                : 'bg-emerald-600 text-white'
-                            }`}
-                          >
-                            {isPresent ? 'Mark Absent' : 'Mark Present'}
-                          </button>
-                        </div>
+                {pendingStudents.slice(0, 4).map((stu) => (
+                  <div key={stu.id} className="p-3.5 sm:px-4 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-[#1a1a20]/60 transition">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-zinc-900 dark:text-white">{stu.name}</span>
+                        <span className="text-[9px] font-bold uppercase bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-sky-400 px-1.5 py-0.2 rounded">
+                          Student
+                        </span>
                       </div>
-                    );
-                  })}
-                </div>
+                      <p className="text-[10px] text-zinc-400 font-mono">
+                        {stu.registerNumber} • Preferred: {stu.preferredBusId || 'Any Bus'}
+                      </p>
+                    </div>
+
+                    <Button
+                      onClick={() => handleQuickApproveStudent(stu.id, stu.preferredBusId)}
+                      disabled={isProcessingApproval === stu.id}
+                      variant="primary"
+                      size="sm"
+                    >
+                      {isProcessingApproval === stu.id ? 'Approving...' : 'Approve'}
+                    </Button>
+                  </div>
+                ))}
+
+                {pendingIncharges.slice(0, 2).map((inc) => (
+                  <div key={inc.id} className="p-3.5 sm:px-4 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-[#1a1a20]/60 transition bg-purple-50/20 dark:bg-purple-950/10">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-zinc-900 dark:text-white">{inc.name}</span>
+                        <span className="text-[9px] font-bold uppercase bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-[#c084fc] px-1.5 py-0.2 rounded">
+                          In-Charge
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-zinc-400">{inc.email}</p>
+                    </div>
+
+                    <Link
+                      to="/admin/approvals"
+                      className="px-3 py-1 text-xs font-bold text-purple-700 dark:text-[#c084fc] bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 rounded-xl transition border border-purple-200 dark:border-purple-800"
+                    >
+                      Assign Bus →
+                    </Link>
+                  </div>
+                ))}
               </>
             )}
           </div>
-        )}
-
-        {/* TAB 2: PENDING APPROVALS */}
-        {activeTab === 'approvals' && (
-          <div className="p-4 sm:p-6 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-zinc-50 dark:bg-[#1a1a20] border border-zinc-200 dark:border-[#26262e]">
-              <div>
-                <p className="text-xs font-bold text-zinc-900 dark:text-white">
-                  Pending Review: {pendingIncharges.length} Bus In-Charge{pendingIncharges.length === 1 ? '' : 's'}, {pendingStudents.length} Student{pendingStudents.length === 1 ? '' : 's'}
-                </p>
-                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                  Full registration details, in-charge bus assignments, and Brevo OTP statuses are managed in the Approvals Center.
-                </p>
-              </div>
-              <Link
-                to="/admin/approvals"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-xs hover:opacity-90 transition self-start sm:self-auto"
-              >
-                <span>Open Approvals Center →</span>
-              </Link>
-            </div>
-
-            {pendingStudents.length === 0 && pendingIncharges.length === 0 ? (
-              <div className="text-center py-12 space-y-2">
-                <CheckCheck className="w-10 h-10 text-emerald-500 mx-auto" />
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-white">No Pending Approvals</h3>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">All registered students have been assigned routes.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {pendingStudents.map((stu) => {
-                  const currentBus =
-                    selectedBusesForApproval[stu.id] ||
-                    stu.preferredBusId ||
-                    data?.buses[0]?.id ||
-                    '';
-
-                  return (
-                    <div
-                      key={stu.id}
-                      className="p-4 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/40 dark:bg-[#1a1a20] flex flex-col justify-between gap-3 shadow-2xs"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <h4 className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white">{stu.name}</h4>
-                          <p className="text-xs font-mono font-bold text-blue-600 dark:text-sky-400">{stu.registerNumber}</p>
-                        </div>
-                        <Badge variant="amber">
-                          Pending
-                        </Badge>
-                      </div>
-
-                      <div className="pt-3 border-t border-amber-200/60 dark:border-[#26262e] flex items-center justify-between gap-2">
-                        <select
-                          value={currentBus}
-                          onChange={(e) =>
-                            setSelectedBusesForApproval({
-                              ...selectedBusesForApproval,
-                              [stu.id]: e.target.value,
-                            })
-                          }
-                          className="flex-1 px-3 py-1.5 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-white dark:bg-[#141418] text-zinc-900 dark:text-white outline-none"
-                        >
-                          {(data?.buses || []).map((b) => (
-                            <option key={b.id} value={b.id}>
-                              {b.busNumber}
-                            </option>
-                          ))}
-                        </select>
-
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => handleRejectStudent(stu.id)}
-                            disabled={isProcessingApproval === stu.id}
-                            className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 border border-rose-200 dark:border-rose-500/30 transition cursor-pointer active:scale-95"
-                          >
-                            Reject
-                          </button>
-                          <button
-                            onClick={() => handleApproveStudent(stu.id)}
-                            disabled={isProcessingApproval === stu.id}
-                            className="px-3 py-1.5 rounded-xl text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 transition cursor-pointer active:scale-95 shadow-xs"
-                          >
-                            Approve
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
