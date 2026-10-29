@@ -33035,6 +33035,73 @@ var defaults = import_lib.default.defaults;
 
 // src/server/storage/PostgresStorageAdapter.ts
 import crypto from "crypto";
+
+// src/server/attendance/session.ts
+function getISTDateString(d = /* @__PURE__ */ new Date(), timezone = "Asia/Kolkata") {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  });
+  return formatter.format(d);
+}
+function getISTTimeString(d = /* @__PURE__ */ new Date(), timezone = "Asia/Kolkata") {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  });
+  return formatter.format(d);
+}
+function timeToMinutes(timeStr) {
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+function evaluateSessionStatus(settings) {
+  const tz = settings.timezone || "Asia/Kolkata";
+  let currentTimeStr = getISTTimeString(/* @__PURE__ */ new Date(), tz);
+  let currentDateStr = getISTDateString(/* @__PURE__ */ new Date(), tz);
+  let isSimulated = false;
+  if (settings.simulation?.enabled && settings.simulation.simulatedTime) {
+    currentTimeStr = `${settings.simulation.simulatedTime}:00`.slice(0, 8);
+    isSimulated = true;
+  }
+  const currentMinutes = timeToMinutes(currentTimeStr);
+  const startMinutes = timeToMinutes(settings.startTime);
+  const endMinutes = timeToMinutes(settings.endTime);
+  const reportMinutes = timeToMinutes(settings.reportTime || "16:57");
+  let status = "UPCOMING";
+  if (currentMinutes < startMinutes) {
+    status = "UPCOMING";
+  } else if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
+    status = "ACTIVE";
+  } else if (currentMinutes >= endMinutes && currentMinutes < reportMinutes) {
+    status = "CLOSED";
+  } else {
+    status = "FINALIZED";
+  }
+  return {
+    sessionType: "EVENING",
+    attendanceMode: "GROUND",
+    status,
+    startTime: settings.startTime,
+    endTime: settings.endTime,
+    reportTime: settings.reportTime || "16:57",
+    timezone: settings.timezone,
+    currentTimeIST: currentTimeStr,
+    currentDateIST: currentDateStr,
+    locationName: settings.location.name,
+    radiusMeters: settings.location.radiusMeters,
+    maxGpsAccuracyMeters: settings.location.maxGpsAccuracyMeters,
+    isSimulated
+  };
+}
+
+// src/server/storage/PostgresStorageAdapter.ts
+types.setTypeParser(1082, (val) => val);
 var PostgresStorageAdapter = class {
   pool;
   isInitialized = false;
@@ -33771,12 +33838,34 @@ var PostgresStorageAdapter = class {
   // 4. ATTENDANCE LOGGING & PROOFS
   // ==========================================================================
   mapAttendance(r) {
+    let attendanceDate;
+    if (r.attendance_date instanceof Date) {
+      attendanceDate = getISTDateString(r.attendance_date);
+    } else if (typeof r.attendance_date === "string") {
+      attendanceDate = r.attendance_date.split("T")[0].trim();
+    } else {
+      attendanceDate = r.attendance_date ? String(r.attendance_date) : "";
+    }
+    let verifiedAt;
+    if (r.verified_at instanceof Date) {
+      verifiedAt = r.verified_at.toISOString();
+    } else if (r.verified_at) {
+      verifiedAt = String(r.verified_at);
+    } else {
+      verifiedAt = "";
+    }
+    let capturedAt = verifiedAt;
+    if (r.captured_at instanceof Date) {
+      capturedAt = r.captured_at.toISOString();
+    } else if (r.captured_at) {
+      capturedAt = String(r.captured_at);
+    }
     return {
       id: r.id,
       sessionId: r.session_id,
       studentId: r.student_id,
       busId: r.bus_id,
-      attendanceDate: r.attendance_date,
+      attendanceDate,
       sessionType: r.session_type,
       attendanceMode: r.attendance_mode || "GROUND",
       status: r.status,
@@ -33788,8 +33877,8 @@ var PostgresStorageAdapter = class {
       selfiePublicId: r.selfie_public_id,
       faceMatchConfidence: r.face_match_confidence ? Number(r.face_match_confidence) : void 0,
       deviceBiometricPassed: r.device_biometric_passed,
-      capturedAt: r.verified_at,
-      verifiedAt: r.verified_at,
+      capturedAt,
+      verifiedAt,
       verificationMethod: r.verification_method,
       overrideReason: r.override_reason,
       overrideBy: r.override_by
@@ -33910,8 +33999,17 @@ var PostgresStorageAdapter = class {
     let sql = `SELECT * FROM public.active_sessions WHERE status = 'ACTIVE'`;
     const params = [];
     if (busId && busId !== "ALL") {
-      sql += ` AND (bus_id = $1 OR bus_id = 'ALL')`;
-      params.push(busId);
+      const cleanBus = busId.trim().toUpperCase();
+      const withPrefix = cleanBus.startsWith("BUS-") ? cleanBus : `BUS-${cleanBus}`;
+      const withoutPrefix = cleanBus.replace(/^BUS-/i, "");
+      sql += ` AND (
+        bus_id = $1 
+        OR bus_id = $2 
+        OR bus_id = $3 
+        OR bus_id = 'ALL' 
+        OR REPLACE(UPPER(bus_id), 'BUS-', '') = $3
+      )`;
+      params.push(cleanBus, withPrefix, withoutPrefix);
     }
     sql += ` ORDER BY started_at DESC LIMIT 1;`;
     const res = await this.pool.query(sql, params);
@@ -34591,7 +34689,10 @@ var MemoryStorageAdapter = class {
   async getActiveSession(busId) {
     if (!this.activeSession || this.activeSession.status !== "ACTIVE") return null;
     if (busId && busId !== "ALL" && this.activeSession.busId !== busId && this.activeSession.busId !== "ALL") {
-      return null;
+      const normBus = (b) => (b || "").trim().toUpperCase().replace(/^BUS-/i, "");
+      if (normBus(this.activeSession.busId) !== normBus(busId)) {
+        return null;
+      }
     }
     return this.activeSession;
   }
@@ -34744,70 +34845,6 @@ function verifyToken(token) {
   } catch (err) {
     return null;
   }
-}
-
-// src/server/attendance/session.ts
-function getISTDateString(d = /* @__PURE__ */ new Date(), timezone = "Asia/Kolkata") {
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  });
-  return formatter.format(d);
-}
-function getISTTimeString(d = /* @__PURE__ */ new Date(), timezone = "Asia/Kolkata") {
-  const formatter = new Intl.DateTimeFormat("en-GB", {
-    timeZone: timezone,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false
-  });
-  return formatter.format(d);
-}
-function timeToMinutes(timeStr) {
-  const [hours, minutes] = timeStr.split(":").map(Number);
-  return hours * 60 + minutes;
-}
-function evaluateSessionStatus(settings) {
-  const tz = settings.timezone || "Asia/Kolkata";
-  let currentTimeStr = getISTTimeString(/* @__PURE__ */ new Date(), tz);
-  let currentDateStr = getISTDateString(/* @__PURE__ */ new Date(), tz);
-  let isSimulated = false;
-  if (settings.simulation?.enabled && settings.simulation.simulatedTime) {
-    currentTimeStr = `${settings.simulation.simulatedTime}:00`.slice(0, 8);
-    isSimulated = true;
-  }
-  const currentMinutes = timeToMinutes(currentTimeStr);
-  const startMinutes = timeToMinutes(settings.startTime);
-  const endMinutes = timeToMinutes(settings.endTime);
-  const reportMinutes = timeToMinutes(settings.reportTime || "16:57");
-  let status = "UPCOMING";
-  if (currentMinutes < startMinutes) {
-    status = "UPCOMING";
-  } else if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
-    status = "ACTIVE";
-  } else if (currentMinutes >= endMinutes && currentMinutes < reportMinutes) {
-    status = "CLOSED";
-  } else {
-    status = "FINALIZED";
-  }
-  return {
-    sessionType: "EVENING",
-    attendanceMode: "GROUND",
-    status,
-    startTime: settings.startTime,
-    endTime: settings.endTime,
-    reportTime: settings.reportTime || "16:57",
-    timezone: settings.timezone,
-    currentTimeIST: currentTimeStr,
-    currentDateIST: currentDateStr,
-    locationName: settings.location.name,
-    radiusMeters: settings.location.radiusMeters,
-    maxGpsAccuracyMeters: settings.location.maxGpsAccuracyMeters,
-    isSimulated
-  };
 }
 
 // src/server/attendance/haversine.ts
@@ -36872,7 +36909,9 @@ apiRouter.get(
         bus,
         sessionInfo,
         notifications: notifications.slice(0, 5),
-        history: history.sort((a, b) => b.attendanceDate.localeCompare(a.attendanceDate))
+        history: history.sort(
+          (a, b) => String(b.attendanceDate || "").localeCompare(String(a.attendanceDate || ""))
+        )
       });
     } catch (err) {
       return res.status(500).json({ error: err.message });
@@ -37145,7 +37184,7 @@ apiRouter.get(
       });
       return res.json(
         enriched.sort(
-          (a, b) => b.attendanceDate.localeCompare(a.attendanceDate) || b.verifiedAt.localeCompare(a.verifiedAt)
+          (a, b) => String(b.attendanceDate || "").localeCompare(String(a.attendanceDate || "")) || String(b.verifiedAt || "").localeCompare(String(a.verifiedAt || ""))
         )
       );
     } catch (err) {

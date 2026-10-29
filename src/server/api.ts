@@ -1303,7 +1303,9 @@ apiRouter.get(
         bus,
         sessionInfo,
         notifications: notifications.slice(0, 5),
-        history: history.sort((a, b) => b.attendanceDate.localeCompare(a.attendanceDate)),
+        history: history.sort((a, b) =>
+          String(b.attendanceDate || '').localeCompare(String(a.attendanceDate || ''))
+        ),
       });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -1630,8 +1632,8 @@ apiRouter.get(
       return res.json(
         enriched.sort(
           (a, b) =>
-            b.attendanceDate.localeCompare(a.attendanceDate) ||
-            b.verifiedAt.localeCompare(a.verifiedAt)
+            String(b.attendanceDate || '').localeCompare(String(a.attendanceDate || '')) ||
+            String(b.verifiedAt || '').localeCompare(String(a.verifiedAt || ''))
         )
       );
     } catch (err: any) {
