@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool, types } from 'pg';
 import crypto from 'crypto';
 import { StorageAdapter } from './StorageAdapter';
 import {
@@ -13,6 +13,10 @@ import {
   SessionType,
   CampusCheckpoint,
 } from '../../types';
+import { getISTDateString } from '../attendance/session';
+
+// Configure node-pg to return DATE (OID 1082) as raw YYYY-MM-DD string without timezone shifting
+types.setTypeParser(1082, (val: string) => val);
 
 export class PostgresStorageAdapter implements StorageAdapter {
   private pool: Pool;
@@ -851,12 +855,37 @@ export class PostgresStorageAdapter implements StorageAdapter {
   // 4. ATTENDANCE LOGGING & PROOFS
   // ==========================================================================
   private mapAttendance(r: any): AttendanceRecord {
+    let attendanceDate: string;
+    if (r.attendance_date instanceof Date) {
+      attendanceDate = getISTDateString(r.attendance_date);
+    } else if (typeof r.attendance_date === 'string') {
+      attendanceDate = r.attendance_date.split('T')[0].trim();
+    } else {
+      attendanceDate = r.attendance_date ? String(r.attendance_date) : '';
+    }
+
+    let verifiedAt: string;
+    if (r.verified_at instanceof Date) {
+      verifiedAt = r.verified_at.toISOString();
+    } else if (r.verified_at) {
+      verifiedAt = String(r.verified_at);
+    } else {
+      verifiedAt = '';
+    }
+
+    let capturedAt: string = verifiedAt;
+    if (r.captured_at instanceof Date) {
+      capturedAt = r.captured_at.toISOString();
+    } else if (r.captured_at) {
+      capturedAt = String(r.captured_at);
+    }
+
     return {
       id: r.id,
       sessionId: r.session_id,
       studentId: r.student_id,
       busId: r.bus_id,
-      attendanceDate: r.attendance_date,
+      attendanceDate,
       sessionType: r.session_type,
       attendanceMode: r.attendance_mode || 'GROUND',
       status: r.status,
@@ -868,8 +897,8 @@ export class PostgresStorageAdapter implements StorageAdapter {
       selfiePublicId: r.selfie_public_id,
       faceMatchConfidence: r.face_match_confidence ? Number(r.face_match_confidence) : undefined,
       deviceBiometricPassed: r.device_biometric_passed,
-      capturedAt: r.verified_at,
-      verifiedAt: r.verified_at,
+      capturedAt,
+      verifiedAt,
       verificationMethod: r.verification_method,
       overrideReason: r.override_reason,
       overrideBy: r.override_by,
@@ -1011,8 +1040,18 @@ export class PostgresStorageAdapter implements StorageAdapter {
     const params: any[] = [];
 
     if (busId && busId !== 'ALL') {
-      sql += ` AND (bus_id = $1 OR bus_id = 'ALL')`;
-      params.push(busId);
+      const cleanBus = busId.trim().toUpperCase();
+      const withPrefix = cleanBus.startsWith('BUS-') ? cleanBus : `BUS-${cleanBus}`;
+      const withoutPrefix = cleanBus.replace(/^BUS-/i, '');
+
+      sql += ` AND (
+        bus_id = $1 
+        OR bus_id = $2 
+        OR bus_id = $3 
+        OR bus_id = 'ALL' 
+        OR REPLACE(UPPER(bus_id), 'BUS-', '') = $3
+      )`;
+      params.push(cleanBus, withPrefix, withoutPrefix);
     }
 
     sql += ` ORDER BY started_at DESC LIMIT 1;`;

@@ -429,7 +429,10 @@ export class MemoryStorageAdapter implements StorageAdapter {
   async getActiveSession(busId?: string): Promise<ActiveSession | null> {
     if (!this.activeSession || this.activeSession.status !== 'ACTIVE') return null;
     if (busId && busId !== 'ALL' && this.activeSession.busId !== busId && this.activeSession.busId !== 'ALL') {
-      return null;
+      const normBus = (b?: string) => (b || '').trim().toUpperCase().replace(/^BUS-/i, '');
+      if (normBus(this.activeSession.busId) !== normBus(busId)) {
+        return null;
+      }
     }
     return this.activeSession;
   }

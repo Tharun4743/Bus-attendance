@@ -16,6 +16,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Clock,
+  AlertCircle,
 } from 'lucide-react';
 import { MobileVerificationModal } from '../../components/attendance/MobileVerificationModal';
 import { FaceEnrollmentModal } from '../../components/attendance/FaceEnrollmentModal';
@@ -32,6 +33,7 @@ export const StudentDashboard: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isMobileModalOpen, setIsMobileModalOpen] = useState<boolean>(false);
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const fetchStudentData = async () => {
     try {
@@ -41,8 +43,10 @@ export const StudentDashboard: React.FC = () => {
       setSessionInfo(res.sessionInfo);
       setTodayRecord(res.todayRecord);
       setHistory(res.history || []);
-    } catch (err) {
+      setErrorMessage(null);
+    } catch (err: any) {
       console.error('Failed to load student status:', err);
+      setErrorMessage(err?.message || 'Failed to connect to commuter portal. Please try again.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -112,16 +116,45 @@ export const StudentDashboard: React.FC = () => {
 
   const isPresent = todayRecord?.status === 'PRESENT';
 
+  const normalizeBus = (b?: string | null): string => {
+    if (!b) return '';
+    return b.trim().toUpperCase().replace(/^BUS-/i, '');
+  };
+
   const activeSession = sessionInfo?.activeSession;
-  const isTargetBusActive =
+  const isTargetBusActive = Boolean(
     activeSession &&
     activeSession.status === 'ACTIVE' &&
-    (activeSession.busId === 'ALL' || activeSession.busId === student?.busId);
+    (activeSession.busId === 'ALL' ||
+      normalizeBus(activeSession.busId) === normalizeBus(student?.busId))
+  );
 
   const isSessionActive = sessionInfo?.status === 'ACTIVE' || isTargetBusActive;
 
   return (
     <div className="space-y-4 max-w-[1600px] w-full mx-auto px-1 sm:px-2 pb-10">
+      {errorMessage && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-800 dark:text-rose-200 shadow-xs">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Portal Sync Notice</p>
+              <p className="text-xs sm:text-sm font-medium text-rose-700 dark:text-rose-300">{errorMessage}</p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="shrink-0 self-start sm:self-auto"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>Retry Connection</span>
+          </Button>
+        </div>
+      )}
+
       {/* ========================================================================= */}
       {/* 1. STUDENT EXECUTIVE CONSOLE HEADER                                       */}
       {/* ========================================================================= */}
