@@ -207,6 +207,28 @@ export class MemoryStorageAdapter implements StorageAdapter {
     return this.students.find((s) => s.registerNumber.toLowerCase() === clean) || null;
   }
 
+  async getStudentForUser(user: { id: string; email: string; name?: string; studentId?: string }): Promise<Student | null> {
+    if (user.studentId) {
+      const byId = await this.getStudentById(user.studentId);
+      if (byId) return byId;
+    }
+    if (user.id) {
+      const byUserId = await this.getStudentById(user.id);
+      if (byUserId) return byUserId;
+    }
+    if (user.email) {
+      const cleanEmail = user.email.trim().toLowerCase();
+      const byEmail = this.students.find((s) => s.email.toLowerCase() === cleanEmail);
+      if (byEmail) return byEmail;
+    }
+    if (user.name) {
+      const cleanName = user.name.trim().toLowerCase();
+      const byName = this.students.find((s) => s.name.trim().toLowerCase() === cleanName);
+      if (byName) return byName;
+    }
+    return null;
+  }
+
   async getStudentsByBusId(busId: string): Promise<Student[]> {
     return this.getStudents({ busId, status: 'APPROVED' });
   }
@@ -429,7 +451,10 @@ export class MemoryStorageAdapter implements StorageAdapter {
   async getActiveSession(busId?: string): Promise<ActiveSession | null> {
     if (!this.activeSession || this.activeSession.status !== 'ACTIVE') return null;
     if (busId && busId !== 'ALL' && this.activeSession.busId !== busId && this.activeSession.busId !== 'ALL') {
-      return null;
+      const normBus = (b?: string) => (b || '').trim().toUpperCase().replace(/^BUS-/i, '');
+      if (normBus(this.activeSession.busId) !== normBus(busId)) {
+        return null;
+      }
     }
     return this.activeSession;
   }
@@ -530,6 +555,16 @@ export class MemoryStorageAdapter implements StorageAdapter {
 
   async markAllNotificationsAsRead(): Promise<boolean> {
     this.notifications.forEach((n) => (n.read = true));
+    return true;
+  }
+
+  async clearAllNotifications(): Promise<boolean> {
+    this.notifications = [];
+    return true;
+  }
+
+  async deleteNotification(id: string): Promise<boolean> {
+    this.notifications = this.notifications.filter((n) => n.id !== id);
     return true;
   }
 

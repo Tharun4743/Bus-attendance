@@ -52,27 +52,23 @@ if not exist "node_modules\" (
 echo ===============================================================================
 echo   CHOOSE AN ACTION:
 echo   [1] Start Application (Express API + Vite Client + Auto-Open Browser) [DEFAULT]
-echo   [2] Run Vitest Regression Test Circuits (26 tests: Biometrics + Auth + OTP)
-echo   [3] Run System Lifecycle Verification (24 tests: npm test)
-echo   [4] Run Biometric Accuracy & Score Benchmark (scripts/evaluate_accuracy.ts)
-echo   [5] Train Local Biometric Neural Model (scripts/train_student_model.ts)
-echo   [6] Build Production Bundle (tsc + vite build)
-echo   [7] Install / Clean Reinstall Dependencies (npm install)
-echo   [8] Exit
+echo   [2] Run Vitest Regression Test Circuits (37 tests: Biometrics + Auth + OTP)
+echo   [3] Run System Lifecycle Verification (25 tests: npm test)
+echo   [4] Build Production Bundle (tsc + vite build)
+echo   [5] Install / Clean Reinstall Dependencies (npm install)
+echo   [6] Exit
 echo ===============================================================================
 echo.
 
 set "choice=1"
-set /p choice="Enter choice (1-8) [Press ENTER for Default 1]: "
+set /p choice="Enter choice (1-6) [Press ENTER for Default 1]: "
 
 if "%choice%"=="1" goto START_APP
 if "%choice%"=="2" goto RUN_VITEST
 if "%choice%"=="3" goto RUN_SYSTEM_TESTS
-if "%choice%"=="4" goto RUN_ACCURACY
-if "%choice%"=="5" goto TRAIN_MODEL
-if "%choice%"=="6" goto BUILD_APP
-if "%choice%"=="7" goto INSTALL_DEPS
-if "%choice%"=="8" goto EXIT_APP
+if "%choice%"=="4" goto BUILD_APP
+if "%choice%"=="5" goto INSTALL_DEPS
+if "%choice%"=="6" goto EXIT_APP
 
 echo [!] Invalid option. Starting Application...
 timeout /t 1 >nul
@@ -124,34 +120,6 @@ echo                    RUNNING SYSTEM VERIFICATION LIFECYCLE TESTS
 echo ===============================================================================
 echo.
 call npm test
-echo.
-echo Press any key to return to menu...
-pause >nul
-cls
-goto MENU
-
-:RUN_ACCURACY
-cls
-color 0B
-echo ===============================================================================
-echo             RUNNING BIOMETRIC ACCURACY & HOLDOUT BENCHMARK
-echo ===============================================================================
-echo.
-call npm run test:accuracy
-echo.
-echo Press any key to return to menu...
-pause >nul
-cls
-goto MENU
-
-:TRAIN_MODEL
-cls
-color 0B
-echo ===============================================================================
-echo             TRAINING LOCAL BIOMETRIC NEURAL CLASSIFIER MODEL
-echo ===============================================================================
-echo.
-call npm run train:model
 echo.
 echo Press any key to return to menu...
 pause >nul

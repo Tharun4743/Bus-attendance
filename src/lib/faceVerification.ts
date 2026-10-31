@@ -124,14 +124,13 @@ export class FaceVerificationEngine {
   /**
    * Synchronous validation for camera capture payload formats
    */
-  public verifyFaceMatch(
+  public validateCapturePayload(
     liveSelfieBase64: string,
     enrolledPhotoUrlOrBase64?: string
-  ): FaceMatchResult {
+  ): { valid: boolean; reason?: string } {
     if (!this.isValidImagePayload(liveSelfieBase64)) {
       return {
-        matched: false,
-        confidence: 0,
+        valid: false,
         reason: 'Invalid camera selfie image format.',
       };
     }
@@ -139,24 +138,53 @@ export class FaceVerificationEngine {
     const rawData = liveSelfieBase64.split(',')[1];
     if (!rawData || rawData.length < 500) {
       return {
-        matched: false,
-        confidence: 0,
+        valid: false,
         reason: 'Camera capture contains insufficient pixel data. Retake with good lighting.',
       };
     }
 
     if (!enrolledPhotoUrlOrBase64) {
       return {
-        matched: false,
-        confidence: 0,
+        valid: false,
         reason: 'Face not registered! You must enroll your face photo in your profile before marking attendance.',
       };
     }
 
+    return { valid: true };
+  }
+
+  /**
+   * Synchronous face match check: validates payload formatting and performs bitwise
+   * identity matching. For disparate images, rejects synchronous mock bypass and requires
+   * verifyFaceMatchAsync (cloud dual-AI vision) or compareBiometricDescriptors (128-D vectors).
+   */
+  public verifyFaceMatch(
+    liveSelfieBase64: string,
+    enrolledPhotoUrlOrBase64?: string
+  ): FaceMatchResult {
+    const validation = this.validateCapturePayload(liveSelfieBase64, enrolledPhotoUrlOrBase64);
+    if (!validation.valid) {
+      return {
+        matched: false,
+        confidence: 0,
+        reason: validation.reason,
+      };
+    }
+
+    // Exact bitwise identity match for identical image payloads
+    if (liveSelfieBase64 === enrolledPhotoUrlOrBase64) {
+      return {
+        matched: true,
+        confidence: 100,
+        reason: 'Identical camera capture payload verified.',
+      };
+    }
+
+    // Disparate images: zero mock bypass policy. Production verification requires asynchronous AI.
     return {
-      matched: true,
-      confidence: 100,
-      reason: 'Face capture payload format validated.',
+      matched: false,
+      confidence: 0,
+      reason: 'Disparate photo verification requires asynchronous cloud AI (verifyFaceMatchAsync) or 128-D vector matching (compareBiometricDescriptors).',
     };
   }
 

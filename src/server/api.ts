@@ -119,38 +119,17 @@ apiRouter.post('/auth/setup', async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.post('/auth/signup', async (req: Request, res: Response) => {
-  try {
-    const { name, registerNumber, email, phone, password, preferredBusId } = req.body;
-    if (!name || !registerNumber || !password) {
-      return res.status(400).json({
-        error: 'Full Name, Register Number, and Password are required.',
-      });
-    }
-
-    const student = await storage.signupStudent({
-      name: name.trim(),
-      registerNumber: registerNumber.trim().toUpperCase(),
-      email: email?.trim(),
-      phone: phone?.trim(),
-      password,
-      preferredBusId,
-    });
-
-    return res.status(201).json({
-      message: 'Your registration has been submitted for Admin approval.',
-      student: {
-        id: student.id,
-        name: student.name,
-        registerNumber: student.registerNumber,
-        email: student.email,
-        status: student.status,
-        approved: student.approved,
-      },
-    });
-  } catch (err: any) {
-    return res.status(400).json({ error: err.message || 'Signup failed.' });
-  }
+/**
+ * @deprecated Legacy direct signup bypass is disabled.
+ * All registrations must complete 2-step verification with Brevo 6-digit cryptographic OTP
+ * via POST /api/auth/signup/request-otp and POST /api/auth/signup/verify-otp.
+ */
+apiRouter.post('/auth/signup', async (_req: Request, res: Response) => {
+  return res.status(403).json({
+    error: 'Direct registration is deprecated for security. All registrations must complete Brevo 6-digit OTP verification via /api/auth/signup/request-otp and /api/auth/signup/verify-otp.',
+    code: 'REGISTRATION_OTP_REQUIRED',
+    deprecated: true,
+  });
 });
 
 // Public helper: Get buses with assigned In-Charges for registration selection
@@ -971,6 +950,57 @@ apiRouter.get(
 );
 
 apiRouter.post(
+  '/attendance/mobile/register-biometric',
+  requireAuth(['STUDENT']),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const studentId = req.user!.studentId || req.user!.id;
+      const { credentialId, rawId, transports } = req.body;
+      if (!credentialId || typeof credentialId !== 'string') {
+        return res.status(400).json({ error: 'credentialId is required.' });
+      }
+      const result = mobileBiometricEngine.registerCredential(
+        studentId,
+        credentialId,
+        rawId,
+        transports || ['internal']
+      );
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Failed to register biometric credential.' });
+    }
+  }
+);
+
+apiRouter.get(
+  '/attendance/mobile/credential',
+  requireAuth(['STUDENT']),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const studentId = req.user!.studentId || req.user!.id;
+      const credential = mobileBiometricEngine.getRegisteredCredential(studentId);
+      return res.json({ credential });
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Failed to retrieve biometric credential.' });
+    }
+  }
+);
+
+apiRouter.post(
+  '/attendance/mobile/unregister-biometric',
+  requireAuth(['STUDENT']),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const studentId = req.user!.studentId || req.user!.id;
+      mobileBiometricEngine.removeCredential(studentId);
+      return res.json({ success: true, message: 'Mobile biometric credential unlinked successfully.' });
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Failed to unregister biometric credential.' });
+    }
+  }
+);
+
+apiRouter.post(
   '/attendance/enroll-face',
   requireAuth(['STUDENT']),
   async (req: AuthRequest, res: Response) => {
@@ -1074,32 +1104,46 @@ apiRouter.post(
   requireAuth(['STUDENT']),
   async (req: AuthRequest, res: Response) => {
     try {
-      const studentId = req.user!.studentId || req.user!.id;
-      const student = await storage.getStudentById(studentId);
+      let student = await storage.getStudentForUser({
+        id: req.user!.id,
+        email: req.user!.email,
+        name: req.user!.name,
+        studentId: req.user!.studentId,
+      });
+      if (!student) {
+        const studentId = req.user!.studentId || req.user!.id;
+        student = await storage.getStudentById(studentId);
+      }
       if (!student) {
         return res.status(404).json({
           status: 'BUS_MISMATCH',
-          message: 'Student commuter profile not found.',
+          message: 'Student commuter profile not found. Please contact administration.',
         });
       }
 
+      const studentId = student.id;
       const { busId, method, latitude, longitude, accuracy, selfieBase64, biometricPayload } = req.body;
 
-      const targetBusId = busId || student.busId;
-      if (student.busId && targetBusId !== student.busId) {
-        return res.status(400).json({
-          status: 'BUS_MISMATCH',
-          message: `Bus mismatch: You are assigned to Bus ${student.busId}, not ${targetBusId}.`,
-        });
+      let targetBusId = busId || student.busId;
+      let activeSession = targetBusId ? await storage.getActiveSession(targetBusId) : null;
+      if (!activeSession || activeSession.status !== 'ACTIVE') {
+        activeSession = await storage.getActiveSession();
+        if (activeSession && activeSession.status === 'ACTIVE') {
+          targetBusId = activeSession.busId;
+        }
       }
 
-      // 1. Session Active Guard: In-charge must have opened attendance for this bus
-      const activeSession = await storage.getActiveSession(targetBusId);
       if (!activeSession || activeSession.status !== 'ACTIVE') {
         return res.status(400).json({
           status: 'SESSION_CLOSED',
-          message: `The bus in-charge has not opened transit attendance for Bus ${targetBusId} yet. Please wait until session begins.`,
+          message: `The bus in-charge has not opened transit attendance for your bus yet. Please wait until session begins.`,
         });
+      }
+
+      // Auto-assign bus to student if student bus is not set or matches active
+      if (!student.busId && targetBusId) {
+        await storage.updateStudent(student.id, { busId: targetBusId });
+        student.busId = targetBusId;
       }
 
       // 2. Validate Smartphone GPS Coordinates
@@ -1266,20 +1310,45 @@ apiRouter.get(
   requireAuth(['STUDENT']),
   async (req: AuthRequest, res: Response) => {
     try {
-      const studentId = req.user!.studentId || req.user!.id;
-      let student = await storage.getStudentById(studentId);
-      if (!student && req.user!.email) {
-        student = await storage.getStudentById(req.user!.email);
+      let student = await storage.getStudentForUser({
+        id: req.user!.id,
+        email: req.user!.email,
+        name: req.user!.name,
+        studentId: req.user!.studentId,
+      });
+
+      if (!student) {
+        const studentId = req.user!.studentId || req.user!.id;
+        student = await storage.getStudentById(studentId);
+        if (!student && req.user!.email) {
+          student = await storage.getStudentById(req.user!.email);
+        }
       }
-      const bus = student?.busId ? await storage.getBusById(student.busId) : null;
+
+      let bus = student?.busId ? await storage.getBusById(student.busId) : null;
       const todayDate = getISTDateString();
 
-      // Check active dynamic session first
-      const activeDynamic = await storage.getActiveSession(student?.busId);
-      const currentSessionType: SessionType = activeDynamic ? activeDynamic.sessionType : 'EVENING';
+      // Check active dynamic session:
+      // Try assigned bus first; if none or student has no assigned bus, check latest system active session
+      let activeDynamic = await storage.getActiveSession(student?.busId);
+      if (!activeDynamic || activeDynamic.status !== 'ACTIVE') {
+        activeDynamic = await storage.getActiveSession();
+      }
 
-      const todayRecord = await storage.getAttendanceRecord(studentId, todayDate, currentSessionType);
-      const history = await storage.getAttendance({ studentId });
+      // If active session belongs to a bus and student has no bus assigned, auto-link
+      if (activeDynamic && activeDynamic.status === 'ACTIVE' && student && !student.busId && activeDynamic.busId !== 'ALL') {
+        await storage.updateStudent(student.id, { busId: activeDynamic.busId });
+        student.busId = activeDynamic.busId;
+        if (!bus) {
+          bus = await storage.getBusById(activeDynamic.busId);
+        }
+      }
+
+      const currentSessionType: SessionType = activeDynamic ? activeDynamic.sessionType : 'EVENING';
+      const effectiveStudentId = student ? student.id : (req.user!.studentId || req.user!.id);
+
+      const todayRecord = await storage.getAttendanceRecord(effectiveStudentId, todayDate, currentSessionType);
+      const history = await storage.getAttendance({ studentId: effectiveStudentId });
 
       let sessionInfo: any;
       if (activeDynamic && activeDynamic.status === 'ACTIVE') {
@@ -1324,7 +1393,9 @@ apiRouter.get(
         bus,
         sessionInfo,
         notifications: notifications.slice(0, 5),
-        history: history.sort((a, b) => b.attendanceDate.localeCompare(a.attendanceDate)),
+        history: history.sort((a, b) =>
+          String(b.attendanceDate || '').localeCompare(String(a.attendanceDate || ''))
+        ),
       });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -1401,7 +1472,7 @@ apiRouter.post(
       const newStudent = await storage.createStudent({
         registerNumber: registerNumber.trim().toUpperCase(),
         name: name.trim(),
-        email: email ? email.trim().toLowerCase() : `${registerNumber.toLowerCase()}@example.com`,
+        email: email ? email.trim().toLowerCase() : `${registerNumber.toLowerCase()}@student.college.edu`,
         phone: phone ? phone.trim() : '',
         busId,
         role: 'STUDENT',
@@ -1651,8 +1722,8 @@ apiRouter.get(
       return res.json(
         enriched.sort(
           (a, b) =>
-            b.attendanceDate.localeCompare(a.attendanceDate) ||
-            b.verifiedAt.localeCompare(a.verifiedAt)
+            String(b.attendanceDate || '').localeCompare(String(a.attendanceDate || '')) ||
+            String(b.verifiedAt || '').localeCompare(String(a.verifiedAt || ''))
         )
       );
     } catch (err: any) {
@@ -1807,7 +1878,7 @@ apiRouter.get('/admin/reports/:date', requireAuth(['ADMIN']), async (req: Reques
   }
 });
 
-apiRouter.get('/admin/notifications', requireAuth(['ADMIN']), async (_req: Request, res: Response) => {
+apiRouter.get('/admin/notifications', requireAuth(['ADMIN', 'INCHARGE', 'STUDENT']), async (_req: Request, res: Response) => {
   try {
     const notifs = await storage.getNotifications();
     const unreadCount = notifs.filter((n) => !n.read).length;
@@ -1819,7 +1890,7 @@ apiRouter.get('/admin/notifications', requireAuth(['ADMIN']), async (_req: Reque
 
 apiRouter.put(
   '/admin/notifications/:id/read',
-  requireAuth(['ADMIN']),
+  requireAuth(['ADMIN', 'INCHARGE', 'STUDENT']),
   async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
@@ -1833,11 +1904,38 @@ apiRouter.put(
 
 apiRouter.put(
   '/admin/notifications/read-all',
-  requireAuth(['ADMIN']),
+  requireAuth(['ADMIN', 'INCHARGE', 'STUDENT']),
   async (_req: Request, res: Response) => {
     try {
       await storage.markAllNotificationsAsRead();
       return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+apiRouter.delete(
+  '/admin/notifications/clear-all',
+  requireAuth(['ADMIN', 'INCHARGE', 'STUDENT']),
+  async (_req: Request, res: Response) => {
+    try {
+      await storage.clearAllNotifications();
+      return res.json({ success: true, message: 'All notifications cleared.' });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+);
+
+apiRouter.delete(
+  '/admin/notifications/:id',
+  requireAuth(['ADMIN', 'INCHARGE', 'STUDENT']),
+  async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteNotification(id);
+      return res.json({ success: true, message: 'Notification deleted.' });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }
@@ -1941,13 +2039,53 @@ function requireCronSecret(req: Request, res: Response, next: NextFunction) {
 }
 
 apiRouter.all('/cron/open-session', requireCronSecret, async (_req: Request, res: Response) => {
-  const time = getISTTimeString();
-  return res.json({ message: 'Session open cron executed.', timeIST: time, status: 'ACTIVE' });
+  try {
+    const time = getISTTimeString();
+    const settings = await storage.getSettings();
+    const activeSession = await storage.getActiveSession();
+    return res.json({
+      message: 'Automated scheduled session window verified.',
+      timeIST: time,
+      sessionStatus: activeSession ? 'ACTIVE' : 'IDLE',
+      activeSessionId: activeSession ? activeSession.id : null,
+      scheduledWindow: {
+        startTimeIST: settings.startTime,
+        endTimeIST: settings.endTime,
+      },
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 apiRouter.all('/cron/close-session', requireCronSecret, async (_req: Request, res: Response) => {
-  const time = getISTTimeString();
-  return res.json({ message: 'Session close cron executed.', timeIST: time, status: 'CLOSED' });
+  try {
+    const time = getISTTimeString();
+    const activeSession = await storage.getActiveSession();
+    if (activeSession) {
+      await storage.endActiveSession(activeSession.id);
+      await storage.createNotification({
+        title: '🚌 Automated Scheduled Close',
+        message: `Attendance session ${activeSession.id} closed automatically by scheduler at ${time} IST.`,
+        type: 'SYSTEM',
+        date: getISTDateString(),
+        read: false,
+      });
+      return res.json({
+        message: 'Active session closed by scheduler cron.',
+        sessionId: activeSession.id,
+        timeIST: time,
+        status: 'CLOSED',
+      });
+    }
+    return res.json({
+      message: 'No active attendance session currently running.',
+      timeIST: time,
+      status: 'IDLE',
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 apiRouter.all('/cron/generate-report', requireCronSecret, async (_req: Request, res: Response) => {

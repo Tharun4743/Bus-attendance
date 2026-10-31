@@ -21,6 +21,19 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-maps': ['leaflet'],
+          'vendor-icons': ['lucide-react'],
+          'vendor-utils': ['date-fns', 'date-fns-tz', 'clsx', 'tailwind-merge'],
+        },
+      },
+    },
+  },
   // @ts-ignore
   test: {
     testTimeout: 30000,

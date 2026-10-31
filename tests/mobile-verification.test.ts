@@ -1,8 +1,14 @@
 import 'dotenv/config';
 import { describe, it, expect } from 'vitest';
 import { faceVerificationEngine } from '../src/lib/faceVerification';
-import { mobileBiometricEngine } from '../src/lib/webauthn';
+import { mobileBiometricEngine, PLATFORM_AUTHENTICATOR_CONFIG } from '../src/lib/webauthn';
 import { calculateDistance } from '../src/server/attendance/haversine';
+import {
+  padBase64,
+  base64UrlToUint8Array,
+  bufferToBase64Url,
+  formatWebAuthnError,
+} from '../src/components/attendance/MobileVerificationModal';
 
 describe('⚡ Mobile Zero-Hardware Attendance Verification Circuits', () => {
   // Test Image Generator: valid PNG data URLs
@@ -56,7 +62,15 @@ describe('⚡ Mobile Zero-Hardware Attendance Verification Circuits', () => {
     it('calculates match confidence percentage score for identical portraits', () => {
       const result = faceVerificationEngine.verifyFaceMatch(validLiveSelfie, validLiveSelfie);
       expect(result.matched).toBe(true);
-      expect(result.confidence).toBeGreaterThanOrEqual(65);
+      expect(result.confidence).toBe(100);
+    });
+
+    it('strictly rejects disparate images in synchronous mode without cloud AI bypass', () => {
+      const disparatePhoto = validLiveSelfie.slice(0, -10) + 'AAAAAAAAAA==';
+      const result = faceVerificationEngine.verifyFaceMatch(validLiveSelfie, disparatePhoto);
+      expect(result.matched).toBe(false);
+      expect(result.confidence).toBe(0);
+      expect(result.reason).toContain('Disparate photo verification requires');
     });
 
     it('accurately verifies same person biometric descriptor vector with low Euclidean distance', () => {
@@ -114,20 +128,17 @@ describe('⚡ Mobile Zero-Hardware Attendance Verification Circuits', () => {
       expect(resDistant.matched).toBe(false);
     });
 
-    it('loads trained neural network model from public/models and detects impostor vectors', async () => {
-      const { studentClassifierEngine } = await import('../src/lib/studentClassifier');
-      const loaded = await studentClassifierEngine.loadModel();
-      expect(loaded).toBe(true);
+    it('detects and rejects multi-dimensional biometric impostor vectors', () => {
+      // Baseline student enrolled vector
+      const enrolledVector = new Array(128).fill(0).map((_, i) => Math.sin(i / 10));
+      // Impostor vector with orthogonal landmarks
+      const impostorVector = new Array(128).fill(0).map((_, i) => Math.cos(i / 3));
 
-      // Random vector simulates an unknown impostor / friend not in the training set
-      const randomImpostorVector = new Array(128).fill(0).map(() => Math.random() * 2 - 1);
-      const prediction = studentClassifierEngine.predict(randomImpostorVector);
-
-      expect(prediction).not.toBeNull();
-      if (prediction) {
-        expect(prediction.impostorProbability).toBeGreaterThan(30);
-        expect(prediction.matched).toBe(false);
-      }
+      const comparison = faceVerificationEngine.compareBiometricDescriptors(impostorVector, enrolledVector);
+      expect(comparison.matched).toBe(false);
+      expect(comparison.distance).toBeGreaterThanOrEqual(0.48);
+      expect(comparison.confidence).toBeLessThan(50);
+      expect(comparison.reason).toContain('Impostor or friend\'s face rejected');
     });
   });
 
@@ -156,6 +167,36 @@ describe('⚡ Mobile Zero-Hardware Attendance Verification Circuits', () => {
       expect(result.message).toContain('verified successfully');
     });
 
+    it('registers and retrieves a mobile biometric platform credential', () => {
+      const regResult = mobileBiometricEngine.registerCredential(
+        testStudentId,
+        'cred_platform_touchid_888',
+        'raw_id_platform_888'
+      );
+      expect(regResult.success).toBe(true);
+      expect(regResult.credential?.credentialId).toBe('cred_platform_touchid_888');
+
+      const retrieved = mobileBiometricEngine.getRegisteredCredential(testStudentId);
+      expect(retrieved).toBeDefined();
+      expect(retrieved?.credentialId).toBe('cred_platform_touchid_888');
+      expect(retrieved?.studentId).toBe(testStudentId);
+    });
+
+    it('rejects credential registration when credentialId is empty', () => {
+      const regResult = mobileBiometricEngine.registerCredential(testStudentId, '');
+      expect(regResult.success).toBe(false);
+      expect(regResult.message).toContain('Invalid biometric credential ID');
+    });
+
+    it('removes registered biometric credential upon unlinking', () => {
+      mobileBiometricEngine.registerCredential(testStudentId, 'cred_to_remove');
+      expect(mobileBiometricEngine.getRegisteredCredential(testStudentId)).toBeDefined();
+
+      const removed = mobileBiometricEngine.removeCredential(testStudentId);
+      expect(removed).toBe(true);
+      expect(mobileBiometricEngine.getRegisteredCredential(testStudentId)).toBeNull();
+    });
+
     it('rejects assertion when payload contains no credentials or signature', () => {
       mobileBiometricEngine.generateChallenge(testStudentId);
       const invalidPayload = {};
@@ -163,6 +204,29 @@ describe('⚡ Mobile Zero-Hardware Attendance Verification Circuits', () => {
       const result = mobileBiometricEngine.verifyAssertion(testStudentId, invalidPayload);
       expect(result.verified).toBe(false);
       expect(result.message).toContain('Invalid biometric authentication response');
+    });
+
+    it('enforces platform authenticator parameters for phone in-display & side-mounted fingerprint sensors', () => {
+      expect(PLATFORM_AUTHENTICATOR_CONFIG).toBeDefined();
+      expect(PLATFORM_AUTHENTICATOR_CONFIG.authenticatorSelection.authenticatorAttachment).toBe('platform');
+      expect(PLATFORM_AUTHENTICATOR_CONFIG.authenticatorSelection.userVerification).toBe('required');
+      expect(PLATFORM_AUTHENTICATOR_CONFIG.authenticatorSelection.residentKey).toBe('preferred');
+      expect(PLATFORM_AUTHENTICATOR_CONFIG.transports).toEqual(['internal']);
+    });
+
+    it('registers credential with internal transport binding for phone biometric reader', () => {
+      const reg = mobileBiometricEngine.registerCredential(
+        'student_fingerprint_test',
+        'cred_indisplay_sensor_007',
+        'raw_indisplay_007',
+        ['internal']
+      );
+
+      expect(reg.success).toBe(true);
+      expect(reg.credential?.transports).toContain('internal');
+
+      const retrieved = mobileBiometricEngine.getRegisteredCredential('student_fingerprint_test');
+      expect(retrieved?.transports).toEqual(['internal']);
     });
   });
 
@@ -188,6 +252,87 @@ describe('⚡ Mobile Zero-Hardware Attendance Verification Circuits', () => {
       const distance = calculateDistance(busLat, busLng, remoteLat, remoteLng);
 
       expect(distance).toBeGreaterThan(geofenceRadius);
+    });
+  });
+
+  describe('Circuit 4: WebAuthn Helper Protocol & W3C URL Leak Prevention', () => {
+    it('translates W3C NotAllowedError without leaking raw W3C specification URLs', () => {
+      const w3cError = new Error(
+        'The operation either timed out or was not allowed. See: https://www.w3.org/TR/webauthn-2/#sctn-privacy-considerations-client.'
+      );
+      w3cError.name = 'NotAllowedError';
+
+      const formattedVerification = formatWebAuthnError(w3cError, false);
+      expect(formattedVerification).toContain('Biometric scan was cancelled or not allowed');
+      expect(formattedVerification).not.toContain('https://www.w3.org');
+      expect(formattedVerification).not.toContain('privacy-considerations');
+
+      const formattedRegistration = formatWebAuthnError(w3cError, true);
+      expect(formattedRegistration).toContain('Biometric registration was cancelled or not allowed');
+      expect(formattedRegistration).not.toContain('https://www.w3.org');
+    });
+
+    it('handles cancellation and abort error strings cleanly', () => {
+      const cancelErr = new Error('The user canceled the authorization.');
+      expect(formatWebAuthnError(cancelErr, false)).toContain('Biometric scan was cancelled');
+
+      const abortErr = new Error('The operation was aborted');
+      expect(formatWebAuthnError(abortErr, false)).toContain('Biometric scan was cancelled');
+    });
+
+    it('handles InvalidStateError, NotSupportedError, and SecurityError', () => {
+      const alreadyRegErr = { name: 'InvalidStateError', message: 'The credential is already registered.' };
+      expect(formatWebAuthnError(alreadyRegErr, true)).toContain('already registered');
+
+      const notSupportedErr = { name: 'NotSupportedError', message: 'WebAuthn is not supported' };
+      expect(formatWebAuthnError(notSupportedErr, false)).toContain('not supported on this browser');
+
+      const secErr = { name: 'SecurityError', message: 'Insecure context' };
+      expect(formatWebAuthnError(secErr, false)).toContain('secure HTTPS connection');
+    });
+
+    it('strips arbitrary URLs from unknown errors', () => {
+      const leakErr = new Error('Unknown sensor fault at https://internal.sensor.dev/docs/err123 occurred');
+      const sanitized = formatWebAuthnError(leakErr, false);
+      expect(sanitized).not.toContain('https://internal.sensor.dev');
+      expect(sanitized).toContain('Unknown sensor fault at occurred');
+    });
+
+    it('idempotently pads base64 and converts url-safe characters', () => {
+      // Length % 4 === 2 -> needs '=='
+      expect(padBase64('ab')).toBe('ab==');
+      expect(padBase64('ab==')).toBe('ab==');
+
+      // Length % 4 === 3 -> needs '='
+      expect(padBase64('abc')).toBe('abc=');
+      expect(padBase64('abc=')).toBe('abc=');
+
+      // Length % 4 === 0 -> needs nothing
+      expect(padBase64('abcd')).toBe('abcd');
+
+      // URL safe - and _ replaced with + and /
+      expect(padBase64('ab-_')).toBe('ab+/');
+    });
+
+    it('converts base64url to Uint8Array and safely handles edge cases', () => {
+      const sample = 'SGVsbG8gV29ybGQ'; // "Hello World" in base64url
+      const bytes = base64UrlToUint8Array(sample);
+      const decoded = new TextDecoder().decode(bytes);
+      expect(decoded).toBe('Hello World');
+
+      // Empty string returns empty Uint8Array
+      expect(base64UrlToUint8Array('').length).toBe(0);
+
+      // Non-base64 fallback encodes cleanly without throwing
+      const invalid = '!!not base64!!';
+      expect(() => base64UrlToUint8Array(invalid)).not.toThrow();
+    });
+
+    it('converts ArrayBuffer to base64url without trailing padding', () => {
+      const buffer = new TextEncoder().encode('Hello WebAuthn').buffer;
+      const b64Url = bufferToBase64Url(buffer);
+      expect(b64Url).toBe('SGVsbG8gV2ViQXV0aG4');
+      expect(b64Url).not.toContain('=');
     });
   });
 });

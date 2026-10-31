@@ -33035,6 +33035,73 @@ var defaults = import_lib.default.defaults;
 
 // src/server/storage/PostgresStorageAdapter.ts
 import crypto from "crypto";
+
+// src/server/attendance/session.ts
+function getISTDateString(d = /* @__PURE__ */ new Date(), timezone = "Asia/Kolkata") {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  });
+  return formatter.format(d);
+}
+function getISTTimeString(d = /* @__PURE__ */ new Date(), timezone = "Asia/Kolkata") {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  });
+  return formatter.format(d);
+}
+function timeToMinutes(timeStr) {
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+function evaluateSessionStatus(settings) {
+  const tz = settings.timezone || "Asia/Kolkata";
+  let currentTimeStr = getISTTimeString(/* @__PURE__ */ new Date(), tz);
+  let currentDateStr = getISTDateString(/* @__PURE__ */ new Date(), tz);
+  let isSimulated = false;
+  if (settings.simulation?.enabled && settings.simulation.simulatedTime) {
+    currentTimeStr = `${settings.simulation.simulatedTime}:00`.slice(0, 8);
+    isSimulated = true;
+  }
+  const currentMinutes = timeToMinutes(currentTimeStr);
+  const startMinutes = timeToMinutes(settings.startTime);
+  const endMinutes = timeToMinutes(settings.endTime);
+  const reportMinutes = timeToMinutes(settings.reportTime || "16:57");
+  let status = "UPCOMING";
+  if (currentMinutes < startMinutes) {
+    status = "UPCOMING";
+  } else if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
+    status = "ACTIVE";
+  } else if (currentMinutes >= endMinutes && currentMinutes < reportMinutes) {
+    status = "CLOSED";
+  } else {
+    status = "FINALIZED";
+  }
+  return {
+    sessionType: "EVENING",
+    attendanceMode: "GROUND",
+    status,
+    startTime: settings.startTime,
+    endTime: settings.endTime,
+    reportTime: settings.reportTime || "16:57",
+    timezone: settings.timezone,
+    currentTimeIST: currentTimeStr,
+    currentDateIST: currentDateStr,
+    locationName: settings.location.name,
+    radiusMeters: settings.location.radiusMeters,
+    maxGpsAccuracyMeters: settings.location.maxGpsAccuracyMeters,
+    isSimulated
+  };
+}
+
+// src/server/storage/PostgresStorageAdapter.ts
+types.setTypeParser(1082, (val) => val);
 var PostgresStorageAdapter = class {
   pool;
   isInitialized = false;
@@ -33411,6 +33478,7 @@ var PostgresStorageAdapter = class {
           OR register_number ILIKE $1 
           OR email ILIKE $1 
           OR register_number ILIKE $2
+          OR user_id::text = $1
        LIMIT 1;`,
       [clean, cleanNoPrefix]
     );
@@ -33425,6 +33493,66 @@ var PostgresStorageAdapter = class {
     );
     if (res.rows.length === 0) return null;
     return this.mapStudent(res.rows[0]);
+  }
+  async linkUserAndStudent(userId, studentId) {
+    try {
+      if (userId && studentId) {
+        await this.pool.query(
+          `UPDATE public.students SET user_id = $1 WHERE id = $2 AND (user_id IS NULL OR user_id::text != $1);`,
+          [userId, studentId]
+        );
+        await this.pool.query(
+          `UPDATE public.users SET student_id = $1 WHERE id::text = $2 AND (student_id IS NULL OR student_id != $1);`,
+          [studentId, userId]
+        );
+      }
+    } catch (err) {
+      console.warn("\u26A0\uFE0F [PostgresStorageAdapter] linkUserAndStudent notice:", err?.message || err);
+    }
+  }
+  async getStudentForUser(user) {
+    if (user.studentId) {
+      const byId = await this.getStudentById(user.studentId);
+      if (byId) return byId;
+    }
+    if (user.id) {
+      const byUserId = await this.getStudentById(user.id);
+      if (byUserId) return byUserId;
+    }
+    if (user.email) {
+      const cleanEmail = user.email.trim().toLowerCase();
+      const res = await this.pool.query(
+        `SELECT * FROM public.students 
+         WHERE LOWER(TRIM(email)) = $1 
+            OR email ILIKE $2
+         ORDER BY created_at DESC LIMIT 1;`,
+        [cleanEmail, `%${cleanEmail}%`]
+      );
+      if (res.rows.length > 0) {
+        const student = this.mapStudent(res.rows[0]);
+        if (user.id) {
+          await this.linkUserAndStudent(user.id, student.id);
+        }
+        return student;
+      }
+    }
+    if (user.name) {
+      const cleanName = user.name.trim().toLowerCase();
+      const res = await this.pool.query(
+        `SELECT * FROM public.students 
+         WHERE LOWER(TRIM(name)) = $1 
+         ORDER BY created_at DESC LIMIT 1;`,
+        [cleanName]
+      );
+      if (res.rows.length > 0) {
+        const student = this.mapStudent(res.rows[0]);
+        if (user.id) {
+          await this.linkUserAndStudent(user.id, student.id);
+        }
+        return student;
+      }
+    }
+    return null;
   }
   async getStudentsByBusId(busId) {
     return this.getStudents({ busId, status: "APPROVED" });
@@ -33771,12 +33899,34 @@ var PostgresStorageAdapter = class {
   // 4. ATTENDANCE LOGGING & PROOFS
   // ==========================================================================
   mapAttendance(r) {
+    let attendanceDate;
+    if (r.attendance_date instanceof Date) {
+      attendanceDate = getISTDateString(r.attendance_date);
+    } else if (typeof r.attendance_date === "string") {
+      attendanceDate = r.attendance_date.split("T")[0].trim();
+    } else {
+      attendanceDate = r.attendance_date ? String(r.attendance_date) : "";
+    }
+    let verifiedAt;
+    if (r.verified_at instanceof Date) {
+      verifiedAt = r.verified_at.toISOString();
+    } else if (r.verified_at) {
+      verifiedAt = String(r.verified_at);
+    } else {
+      verifiedAt = "";
+    }
+    let capturedAt = verifiedAt;
+    if (r.captured_at instanceof Date) {
+      capturedAt = r.captured_at.toISOString();
+    } else if (r.captured_at) {
+      capturedAt = String(r.captured_at);
+    }
     return {
       id: r.id,
       sessionId: r.session_id,
       studentId: r.student_id,
       busId: r.bus_id,
-      attendanceDate: r.attendance_date,
+      attendanceDate,
       sessionType: r.session_type,
       attendanceMode: r.attendance_mode || "GROUND",
       status: r.status,
@@ -33788,8 +33938,8 @@ var PostgresStorageAdapter = class {
       selfiePublicId: r.selfie_public_id,
       faceMatchConfidence: r.face_match_confidence ? Number(r.face_match_confidence) : void 0,
       deviceBiometricPassed: r.device_biometric_passed,
-      capturedAt: r.verified_at,
-      verifiedAt: r.verified_at,
+      capturedAt,
+      verifiedAt,
       verificationMethod: r.verification_method,
       overrideReason: r.override_reason,
       overrideBy: r.override_by
@@ -33910,8 +34060,17 @@ var PostgresStorageAdapter = class {
     let sql = `SELECT * FROM public.active_sessions WHERE status = 'ACTIVE'`;
     const params = [];
     if (busId && busId !== "ALL") {
-      sql += ` AND (bus_id = $1 OR bus_id = 'ALL')`;
-      params.push(busId);
+      const cleanBus = busId.trim().toUpperCase();
+      const withPrefix = cleanBus.startsWith("BUS-") ? cleanBus : `BUS-${cleanBus}`;
+      const withoutPrefix = cleanBus.replace(/^BUS-/i, "");
+      sql += ` AND (
+        bus_id = $1 
+        OR bus_id = $2 
+        OR bus_id = $3 
+        OR bus_id = 'ALL' 
+        OR REPLACE(UPPER(bus_id), 'BUS-', '') = $3
+      )`;
+      params.push(cleanBus, withPrefix, withoutPrefix);
     }
     sql += ` ORDER BY started_at DESC LIMIT 1;`;
     const res = await this.pool.query(sql, params);
@@ -34189,6 +34348,14 @@ var PostgresStorageAdapter = class {
     await this.pool.query(`UPDATE public.notifications SET read = true;`);
     return true;
   }
+  async clearAllNotifications() {
+    await this.pool.query(`DELETE FROM public.notifications;`);
+    return true;
+  }
+  async deleteNotification(id) {
+    await this.pool.query(`DELETE FROM public.notifications WHERE id::text = $1;`, [id]);
+    return true;
+  }
   // ==========================================================================
   // 8. FINAL REPORTS
   // ==========================================================================
@@ -34404,6 +34571,27 @@ var MemoryStorageAdapter = class {
     const clean = regNo.trim().toLowerCase();
     return this.students.find((s) => s.registerNumber.toLowerCase() === clean) || null;
   }
+  async getStudentForUser(user) {
+    if (user.studentId) {
+      const byId = await this.getStudentById(user.studentId);
+      if (byId) return byId;
+    }
+    if (user.id) {
+      const byUserId = await this.getStudentById(user.id);
+      if (byUserId) return byUserId;
+    }
+    if (user.email) {
+      const cleanEmail = user.email.trim().toLowerCase();
+      const byEmail = this.students.find((s) => s.email.toLowerCase() === cleanEmail);
+      if (byEmail) return byEmail;
+    }
+    if (user.name) {
+      const cleanName = user.name.trim().toLowerCase();
+      const byName = this.students.find((s) => s.name.trim().toLowerCase() === cleanName);
+      if (byName) return byName;
+    }
+    return null;
+  }
   async getStudentsByBusId(busId) {
     return this.getStudents({ busId, status: "APPROVED" });
   }
@@ -34583,7 +34771,10 @@ var MemoryStorageAdapter = class {
   async getActiveSession(busId) {
     if (!this.activeSession || this.activeSession.status !== "ACTIVE") return null;
     if (busId && busId !== "ALL" && this.activeSession.busId !== busId && this.activeSession.busId !== "ALL") {
-      return null;
+      const normBus = (b) => (b || "").trim().toUpperCase().replace(/^BUS-/i, "");
+      if (normBus(this.activeSession.busId) !== normBus(busId)) {
+        return null;
+      }
     }
     return this.activeSession;
   }
@@ -34671,6 +34862,14 @@ var MemoryStorageAdapter = class {
     this.notifications.forEach((n) => n.read = true);
     return true;
   }
+  async clearAllNotifications() {
+    this.notifications = [];
+    return true;
+  }
+  async deleteNotification(id) {
+    this.notifications = this.notifications.filter((n) => n.id !== id);
+    return true;
+  }
   // Reports
   async getReports() {
     return [...this.reports];
@@ -34728,70 +34927,6 @@ function verifyToken(token) {
   } catch (err) {
     return null;
   }
-}
-
-// src/server/attendance/session.ts
-function getISTDateString(d = /* @__PURE__ */ new Date(), timezone = "Asia/Kolkata") {
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  });
-  return formatter.format(d);
-}
-function getISTTimeString(d = /* @__PURE__ */ new Date(), timezone = "Asia/Kolkata") {
-  const formatter = new Intl.DateTimeFormat("en-GB", {
-    timeZone: timezone,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false
-  });
-  return formatter.format(d);
-}
-function timeToMinutes(timeStr) {
-  const [hours, minutes] = timeStr.split(":").map(Number);
-  return hours * 60 + minutes;
-}
-function evaluateSessionStatus(settings) {
-  const tz = settings.timezone || "Asia/Kolkata";
-  let currentTimeStr = getISTTimeString(/* @__PURE__ */ new Date(), tz);
-  let currentDateStr = getISTDateString(/* @__PURE__ */ new Date(), tz);
-  let isSimulated = false;
-  if (settings.simulation?.enabled && settings.simulation.simulatedTime) {
-    currentTimeStr = `${settings.simulation.simulatedTime}:00`.slice(0, 8);
-    isSimulated = true;
-  }
-  const currentMinutes = timeToMinutes(currentTimeStr);
-  const startMinutes = timeToMinutes(settings.startTime);
-  const endMinutes = timeToMinutes(settings.endTime);
-  const reportMinutes = timeToMinutes(settings.reportTime || "16:57");
-  let status = "UPCOMING";
-  if (currentMinutes < startMinutes) {
-    status = "UPCOMING";
-  } else if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
-    status = "ACTIVE";
-  } else if (currentMinutes >= endMinutes && currentMinutes < reportMinutes) {
-    status = "CLOSED";
-  } else {
-    status = "FINALIZED";
-  }
-  return {
-    sessionType: "EVENING",
-    attendanceMode: "GROUND",
-    status,
-    startTime: settings.startTime,
-    endTime: settings.endTime,
-    reportTime: settings.reportTime || "16:57",
-    timezone: settings.timezone,
-    currentTimeIST: currentTimeStr,
-    currentDateIST: currentDateStr,
-    locationName: settings.location.name,
-    radiusMeters: settings.location.radiusMeters,
-    maxGpsAccuracyMeters: settings.location.maxGpsAccuracyMeters,
-    isSimulated
-  };
 }
 
 // src/server/attendance/haversine.ts
@@ -35466,33 +35601,53 @@ var FaceVerificationEngine = class _FaceVerificationEngine {
   /**
    * Synchronous validation for camera capture payload formats
    */
-  verifyFaceMatch(liveSelfieBase64, enrolledPhotoUrlOrBase64) {
+  validateCapturePayload(liveSelfieBase64, enrolledPhotoUrlOrBase64) {
     if (!this.isValidImagePayload(liveSelfieBase64)) {
       return {
-        matched: false,
-        confidence: 0,
+        valid: false,
         reason: "Invalid camera selfie image format."
       };
     }
     const rawData = liveSelfieBase64.split(",")[1];
     if (!rawData || rawData.length < 500) {
       return {
-        matched: false,
-        confidence: 0,
+        valid: false,
         reason: "Camera capture contains insufficient pixel data. Retake with good lighting."
       };
     }
     if (!enrolledPhotoUrlOrBase64) {
       return {
-        matched: false,
-        confidence: 0,
+        valid: false,
         reason: "Face not registered! You must enroll your face photo in your profile before marking attendance."
       };
     }
+    return { valid: true };
+  }
+  /**
+   * Synchronous face match check: validates payload formatting and performs bitwise
+   * identity matching. For disparate images, rejects synchronous mock bypass and requires
+   * verifyFaceMatchAsync (cloud dual-AI vision) or compareBiometricDescriptors (128-D vectors).
+   */
+  verifyFaceMatch(liveSelfieBase64, enrolledPhotoUrlOrBase64) {
+    const validation = this.validateCapturePayload(liveSelfieBase64, enrolledPhotoUrlOrBase64);
+    if (!validation.valid) {
+      return {
+        matched: false,
+        confidence: 0,
+        reason: validation.reason
+      };
+    }
+    if (liveSelfieBase64 === enrolledPhotoUrlOrBase64) {
+      return {
+        matched: true,
+        confidence: 100,
+        reason: "Identical camera capture payload verified."
+      };
+    }
     return {
-      matched: true,
-      confidence: 100,
-      reason: "Face capture payload format validated."
+      matched: false,
+      confidence: 0,
+      reason: "Disparate photo verification requires asynchronous cloud AI (verifyFaceMatchAsync) or 128-D vector matching (compareBiometricDescriptors)."
     };
   }
   /**
@@ -35779,8 +35934,9 @@ var faceVerificationEngine = new FaceVerificationEngine();
 import crypto4 from "crypto";
 var MobileBiometricEngine = class {
   activeChallenges = /* @__PURE__ */ new Map();
+  registeredCredentials = /* @__PURE__ */ new Map();
   /**
-   * Generates a cryptographically random challenge for navigator.credentials.get()
+   * Generates a cryptographically random challenge for navigator.credentials.get() or create()
    */
   generateChallenge(studentId) {
     const challenge = crypto4.randomBytes(32).toString("base64url");
@@ -35790,6 +35946,40 @@ var MobileBiometricEngine = class {
       // 5 minute validity
     });
     return challenge;
+  }
+  /**
+   * Registers a public key credential for the student's mobile platform authenticator
+   * (Android in-display/side-mounted fingerprint or iOS TouchID/FaceID)
+   */
+  registerCredential(studentId, credentialId, rawId, transports = ["internal"]) {
+    if (!credentialId || typeof credentialId !== "string") {
+      return { success: false, message: "Invalid biometric credential ID provided." };
+    }
+    const entry = {
+      studentId,
+      credentialId,
+      rawId,
+      transports: transports && transports.length > 0 ? transports : ["internal"],
+      registeredAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    this.registeredCredentials.set(studentId, entry);
+    return {
+      success: true,
+      message: "Mobile biometric credential registered successfully for in-display/side-mounted sensor.",
+      credential: entry
+    };
+  }
+  /**
+   * Retrieves registered credential for a student
+   */
+  getRegisteredCredential(studentId) {
+    return this.registeredCredentials.get(studentId) || null;
+  }
+  /**
+   * Removes registered credential for a student (e.g. upon unlinking/device reset)
+   */
+  removeCredential(studentId) {
+    return this.registeredCredentials.delete(studentId);
   }
   /**
    * Verifies the cryptographic assertion returned by the phone's biometric sensor.
@@ -35806,7 +35996,7 @@ var MobileBiometricEngine = class {
       }
       return {
         verified: true,
-        message: "Mobile biometric signature verified successfully."
+        message: "Mobile phone fingerprint sensor assertion verified successfully."
       };
     }
     return {
@@ -35881,36 +36071,12 @@ apiRouter.post("/auth/setup", async (req, res) => {
     return res.status(500).json({ error: err.message || "Setup failed." });
   }
 });
-apiRouter.post("/auth/signup", async (req, res) => {
-  try {
-    const { name, registerNumber, email, phone, password, preferredBusId } = req.body;
-    if (!name || !registerNumber || !password) {
-      return res.status(400).json({
-        error: "Full Name, Register Number, and Password are required."
-      });
-    }
-    const student = await storage.signupStudent({
-      name: name.trim(),
-      registerNumber: registerNumber.trim().toUpperCase(),
-      email: email?.trim(),
-      phone: phone?.trim(),
-      password,
-      preferredBusId
-    });
-    return res.status(201).json({
-      message: "Your registration has been submitted for Admin approval.",
-      student: {
-        id: student.id,
-        name: student.name,
-        registerNumber: student.registerNumber,
-        email: student.email,
-        status: student.status,
-        approved: student.approved
-      }
-    });
-  } catch (err) {
-    return res.status(400).json({ error: err.message || "Signup failed." });
-  }
+apiRouter.post("/auth/signup", async (_req, res) => {
+  return res.status(403).json({
+    error: "Direct registration is deprecated for security. All registrations must complete Brevo 6-digit OTP verification via /api/auth/signup/request-otp and /api/auth/signup/verify-otp.",
+    code: "REGISTRATION_OTP_REQUIRED",
+    deprecated: true
+  });
 });
 apiRouter.get("/auth/available-buses", async (_req, res) => {
   try {
@@ -36566,6 +36732,54 @@ apiRouter.get(
   }
 );
 apiRouter.post(
+  "/attendance/mobile/register-biometric",
+  requireAuth(["STUDENT"]),
+  async (req, res) => {
+    try {
+      const studentId = req.user.studentId || req.user.id;
+      const { credentialId, rawId, transports } = req.body;
+      if (!credentialId || typeof credentialId !== "string") {
+        return res.status(400).json({ error: "credentialId is required." });
+      }
+      const result = mobileBiometricEngine.registerCredential(
+        studentId,
+        credentialId,
+        rawId,
+        transports || ["internal"]
+      );
+      return res.json(result);
+    } catch (err) {
+      return res.status(500).json({ error: "Failed to register biometric credential." });
+    }
+  }
+);
+apiRouter.get(
+  "/attendance/mobile/credential",
+  requireAuth(["STUDENT"]),
+  async (req, res) => {
+    try {
+      const studentId = req.user.studentId || req.user.id;
+      const credential = mobileBiometricEngine.getRegisteredCredential(studentId);
+      return res.json({ credential });
+    } catch (err) {
+      return res.status(500).json({ error: "Failed to retrieve biometric credential." });
+    }
+  }
+);
+apiRouter.post(
+  "/attendance/mobile/unregister-biometric",
+  requireAuth(["STUDENT"]),
+  async (req, res) => {
+    try {
+      const studentId = req.user.studentId || req.user.id;
+      mobileBiometricEngine.removeCredential(studentId);
+      return res.json({ success: true, message: "Mobile biometric credential unlinked successfully." });
+    } catch (err) {
+      return res.status(500).json({ error: "Failed to unregister biometric credential." });
+    }
+  }
+);
+apiRouter.post(
   "/attendance/enroll-face",
   requireAuth(["STUDENT"]),
   async (req, res) => {
@@ -36657,28 +36871,41 @@ apiRouter.post(
   requireAuth(["STUDENT"]),
   async (req, res) => {
     try {
-      const studentId = req.user.studentId || req.user.id;
-      const student = await storage.getStudentById(studentId);
+      let student = await storage.getStudentForUser({
+        id: req.user.id,
+        email: req.user.email,
+        name: req.user.name,
+        studentId: req.user.studentId
+      });
+      if (!student) {
+        const studentId2 = req.user.studentId || req.user.id;
+        student = await storage.getStudentById(studentId2);
+      }
       if (!student) {
         return res.status(404).json({
           status: "BUS_MISMATCH",
-          message: "Student commuter profile not found."
+          message: "Student commuter profile not found. Please contact administration."
         });
       }
+      const studentId = student.id;
       const { busId, method, latitude, longitude, accuracy, selfieBase64, biometricPayload } = req.body;
-      const targetBusId = busId || student.busId;
-      if (student.busId && targetBusId !== student.busId) {
-        return res.status(400).json({
-          status: "BUS_MISMATCH",
-          message: `Bus mismatch: You are assigned to Bus ${student.busId}, not ${targetBusId}.`
-        });
+      let targetBusId = busId || student.busId;
+      let activeSession = targetBusId ? await storage.getActiveSession(targetBusId) : null;
+      if (!activeSession || activeSession.status !== "ACTIVE") {
+        activeSession = await storage.getActiveSession();
+        if (activeSession && activeSession.status === "ACTIVE") {
+          targetBusId = activeSession.busId;
+        }
       }
-      const activeSession = await storage.getActiveSession(targetBusId);
       if (!activeSession || activeSession.status !== "ACTIVE") {
         return res.status(400).json({
           status: "SESSION_CLOSED",
-          message: `The bus in-charge has not opened transit attendance for Bus ${targetBusId} yet. Please wait until session begins.`
+          message: `The bus in-charge has not opened transit attendance for your bus yet. Please wait until session begins.`
         });
+      }
+      if (!student.busId && targetBusId) {
+        await storage.updateStudent(student.id, { busId: targetBusId });
+        student.busId = targetBusId;
       }
       if (latitude === void 0 || longitude === void 0) {
         return res.status(400).json({
@@ -36812,17 +37039,36 @@ apiRouter.get(
   requireAuth(["STUDENT"]),
   async (req, res) => {
     try {
-      const studentId = req.user.studentId || req.user.id;
-      let student = await storage.getStudentById(studentId);
-      if (!student && req.user.email) {
-        student = await storage.getStudentById(req.user.email);
+      let student = await storage.getStudentForUser({
+        id: req.user.id,
+        email: req.user.email,
+        name: req.user.name,
+        studentId: req.user.studentId
+      });
+      if (!student) {
+        const studentId = req.user.studentId || req.user.id;
+        student = await storage.getStudentById(studentId);
+        if (!student && req.user.email) {
+          student = await storage.getStudentById(req.user.email);
+        }
       }
-      const bus = student?.busId ? await storage.getBusById(student.busId) : null;
+      let bus = student?.busId ? await storage.getBusById(student.busId) : null;
       const todayDate = getISTDateString();
-      const activeDynamic = await storage.getActiveSession(student?.busId);
+      let activeDynamic = await storage.getActiveSession(student?.busId);
+      if (!activeDynamic || activeDynamic.status !== "ACTIVE") {
+        activeDynamic = await storage.getActiveSession();
+      }
+      if (activeDynamic && activeDynamic.status === "ACTIVE" && student && !student.busId && activeDynamic.busId !== "ALL") {
+        await storage.updateStudent(student.id, { busId: activeDynamic.busId });
+        student.busId = activeDynamic.busId;
+        if (!bus) {
+          bus = await storage.getBusById(activeDynamic.busId);
+        }
+      }
       const currentSessionType = activeDynamic ? activeDynamic.sessionType : "EVENING";
-      const todayRecord = await storage.getAttendanceRecord(studentId, todayDate, currentSessionType);
-      const history = await storage.getAttendance({ studentId });
+      const effectiveStudentId = student ? student.id : req.user.studentId || req.user.id;
+      const todayRecord = await storage.getAttendanceRecord(effectiveStudentId, todayDate, currentSessionType);
+      const history = await storage.getAttendance({ studentId: effectiveStudentId });
       let sessionInfo;
       if (activeDynamic && activeDynamic.status === "ACTIVE") {
         sessionInfo = {
@@ -36860,7 +37106,9 @@ apiRouter.get(
         bus,
         sessionInfo,
         notifications: notifications.slice(0, 5),
-        history: history.sort((a, b) => b.attendanceDate.localeCompare(a.attendanceDate))
+        history: history.sort(
+          (a, b) => String(b.attendanceDate || "").localeCompare(String(a.attendanceDate || ""))
+        )
       });
     } catch (err) {
       return res.status(500).json({ error: err.message });
@@ -36919,7 +37167,7 @@ apiRouter.post(
       const newStudent = await storage.createStudent({
         registerNumber: registerNumber.trim().toUpperCase(),
         name: name.trim(),
-        email: email ? email.trim().toLowerCase() : `${registerNumber.toLowerCase()}@example.com`,
+        email: email ? email.trim().toLowerCase() : `${registerNumber.toLowerCase()}@student.college.edu`,
         phone: phone ? phone.trim() : "",
         busId,
         role: "STUDENT",
@@ -37133,7 +37381,7 @@ apiRouter.get(
       });
       return res.json(
         enriched.sort(
-          (a, b) => b.attendanceDate.localeCompare(a.attendanceDate) || b.verifiedAt.localeCompare(a.verifiedAt)
+          (a, b) => String(b.attendanceDate || "").localeCompare(String(a.attendanceDate || "")) || String(b.verifiedAt || "").localeCompare(String(a.verifiedAt || ""))
         )
       );
     } catch (err) {
@@ -37263,7 +37511,7 @@ apiRouter.get("/admin/reports/:date", requireAuth(["ADMIN"]), async (req, res) =
     return res.status(500).json({ error: err.message });
   }
 });
-apiRouter.get("/admin/notifications", requireAuth(["ADMIN"]), async (_req, res) => {
+apiRouter.get("/admin/notifications", requireAuth(["ADMIN", "INCHARGE", "STUDENT"]), async (_req, res) => {
   try {
     const notifs = await storage.getNotifications();
     const unreadCount = notifs.filter((n) => !n.read).length;
@@ -37274,7 +37522,7 @@ apiRouter.get("/admin/notifications", requireAuth(["ADMIN"]), async (_req, res) 
 });
 apiRouter.put(
   "/admin/notifications/:id/read",
-  requireAuth(["ADMIN"]),
+  requireAuth(["ADMIN", "INCHARGE", "STUDENT"]),
   async (req, res) => {
     try {
       const { id } = req.params;
@@ -37287,11 +37535,36 @@ apiRouter.put(
 );
 apiRouter.put(
   "/admin/notifications/read-all",
-  requireAuth(["ADMIN"]),
+  requireAuth(["ADMIN", "INCHARGE", "STUDENT"]),
   async (_req, res) => {
     try {
       await storage.markAllNotificationsAsRead();
       return res.json({ success: true });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+);
+apiRouter.delete(
+  "/admin/notifications/clear-all",
+  requireAuth(["ADMIN", "INCHARGE", "STUDENT"]),
+  async (_req, res) => {
+    try {
+      await storage.clearAllNotifications();
+      return res.json({ success: true, message: "All notifications cleared." });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+);
+apiRouter.delete(
+  "/admin/notifications/:id",
+  requireAuth(["ADMIN", "INCHARGE", "STUDENT"]),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteNotification(id);
+      return res.json({ success: true, message: "Notification deleted." });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -37375,12 +37648,52 @@ function requireCronSecret(req, res, next) {
   return res.status(401).json({ error: "Unauthorized cron request." });
 }
 apiRouter.all("/cron/open-session", requireCronSecret, async (_req, res) => {
-  const time = getISTTimeString();
-  return res.json({ message: "Session open cron executed.", timeIST: time, status: "ACTIVE" });
+  try {
+    const time = getISTTimeString();
+    const settings = await storage.getSettings();
+    const activeSession = await storage.getActiveSession();
+    return res.json({
+      message: "Automated scheduled session window verified.",
+      timeIST: time,
+      sessionStatus: activeSession ? "ACTIVE" : "IDLE",
+      activeSessionId: activeSession ? activeSession.id : null,
+      scheduledWindow: {
+        startTimeIST: settings.startTime,
+        endTimeIST: settings.endTime
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 });
 apiRouter.all("/cron/close-session", requireCronSecret, async (_req, res) => {
-  const time = getISTTimeString();
-  return res.json({ message: "Session close cron executed.", timeIST: time, status: "CLOSED" });
+  try {
+    const time = getISTTimeString();
+    const activeSession = await storage.getActiveSession();
+    if (activeSession) {
+      await storage.endActiveSession(activeSession.id);
+      await storage.createNotification({
+        title: "\u{1F68C} Automated Scheduled Close",
+        message: `Attendance session ${activeSession.id} closed automatically by scheduler at ${time} IST.`,
+        type: "SYSTEM",
+        date: getISTDateString(),
+        read: false
+      });
+      return res.json({
+        message: "Active session closed by scheduler cron.",
+        sessionId: activeSession.id,
+        timeIST: time,
+        status: "CLOSED"
+      });
+    }
+    return res.json({
+      message: "No active attendance session currently running.",
+      timeIST: time,
+      status: "IDLE"
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 });
 apiRouter.all("/cron/generate-report", requireCronSecret, async (_req, res) => {
   try {

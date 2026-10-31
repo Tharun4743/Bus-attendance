@@ -70,6 +70,9 @@ class ApiClient {
     return res;
   }
 
+  /**
+   * @deprecated Legacy direct signup is deprecated for security. Use requestOtp & verifyOtp.
+   */
   async signupStudent(data: {
     name: string;
     registerNumber: string;
@@ -207,6 +210,31 @@ class ApiClient {
 
   async getMobileBiometricChallenge(): Promise<{ challenge: string }> {
     return this.request<{ challenge: string }>('/attendance/mobile/challenge');
+  }
+
+  async registerMobileBiometric(payload: {
+    credentialId: string;
+    rawId?: string;
+    transports?: string[];
+  }): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/attendance/mobile/register-biometric', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getMobileBiometricCredential(): Promise<{
+    credential: { studentId: string; credentialId: string; rawId?: string; transports?: string[]; registeredAt: string } | null;
+  }> {
+    return this.request<{
+      credential: { studentId: string; credentialId: string; rawId?: string; transports?: string[]; registeredAt: string } | null;
+    }>('/attendance/mobile/credential');
+  }
+
+  async unregisterMobileBiometric(): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/attendance/mobile/unregister-biometric', {
+      method: 'POST',
+    });
   }
 
   async verifyMobile(req: {
@@ -434,6 +462,18 @@ class ApiClient {
   async markAllNotificationsRead(): Promise<{ success: boolean }> {
     return this.request('/admin/notifications/read-all', {
       method: 'PUT',
+    });
+  }
+
+  async clearAllNotifications(): Promise<{ success: boolean; message?: string }> {
+    return this.request('/admin/notifications/clear-all', {
+      method: 'DELETE',
+    });
+  }
+
+  async deleteNotification(id: string): Promise<{ success: boolean; message?: string }> {
+    return this.request(`/admin/notifications/${id}`, {
+      method: 'DELETE',
     });
   }
 

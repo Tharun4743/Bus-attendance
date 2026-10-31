@@ -120,7 +120,7 @@ export const BusesManagement: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto">
+    <div className="space-y-4 w-full mx-auto pb-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#141418] rounded-2xl p-5 sm:p-6 shadow-xs border border-zinc-200/90 dark:border-[#26262e] transition-all">
         <div>
@@ -299,7 +299,7 @@ export const BusesManagement: React.FC = () => {
               onChange={(e) => setInchargeId(e.target.value)}
               className="w-full h-11 px-4 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none"
             >
-              <option value="">-- Unassigned (No Incharge) --</option>
+              <option value="">-- Unassigned / No Incharge ({incharges.length} Available) --</option>
               {incharges.map((inc) => (
                 <option key={inc.id} value={inc.id}>
                   {inc.name} ({inc.email})

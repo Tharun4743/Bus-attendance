@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool, types } from 'pg';
 import crypto from 'crypto';
 import { StorageAdapter } from './StorageAdapter';
 import {
@@ -13,6 +13,10 @@ import {
   SessionType,
   CampusCheckpoint,
 } from '../../types';
+import { getISTDateString } from '../attendance/session';
+
+// Configure node-pg to return DATE (OID 1082) as raw YYYY-MM-DD string without timezone shifting
+types.setTypeParser(1082, (val: string) => val);
 
 export class PostgresStorageAdapter implements StorageAdapter {
   private pool: Pool;
@@ -441,6 +445,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
           OR register_number ILIKE $1 
           OR email ILIKE $1 
           OR register_number ILIKE $2
+          OR user_id::text = $1
        LIMIT 1;`,
       [clean, cleanNoPrefix]
     );
@@ -456,6 +461,72 @@ export class PostgresStorageAdapter implements StorageAdapter {
     );
     if (res.rows.length === 0) return null;
     return this.mapStudent(res.rows[0]);
+  }
+
+  private async linkUserAndStudent(userId: string, studentId: string): Promise<void> {
+    try {
+      if (userId && studentId) {
+        await this.pool.query(
+          `UPDATE public.students SET user_id = $1 WHERE id = $2 AND (user_id IS NULL OR user_id::text != $1);`,
+          [userId, studentId]
+        );
+        await this.pool.query(
+          `UPDATE public.users SET student_id = $1 WHERE id::text = $2 AND (student_id IS NULL OR student_id != $1);`,
+          [studentId, userId]
+        );
+      }
+    } catch (err: any) {
+      console.warn('⚠️ [PostgresStorageAdapter] linkUserAndStudent notice:', err?.message || err);
+    }
+  }
+
+  async getStudentForUser(user: { id: string; email: string; name?: string; studentId?: string }): Promise<Student | null> {
+    // 1. Try by studentId if present
+    if (user.studentId) {
+      const byId = await this.getStudentById(user.studentId);
+      if (byId) return byId;
+    }
+    // 2. Try by user.id (which matches user_id column)
+    if (user.id) {
+      const byUserId = await this.getStudentById(user.id);
+      if (byUserId) return byUserId;
+    }
+    // 3. Try by exact / normalized email
+    if (user.email) {
+      const cleanEmail = user.email.trim().toLowerCase();
+      const res = await this.pool.query(
+        `SELECT * FROM public.students 
+         WHERE LOWER(TRIM(email)) = $1 
+            OR email ILIKE $2
+         ORDER BY created_at DESC LIMIT 1;`,
+        [cleanEmail, `%${cleanEmail}%`]
+      );
+      if (res.rows.length > 0) {
+        const student = this.mapStudent(res.rows[0]);
+        if (user.id) {
+          await this.linkUserAndStudent(user.id, student.id);
+        }
+        return student;
+      }
+    }
+    // 4. Try by name match (exact case-insensitive)
+    if (user.name) {
+      const cleanName = user.name.trim().toLowerCase();
+      const res = await this.pool.query(
+        `SELECT * FROM public.students 
+         WHERE LOWER(TRIM(name)) = $1 
+         ORDER BY created_at DESC LIMIT 1;`,
+        [cleanName]
+      );
+      if (res.rows.length > 0) {
+        const student = this.mapStudent(res.rows[0]);
+        if (user.id) {
+          await this.linkUserAndStudent(user.id, student.id);
+        }
+        return student;
+      }
+    }
+    return null;
   }
 
   async getStudentsByBusId(busId: string): Promise<Student[]> {
@@ -851,12 +922,37 @@ export class PostgresStorageAdapter implements StorageAdapter {
   // 4. ATTENDANCE LOGGING & PROOFS
   // ==========================================================================
   private mapAttendance(r: any): AttendanceRecord {
+    let attendanceDate: string;
+    if (r.attendance_date instanceof Date) {
+      attendanceDate = getISTDateString(r.attendance_date);
+    } else if (typeof r.attendance_date === 'string') {
+      attendanceDate = r.attendance_date.split('T')[0].trim();
+    } else {
+      attendanceDate = r.attendance_date ? String(r.attendance_date) : '';
+    }
+
+    let verifiedAt: string;
+    if (r.verified_at instanceof Date) {
+      verifiedAt = r.verified_at.toISOString();
+    } else if (r.verified_at) {
+      verifiedAt = String(r.verified_at);
+    } else {
+      verifiedAt = '';
+    }
+
+    let capturedAt: string = verifiedAt;
+    if (r.captured_at instanceof Date) {
+      capturedAt = r.captured_at.toISOString();
+    } else if (r.captured_at) {
+      capturedAt = String(r.captured_at);
+    }
+
     return {
       id: r.id,
       sessionId: r.session_id,
       studentId: r.student_id,
       busId: r.bus_id,
-      attendanceDate: r.attendance_date,
+      attendanceDate,
       sessionType: r.session_type,
       attendanceMode: r.attendance_mode || 'GROUND',
       status: r.status,
@@ -868,8 +964,8 @@ export class PostgresStorageAdapter implements StorageAdapter {
       selfiePublicId: r.selfie_public_id,
       faceMatchConfidence: r.face_match_confidence ? Number(r.face_match_confidence) : undefined,
       deviceBiometricPassed: r.device_biometric_passed,
-      capturedAt: r.verified_at,
-      verifiedAt: r.verified_at,
+      capturedAt,
+      verifiedAt,
       verificationMethod: r.verification_method,
       overrideReason: r.override_reason,
       overrideBy: r.override_by,
@@ -1011,8 +1107,18 @@ export class PostgresStorageAdapter implements StorageAdapter {
     const params: any[] = [];
 
     if (busId && busId !== 'ALL') {
-      sql += ` AND (bus_id = $1 OR bus_id = 'ALL')`;
-      params.push(busId);
+      const cleanBus = busId.trim().toUpperCase();
+      const withPrefix = cleanBus.startsWith('BUS-') ? cleanBus : `BUS-${cleanBus}`;
+      const withoutPrefix = cleanBus.replace(/^BUS-/i, '');
+
+      sql += ` AND (
+        bus_id = $1 
+        OR bus_id = $2 
+        OR bus_id = $3 
+        OR bus_id = 'ALL' 
+        OR REPLACE(UPPER(bus_id), 'BUS-', '') = $3
+      )`;
+      params.push(cleanBus, withPrefix, withoutPrefix);
     }
 
     sql += ` ORDER BY started_at DESC LIMIT 1;`;
@@ -1314,6 +1420,16 @@ export class PostgresStorageAdapter implements StorageAdapter {
 
   async markAllNotificationsAsRead(): Promise<boolean> {
     await this.pool.query(`UPDATE public.notifications SET read = true;`);
+    return true;
+  }
+
+  async clearAllNotifications(): Promise<boolean> {
+    await this.pool.query(`DELETE FROM public.notifications;`);
+    return true;
+  }
+
+  async deleteNotification(id: string): Promise<boolean> {
+    await this.pool.query(`DELETE FROM public.notifications WHERE id::text = $1;`, [id]);
     return true;
   }
 
