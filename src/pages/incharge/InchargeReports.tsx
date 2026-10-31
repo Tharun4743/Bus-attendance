@@ -1,5 +1,6 @@
-﻿import { InchargeReportsSkeleton } from '../../components/skeleton/InchargeSkeletons';
+import { InchargeReportsSkeleton } from '../../components/skeleton/InchargeSkeletons';
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../../services/api';
 import { FinalReport } from '../../types';
 import { Button } from '../../components/ui/Button';
@@ -23,7 +24,16 @@ export const InchargeReports: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [searchDate, setSearchDate] = useState<string>('');
-  const [selectedSessionType, setSelectedSessionType] = useState<'ALL' | 'MORNING' | 'EVENING'>('ALL');
+  const [searchParams] = useSearchParams();
+  const sessionQuery = searchParams.get('session')?.toUpperCase();
+  const initialSession = sessionQuery === 'MORNING' || sessionQuery === 'EVENING' ? (sessionQuery as 'MORNING' | 'EVENING') : 'ALL';
+  const [selectedSessionType, setSelectedSessionType] = useState<'ALL' | 'MORNING' | 'EVENING'>(initialSession);
+
+  useEffect(() => {
+    if (sessionQuery === 'MORNING' || sessionQuery === 'EVENING') {
+      setSelectedSessionType(sessionQuery as 'MORNING' | 'EVENING');
+    }
+  }, [sessionQuery]);
   const [selectedReportForModal, setSelectedReportForModal] = useState<FinalReport | null>(null);
 
   const fetchReports = async () => {

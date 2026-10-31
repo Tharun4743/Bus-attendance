@@ -238,6 +238,13 @@ class ApiClient {
     });
   }
 
+  async resetBiometric(studentId?: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/attendance/reset-biometric', {
+      method: 'POST',
+      body: JSON.stringify({ studentId }),
+    });
+  }
+
   async verifyMobile(req: {
     busId?: string;
     method: 'FACE_GPS' | 'PHONE_BIOMETRIC_GPS';

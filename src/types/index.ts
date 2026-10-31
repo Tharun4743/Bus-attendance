@@ -45,6 +45,8 @@ export interface Student {
   faceDescriptorRight?: number[];
   faceEnrolledAt?: string;
   faceEnrollmentQuality?: number;
+  biometricCredential?: any;
+  biometricEnrolledAt?: string;
   approvedAt?: string;
   approvedBy?: string;
   createdAt: string;

@@ -87,7 +87,9 @@ export function formatWebAuthnError(err: any, isRegistration: boolean): string {
   }
 
   if (errName === 'InvalidStateError' || lower.includes('already registered')) {
-    return 'A biometric credential is already registered on this device. You can verify attendance directly.';
+    return isRegistration
+      ? 'A previous biometric credential exists on this device or origin. Tap "Reset Biometric" below to clear it and enroll afresh.'
+      : 'Device credential mismatch. Tap "Reset Biometric" below to configure a fresh sensor profile.';
   }
 
   if (errName === 'NotSupportedError' || lower.includes('not supported')) {
@@ -349,7 +351,9 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
     try {
       const { challenge } = await api.getMobileBiometricChallenge();
       const challengeBytes = base64UrlToUint8Array(challenge);
-      let userIdBytes = new TextEncoder().encode(studentId || 'student-commuter');
+      const salt = Date.now().toString(36);
+      const uniqueUserId = `${(studentId || 'student').slice(0, 36)}_${salt}`;
+      let userIdBytes = new TextEncoder().encode(uniqueUserId);
       if (userIdBytes.length > 64) {
         userIdBytes = userIdBytes.slice(0, 64);
       }
@@ -537,18 +541,29 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
   };
 
   const handleResetDeviceBiometric = async () => {
-    const storageKey = getStorageKey();
-    localStorage.removeItem(storageKey);
-    localStorage.removeItem(`${storageKey}_raw`);
-    setRegisteredCredId(null);
+    setIsLoading(true);
+    setStatusText('Clearing biometric registration on device and server...');
     setErrorMsg(null);
     try {
-      await api.unregisterMobileBiometric();
+      const storageKey = getStorageKey();
+      localStorage.removeItem(storageKey);
+      localStorage.removeItem(`${storageKey}_raw`);
+      localStorage.removeItem(`${storageKey}_transports`);
+      localStorage.removeItem('bus_biometric_cred_default');
+      localStorage.removeItem('bus_biometric_cred_default_raw');
+      localStorage.removeItem('bus_biometric_cred_default_transports');
+      setRegisteredCredId(null);
+      await Promise.allSettled([
+        api.unregisterMobileBiometric(),
+        api.resetBiometric(studentId),
+      ]);
+      setStatusText('Biometric reset successfully! You can now register a fresh fingerprint sensor profile.');
     } catch {
-      // Background unregister notice
+      setStatusText('Biometric unlinked from device. You can register a new one below.');
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => setStatusText(null), 3500);
     }
-    setStatusText('Biometric unlinked from this device. You can register a new one below.');
-    setTimeout(() => setStatusText(null), 3000);
   };
 
   if (!isOpen) return null;
@@ -761,7 +776,15 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
                         <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                         <span className="leading-relaxed">{errorMsg}</span>
                       </div>
-                      <div className="flex items-center justify-end gap-3 pt-1 border-t border-rose-200/50 dark:border-rose-900/30">
+                      <div className="flex items-center justify-between gap-3 pt-1 border-t border-rose-200/50 dark:border-rose-900/30">
+                        <button
+                          type="button"
+                          onClick={handleResetDeviceBiometric}
+                          className="text-xs font-bold text-rose-700 dark:text-rose-300 hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          Reset Biometric
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -771,7 +794,7 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
                           className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
                         >
                           <Camera className="w-3.5 h-3.5" />
-                          Switch to Mobile Face & GPS
+                          Switch to Face & GPS
                         </button>
                       </div>
                     </div>
@@ -794,17 +817,26 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
                     )}
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setErrorMsg(null);
-                      setActiveTab('FACE');
-                    }}
-                    className="mt-3 text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>Prefer front camera? Switch to Face & GPS</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
+                  <div className="flex items-center justify-between w-full mt-3 px-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                    <button
+                      type="button"
+                      onClick={handleResetDeviceBiometric}
+                      className="text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:underline cursor-pointer font-medium"
+                    >
+                      Reset / Clear Biometric Data
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setErrorMsg(null);
+                        setActiveTab('FACE');
+                      }}
+                      className="text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Prefer camera? Switch to Face</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
               ) : (
                 /* ------------------------------------------------------------- */
@@ -887,9 +919,9 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
                     <button
                       type="button"
                       onClick={handleResetDeviceBiometric}
-                      className="hover:text-zinc-800 dark:hover:text-zinc-200 underline cursor-pointer"
+                      className="text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:underline cursor-pointer font-semibold"
                     >
-                      Re-register on this device
+                      Reset Biometric
                     </button>
                     <button
                       type="button"
