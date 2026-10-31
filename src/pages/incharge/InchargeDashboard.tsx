@@ -205,7 +205,7 @@ export const InchargeDashboard: React.FC = () => {
   const isCurrentBusSessionActive = activeSession && activeSession.busId === data.bus.id;
 
   return (
-    <div className="space-y-4 sm:space-y-5 max-w-[1600px] w-full mx-auto px-1 sm:px-2 py-1 sm:py-2">
+    <div className="space-y-4 sm:space-y-5 w-full mx-auto pb-8">
       {/* ========================================================================= */}
       {/* 1. HEADER SECTION                                                         */}
       {/* ========================================================================= */}
@@ -302,41 +302,36 @@ export const InchargeDashboard: React.FC = () => {
               </h3>
             </div>
 
-            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-2.5 shrink-0 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 shrink-0 w-full sm:w-auto">
+              {/* Session Type (Morning vs Evening) */}
               <select
                 value={sessionType}
                 onChange={(e) => setSessionType(e.target.value as 'MORNING' | 'EVENING')}
-                className="w-full sm:w-auto text-xs font-bold bg-zinc-50 dark:bg-[#1a1a20] border border-zinc-200 dark:border-[#2e2e38] rounded-xl px-2.5 sm:px-3 lg:px-3.5 py-2 sm:py-2.5 text-zinc-800 dark:text-zinc-200 focus:outline-none shrink-0"
+                className="w-full sm:w-auto text-xs font-bold bg-zinc-50 dark:bg-[#1a1a20] border border-zinc-200 dark:border-[#2e2e38] rounded-xl px-3 py-2 sm:py-2.5 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 shrink-0"
               >
-                <option value="MORNING">Morning Transit (Pickup & Campus Inbound)</option>
-                <option value="EVENING">Evening Transit (Departure & Return Route)</option>
+                <option value="MORNING">🌅 Morning Transit (Inbound)</option>
+                <option value="EVENING">🌆 Evening Transit (Return)</option>
               </select>
 
-              {/* Mode Option 1: Stationary / Bus Bay Mode (~35m) */}
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedModeForModal('GROUND');
-                  setIsMapModalOpen(true);
-                }}
-                className="w-full sm:w-auto px-2.5 sm:px-3 lg:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-black border border-emerald-500/40 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95 sm:whitespace-nowrap sm:shrink-0"
-                title="Strict ~35m radius when bus is parked at campus terminal or designated stop"
+              {/* Transit Starting Mode (Stationary Bay vs Travelling) */}
+              <select
+                value={selectedModeForModal}
+                onChange={(e) => setSelectedModeForModal(e.target.value as 'GROUND' | 'TRAVELLING')}
+                className="w-full sm:w-auto text-xs font-bold bg-zinc-50 dark:bg-[#1a1a20] border border-zinc-200 dark:border-[#2e2e38] rounded-xl px-3 py-2 sm:py-2.5 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 shrink-0"
               >
-                <span>🛑 Stationary Bay (~35m)</span>
-              </button>
+                <option value="GROUND">🛑 Stationary Bus Bay (~35m Radius)</option>
+                <option value="TRAVELLING">🚌 Travelling Transit (~1000m Radius)</option>
+              </select>
 
-              {/* Mode Option 2: Highway Transit Mode (~1000m) */}
+              {/* Unified Start Live Attendance Button */}
               <button
                 type="button"
-                onClick={() => {
-                  setSelectedModeForModal('TRAVELLING');
-                  setIsMapModalOpen(true);
-                }}
-                className="w-full sm:w-auto px-2.5 sm:px-3 lg:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-black border border-amber-500/40 bg-amber-500 hover:bg-amber-400 text-white transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/20 active:scale-95 sm:whitespace-nowrap sm:shrink-0"
-                title="Extended ~1000m motion radius when bus is en route"
+                onClick={() => setIsMapModalOpen(true)}
+                className="w-full sm:w-auto px-4 py-2 sm:py-2.5 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-500 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/25 active:scale-95 shrink-0 whitespace-nowrap"
+                title="Auto-detects live bus GPS and starts attendance session"
               >
-                <MapPin className="w-3.5 h-3.5 fill-current shrink-0" />
-                <span>🚌 Travelling Transit (~1000m)</span>
+                <Radio className="w-3.5 h-3.5 animate-pulse" />
+                <span>Start Live Attendance</span>
               </button>
             </div>
           </div>

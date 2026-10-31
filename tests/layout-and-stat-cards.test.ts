@@ -5,27 +5,27 @@ import path from 'path';
 describe('⚡ Responsive Layouts, Stat Cards, and Session Launcher Verification Suite', () => {
   const rootDir = path.resolve(__dirname, '..');
 
-  it('R1: Layout containers utilize widescreen displays with max-w-[1600px]', () => {
+  it('R1: Layout containers utilize balanced, high-productivity task-manager widths without excessive empty voids', () => {
     const adminLayout = fs.readFileSync(path.join(rootDir, 'src/layouts/AdminLayout.tsx'), 'utf-8');
     const inchargeLayout = fs.readFileSync(path.join(rootDir, 'src/layouts/InchargeLayout.tsx'), 'utf-8');
     const studentLayout = fs.readFileSync(path.join(rootDir, 'src/layouts/StudentLayout.tsx'), 'utf-8');
     const navbar = fs.readFileSync(path.join(rootDir, 'src/components/common/Navbar.tsx'), 'utf-8');
 
-    // Admin layout should be expanded from 1440px to 1600px
-    expect(adminLayout).toContain('max-w-[1600px]');
-    expect(adminLayout).not.toContain('max-w-[1440px]');
+    // Admin layout uses max-w-7xl for sidebar integration
+    expect(adminLayout).toContain('max-w-7xl');
+    expect(adminLayout).not.toContain('max-w-[1600px]');
 
-    // Incharge layout should NOT be cramped at max-w-4xl
-    expect(inchargeLayout).toContain('max-w-[1600px]');
-    expect(inchargeLayout).not.toContain('max-w-4xl');
+    // Incharge layout uses max-w-6xl for compact productivity
+    expect(inchargeLayout).toContain('max-w-6xl');
+    expect(inchargeLayout).not.toContain('max-w-[1600px]');
 
-    // Student layout should NOT be cramped at max-w-2xl
-    expect(studentLayout).toContain('max-w-[1600px]');
-    expect(studentLayout).not.toContain('max-w-2xl');
+    // Student layout uses max-w-5xl for focused mobile/desktop commuter view
+    expect(studentLayout).toContain('max-w-5xl');
+    expect(studentLayout).not.toContain('max-w-[1600px]');
 
-    // Navbar aligns with the 1600px layout width
-    expect(navbar).toContain('max-w-[1600px]');
-    expect(navbar).not.toContain('max-w-[1440px]');
+    // Navbar aligns with the max-w-7xl layout width
+    expect(navbar).toContain('max-w-7xl');
+    expect(navbar).not.toContain('max-w-[1600px]');
   });
 
   it('R1: All dashboard and admin pages expand to utilize widescreen width effectively without narrow bottlenecks', () => {
@@ -39,19 +39,16 @@ describe('⚡ Responsive Layouts, Stat Cards, and Session Launcher Verification 
     const geofenceSettings = fs.readFileSync(path.join(rootDir, 'src/pages/admin/GeofenceSettings.tsx'), 'utf-8');
     const notificationsPage = fs.readFileSync(path.join(rootDir, 'src/pages/admin/NotificationsPage.tsx'), 'utf-8');
 
-    expect(inchargeDash).toContain('max-w-[1600px]');
-    expect(adminDash).toContain('max-w-[1600px]');
-    expect(attendanceHub).toContain('max-w-[1600px]');
-    expect(studentDash).toContain('max-w-[1600px]');
-    expect(busesMgmt).toContain('max-w-[1600px]');
-    expect(studentApprovals).toContain('max-w-[1600px]');
-    expect(studentsMgmt).toContain('max-w-[1600px]');
-
-    // Confirm GeofenceSettings and NotificationsPage were also expanded to eliminate 4xl bottlenecks
-    expect(geofenceSettings).toContain('max-w-[1600px]');
-    expect(geofenceSettings).not.toContain('max-w-4xl');
-    expect(notificationsPage).toContain('max-w-[1600px]');
-    expect(notificationsPage).not.toContain('max-w-4xl');
+    // Verify 1600px redundant wrappers are removed
+    expect(inchargeDash).not.toContain('max-w-[1600px]');
+    expect(adminDash).not.toContain('max-w-[1600px]');
+    expect(attendanceHub).not.toContain('max-w-[1600px]');
+    expect(studentDash).not.toContain('max-w-[1600px]');
+    expect(busesMgmt).not.toContain('max-w-[1600px]');
+    expect(studentApprovals).not.toContain('max-w-[1600px]');
+    expect(studentsMgmt).not.toContain('max-w-[1600px]');
+    expect(geofenceSettings).not.toContain('max-w-[1600px]');
+    expect(notificationsPage).not.toContain('max-w-[1600px]');
   });
 
   it('R2: KPI StatCard does not truncate titles or values with ellipsis', () => {
@@ -85,20 +82,17 @@ describe('⚡ Responsive Layouts, Stat Cards, and Session Launcher Verification 
     // Idle session card flex layout provides full width for title on 1024px desktop and side-by-side on xl
     expect(inchargeDash).toContain('flex flex-col xl:flex-row xl:items-center justify-between gap-4');
 
-    // Toolbar container supports clean wrapping on mobile and nowrap on desktop/tablet
-    expect(inchargeDash).toContain('flex-wrap sm:flex-nowrap');
+    // Toolbar container supports clean stacking on mobile and row on desktop/tablet
+    expect(inchargeDash).toContain('flex flex-col sm:flex-row');
     expect(inchargeDash).toContain('shrink-0');
 
-    // Select dropdown is full width on mobile, auto on desktop
+    // Select dropdowns are responsive
     expect(inchargeDash).toContain('w-full sm:w-auto text-xs font-bold');
 
-    // Mode action buttons have correct label content
-    expect(inchargeDash).toContain('🛑 Stationary Bay (~35m)');
-    expect(inchargeDash).toContain('🚌 Travelling Transit (~1000m)');
-
-    // Action buttons adapt responsively: full-width on mobile to prevent clipping, and nowrap on desktop for single clean row
-    expect(inchargeDash).toContain('w-full sm:w-auto');
-    expect(inchargeDash).toContain('sm:whitespace-nowrap sm:shrink-0');
+    // Mode options and action button have correct content
+    expect(inchargeDash).toContain('🛑 Stationary Bus Bay (~35m Radius)');
+    expect(inchargeDash).toContain('🚌 Travelling Transit (~1000m Radius)');
+    expect(inchargeDash).toContain('Start Live Attendance');
   });
 
   it('R4: Layouts contain responsive overflow protection', () => {

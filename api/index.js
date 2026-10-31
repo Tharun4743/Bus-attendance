@@ -33478,6 +33478,7 @@ var PostgresStorageAdapter = class {
           OR register_number ILIKE $1 
           OR email ILIKE $1 
           OR register_number ILIKE $2
+          OR user_id::text = $1
        LIMIT 1;`,
       [clean, cleanNoPrefix]
     );
@@ -33492,6 +33493,66 @@ var PostgresStorageAdapter = class {
     );
     if (res.rows.length === 0) return null;
     return this.mapStudent(res.rows[0]);
+  }
+  async linkUserAndStudent(userId, studentId) {
+    try {
+      if (userId && studentId) {
+        await this.pool.query(
+          `UPDATE public.students SET user_id = $1 WHERE id = $2 AND (user_id IS NULL OR user_id::text != $1);`,
+          [userId, studentId]
+        );
+        await this.pool.query(
+          `UPDATE public.users SET student_id = $1 WHERE id::text = $2 AND (student_id IS NULL OR student_id != $1);`,
+          [studentId, userId]
+        );
+      }
+    } catch (err) {
+      console.warn("\u26A0\uFE0F [PostgresStorageAdapter] linkUserAndStudent notice:", err?.message || err);
+    }
+  }
+  async getStudentForUser(user) {
+    if (user.studentId) {
+      const byId = await this.getStudentById(user.studentId);
+      if (byId) return byId;
+    }
+    if (user.id) {
+      const byUserId = await this.getStudentById(user.id);
+      if (byUserId) return byUserId;
+    }
+    if (user.email) {
+      const cleanEmail = user.email.trim().toLowerCase();
+      const res = await this.pool.query(
+        `SELECT * FROM public.students 
+         WHERE LOWER(TRIM(email)) = $1 
+            OR email ILIKE $2
+         ORDER BY created_at DESC LIMIT 1;`,
+        [cleanEmail, `%${cleanEmail}%`]
+      );
+      if (res.rows.length > 0) {
+        const student = this.mapStudent(res.rows[0]);
+        if (user.id) {
+          await this.linkUserAndStudent(user.id, student.id);
+        }
+        return student;
+      }
+    }
+    if (user.name) {
+      const cleanName = user.name.trim().toLowerCase();
+      const res = await this.pool.query(
+        `SELECT * FROM public.students 
+         WHERE LOWER(TRIM(name)) = $1 
+         ORDER BY created_at DESC LIMIT 1;`,
+        [cleanName]
+      );
+      if (res.rows.length > 0) {
+        const student = this.mapStudent(res.rows[0]);
+        if (user.id) {
+          await this.linkUserAndStudent(user.id, student.id);
+        }
+        return student;
+      }
+    }
+    return null;
   }
   async getStudentsByBusId(busId) {
     return this.getStudents({ busId, status: "APPROVED" });
@@ -34509,6 +34570,27 @@ var MemoryStorageAdapter = class {
   async getStudentByRegisterNumber(regNo) {
     const clean = regNo.trim().toLowerCase();
     return this.students.find((s) => s.registerNumber.toLowerCase() === clean) || null;
+  }
+  async getStudentForUser(user) {
+    if (user.studentId) {
+      const byId = await this.getStudentById(user.studentId);
+      if (byId) return byId;
+    }
+    if (user.id) {
+      const byUserId = await this.getStudentById(user.id);
+      if (byUserId) return byUserId;
+    }
+    if (user.email) {
+      const cleanEmail = user.email.trim().toLowerCase();
+      const byEmail = this.students.find((s) => s.email.toLowerCase() === cleanEmail);
+      if (byEmail) return byEmail;
+    }
+    if (user.name) {
+      const cleanName = user.name.trim().toLowerCase();
+      const byName = this.students.find((s) => s.name.trim().toLowerCase() === cleanName);
+      if (byName) return byName;
+    }
+    return null;
   }
   async getStudentsByBusId(busId) {
     return this.getStudents({ busId, status: "APPROVED" });
@@ -36789,28 +36871,41 @@ apiRouter.post(
   requireAuth(["STUDENT"]),
   async (req, res) => {
     try {
-      const studentId = req.user.studentId || req.user.id;
-      const student = await storage.getStudentById(studentId);
+      let student = await storage.getStudentForUser({
+        id: req.user.id,
+        email: req.user.email,
+        name: req.user.name,
+        studentId: req.user.studentId
+      });
+      if (!student) {
+        const studentId2 = req.user.studentId || req.user.id;
+        student = await storage.getStudentById(studentId2);
+      }
       if (!student) {
         return res.status(404).json({
           status: "BUS_MISMATCH",
-          message: "Student commuter profile not found."
+          message: "Student commuter profile not found. Please contact administration."
         });
       }
+      const studentId = student.id;
       const { busId, method, latitude, longitude, accuracy, selfieBase64, biometricPayload } = req.body;
-      const targetBusId = busId || student.busId;
-      if (student.busId && targetBusId !== student.busId) {
-        return res.status(400).json({
-          status: "BUS_MISMATCH",
-          message: `Bus mismatch: You are assigned to Bus ${student.busId}, not ${targetBusId}.`
-        });
+      let targetBusId = busId || student.busId;
+      let activeSession = targetBusId ? await storage.getActiveSession(targetBusId) : null;
+      if (!activeSession || activeSession.status !== "ACTIVE") {
+        activeSession = await storage.getActiveSession();
+        if (activeSession && activeSession.status === "ACTIVE") {
+          targetBusId = activeSession.busId;
+        }
       }
-      const activeSession = await storage.getActiveSession(targetBusId);
       if (!activeSession || activeSession.status !== "ACTIVE") {
         return res.status(400).json({
           status: "SESSION_CLOSED",
-          message: `The bus in-charge has not opened transit attendance for Bus ${targetBusId} yet. Please wait until session begins.`
+          message: `The bus in-charge has not opened transit attendance for your bus yet. Please wait until session begins.`
         });
+      }
+      if (!student.busId && targetBusId) {
+        await storage.updateStudent(student.id, { busId: targetBusId });
+        student.busId = targetBusId;
       }
       if (latitude === void 0 || longitude === void 0) {
         return res.status(400).json({
@@ -36944,17 +37039,36 @@ apiRouter.get(
   requireAuth(["STUDENT"]),
   async (req, res) => {
     try {
-      const studentId = req.user.studentId || req.user.id;
-      let student = await storage.getStudentById(studentId);
-      if (!student && req.user.email) {
-        student = await storage.getStudentById(req.user.email);
+      let student = await storage.getStudentForUser({
+        id: req.user.id,
+        email: req.user.email,
+        name: req.user.name,
+        studentId: req.user.studentId
+      });
+      if (!student) {
+        const studentId = req.user.studentId || req.user.id;
+        student = await storage.getStudentById(studentId);
+        if (!student && req.user.email) {
+          student = await storage.getStudentById(req.user.email);
+        }
       }
-      const bus = student?.busId ? await storage.getBusById(student.busId) : null;
+      let bus = student?.busId ? await storage.getBusById(student.busId) : null;
       const todayDate = getISTDateString();
-      const activeDynamic = await storage.getActiveSession(student?.busId);
+      let activeDynamic = await storage.getActiveSession(student?.busId);
+      if (!activeDynamic || activeDynamic.status !== "ACTIVE") {
+        activeDynamic = await storage.getActiveSession();
+      }
+      if (activeDynamic && activeDynamic.status === "ACTIVE" && student && !student.busId && activeDynamic.busId !== "ALL") {
+        await storage.updateStudent(student.id, { busId: activeDynamic.busId });
+        student.busId = activeDynamic.busId;
+        if (!bus) {
+          bus = await storage.getBusById(activeDynamic.busId);
+        }
+      }
       const currentSessionType = activeDynamic ? activeDynamic.sessionType : "EVENING";
-      const todayRecord = await storage.getAttendanceRecord(studentId, todayDate, currentSessionType);
-      const history = await storage.getAttendance({ studentId });
+      const effectiveStudentId = student ? student.id : req.user.studentId || req.user.id;
+      const todayRecord = await storage.getAttendanceRecord(effectiveStudentId, todayDate, currentSessionType);
+      const history = await storage.getAttendance({ studentId: effectiveStudentId });
       let sessionInfo;
       if (activeDynamic && activeDynamic.status === "ACTIVE") {
         sessionInfo = {

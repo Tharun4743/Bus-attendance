@@ -127,13 +127,17 @@ export const StudentDashboard: React.FC = () => {
     activeSession &&
     activeSession.status === 'ACTIVE' &&
     (activeSession.busId === 'ALL' ||
+      !student?.busId ||
       normalizeBus(activeSession.busId) === normalizeBus(student?.busId))
   );
 
-  const isSessionActive = sessionInfo?.status === 'ACTIVE' || isTargetBusActive;
+  const isSessionActive = Boolean(
+    (sessionInfo?.status === 'ACTIVE' && activeSession) ||
+    isTargetBusActive
+  );
 
   return (
-    <div className="space-y-4 max-w-[1600px] w-full mx-auto px-1 sm:px-2 pb-10">
+    <div className="space-y-4 w-full mx-auto pb-8">
       {errorMessage && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-800 dark:text-rose-200 shadow-xs">
           <div className="flex items-center gap-3">
@@ -164,18 +168,18 @@ export const StudentDashboard: React.FC = () => {
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <Badge variant="emerald">STUDENT COMMUTER PORTAL</Badge>
             <span className="text-xs font-mono font-bold text-blue-600 dark:text-sky-400">
-              {student?.registerNumber || 'REG-PENDING'}
+              {student?.registerNumber || user?.studentId || 'ACTIVE COMMUTER'}
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
             {student?.name || user?.name}
           </h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-1 flex items-center gap-2 flex-wrap">
-            <span>Assigned: <strong>{bus?.busNumber || student?.busId || 'Unassigned'}</strong></span>
-            {bus?.routeName && (
+            <span>Assigned: <strong>{bus?.busNumber || student?.busId || (activeSession?.busId ? `Bus ${activeSession.busId}` : 'Assigned Fleet Bus')}</strong></span>
+            {(bus?.routeName || activeSession?.location?.name || sessionInfo?.locationName) && (
               <>
                 <span>•</span>
-                <span>{bus.routeName}</span>
+                <span>{bus?.routeName || activeSession?.location?.name || sessionInfo?.locationName}</span>
               </>
             )}
           </p>

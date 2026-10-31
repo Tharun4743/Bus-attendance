@@ -1104,32 +1104,46 @@ apiRouter.post(
   requireAuth(['STUDENT']),
   async (req: AuthRequest, res: Response) => {
     try {
-      const studentId = req.user!.studentId || req.user!.id;
-      const student = await storage.getStudentById(studentId);
+      let student = await storage.getStudentForUser({
+        id: req.user!.id,
+        email: req.user!.email,
+        name: req.user!.name,
+        studentId: req.user!.studentId,
+      });
+      if (!student) {
+        const studentId = req.user!.studentId || req.user!.id;
+        student = await storage.getStudentById(studentId);
+      }
       if (!student) {
         return res.status(404).json({
           status: 'BUS_MISMATCH',
-          message: 'Student commuter profile not found.',
+          message: 'Student commuter profile not found. Please contact administration.',
         });
       }
 
+      const studentId = student.id;
       const { busId, method, latitude, longitude, accuracy, selfieBase64, biometricPayload } = req.body;
 
-      const targetBusId = busId || student.busId;
-      if (student.busId && targetBusId !== student.busId) {
-        return res.status(400).json({
-          status: 'BUS_MISMATCH',
-          message: `Bus mismatch: You are assigned to Bus ${student.busId}, not ${targetBusId}.`,
-        });
+      let targetBusId = busId || student.busId;
+      let activeSession = targetBusId ? await storage.getActiveSession(targetBusId) : null;
+      if (!activeSession || activeSession.status !== 'ACTIVE') {
+        activeSession = await storage.getActiveSession();
+        if (activeSession && activeSession.status === 'ACTIVE') {
+          targetBusId = activeSession.busId;
+        }
       }
 
-      // 1. Session Active Guard: In-charge must have opened attendance for this bus
-      const activeSession = await storage.getActiveSession(targetBusId);
       if (!activeSession || activeSession.status !== 'ACTIVE') {
         return res.status(400).json({
           status: 'SESSION_CLOSED',
-          message: `The bus in-charge has not opened transit attendance for Bus ${targetBusId} yet. Please wait until session begins.`,
+          message: `The bus in-charge has not opened transit attendance for your bus yet. Please wait until session begins.`,
         });
+      }
+
+      // Auto-assign bus to student if student bus is not set or matches active
+      if (!student.busId && targetBusId) {
+        await storage.updateStudent(student.id, { busId: targetBusId });
+        student.busId = targetBusId;
       }
 
       // 2. Validate Smartphone GPS Coordinates
@@ -1296,20 +1310,45 @@ apiRouter.get(
   requireAuth(['STUDENT']),
   async (req: AuthRequest, res: Response) => {
     try {
-      const studentId = req.user!.studentId || req.user!.id;
-      let student = await storage.getStudentById(studentId);
-      if (!student && req.user!.email) {
-        student = await storage.getStudentById(req.user!.email);
+      let student = await storage.getStudentForUser({
+        id: req.user!.id,
+        email: req.user!.email,
+        name: req.user!.name,
+        studentId: req.user!.studentId,
+      });
+
+      if (!student) {
+        const studentId = req.user!.studentId || req.user!.id;
+        student = await storage.getStudentById(studentId);
+        if (!student && req.user!.email) {
+          student = await storage.getStudentById(req.user!.email);
+        }
       }
-      const bus = student?.busId ? await storage.getBusById(student.busId) : null;
+
+      let bus = student?.busId ? await storage.getBusById(student.busId) : null;
       const todayDate = getISTDateString();
 
-      // Check active dynamic session first
-      const activeDynamic = await storage.getActiveSession(student?.busId);
-      const currentSessionType: SessionType = activeDynamic ? activeDynamic.sessionType : 'EVENING';
+      // Check active dynamic session:
+      // Try assigned bus first; if none or student has no assigned bus, check latest system active session
+      let activeDynamic = await storage.getActiveSession(student?.busId);
+      if (!activeDynamic || activeDynamic.status !== 'ACTIVE') {
+        activeDynamic = await storage.getActiveSession();
+      }
 
-      const todayRecord = await storage.getAttendanceRecord(studentId, todayDate, currentSessionType);
-      const history = await storage.getAttendance({ studentId });
+      // If active session belongs to a bus and student has no bus assigned, auto-link
+      if (activeDynamic && activeDynamic.status === 'ACTIVE' && student && !student.busId && activeDynamic.busId !== 'ALL') {
+        await storage.updateStudent(student.id, { busId: activeDynamic.busId });
+        student.busId = activeDynamic.busId;
+        if (!bus) {
+          bus = await storage.getBusById(activeDynamic.busId);
+        }
+      }
+
+      const currentSessionType: SessionType = activeDynamic ? activeDynamic.sessionType : 'EVENING';
+      const effectiveStudentId = student ? student.id : (req.user!.studentId || req.user!.id);
+
+      const todayRecord = await storage.getAttendanceRecord(effectiveStudentId, todayDate, currentSessionType);
+      const history = await storage.getAttendance({ studentId: effectiveStudentId });
 
       let sessionInfo: any;
       if (activeDynamic && activeDynamic.status === 'ACTIVE') {
