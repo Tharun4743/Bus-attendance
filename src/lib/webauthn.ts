@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * 📱 MOBILE DEVICE BIOMETRIC ENGINE (WEBAUTHN STANDARD)
- * Native Android Fingerprint / iOS TouchID & FaceID Verification
+ * Native Android Fingerprint (In-Display & Side-Mounted) / iOS TouchID & FaceID
  * Runs 100% on student's smartphone with zero external hardware
  * ============================================================================
  */
@@ -20,14 +20,30 @@ export interface BiometricVerificationPayload {
   signature?: string;
   rawId?: string;
   challenge?: string;
+  transports?: string[];
 }
 
 export interface RegisteredBiometricCredential {
   studentId: string;
   credentialId: string;
   rawId?: string;
+  transports: string[];
   registeredAt: string;
 }
+
+/**
+ * Standardized WebAuthn Platform Authenticator Configuration
+ * Enforces internal hardware sensor (in-display or side-mounted fingerprint scanner)
+ * without opening passkey manager or external security key dialogs.
+ */
+export const PLATFORM_AUTHENTICATOR_CONFIG = {
+  authenticatorSelection: {
+    authenticatorAttachment: 'platform' as const,
+    userVerification: 'required' as const,
+    residentKey: 'preferred' as const,
+  },
+  transports: ['internal'] as const,
+};
 
 export class MobileBiometricEngine {
   private activeChallenges = new Map<string, BiometricChallenge>();
@@ -47,11 +63,13 @@ export class MobileBiometricEngine {
 
   /**
    * Registers a public key credential for the student's mobile platform authenticator
+   * (Android in-display/side-mounted fingerprint or iOS TouchID/FaceID)
    */
   public registerCredential(
     studentId: string,
     credentialId: string,
-    rawId?: string
+    rawId?: string,
+    transports: string[] = ['internal']
   ): { success: boolean; message: string; credential?: RegisteredBiometricCredential } {
     if (!credentialId || typeof credentialId !== 'string') {
       return { success: false, message: 'Invalid biometric credential ID provided.' };
@@ -61,13 +79,14 @@ export class MobileBiometricEngine {
       studentId,
       credentialId,
       rawId,
+      transports: transports && transports.length > 0 ? transports : ['internal'],
       registeredAt: new Date().toISOString(),
     };
     this.registeredCredentials.set(studentId, entry);
 
     return {
       success: true,
-      message: 'Mobile biometric credential registered successfully.',
+      message: 'Mobile biometric credential registered successfully for in-display/side-mounted sensor.',
       credential: entry,
     };
   }
@@ -91,7 +110,7 @@ export class MobileBiometricEngine {
    */
   public verifyAssertion(
     studentId: string,
-    payload: { challenge?: string; credentialId?: string; signature?: string; rawId?: string }
+    payload: { challenge?: string; credentialId?: string; signature?: string; rawId?: string; transports?: string[] }
   ): { verified: boolean; message: string } {
     const stored = this.activeChallenges.get(studentId);
 
@@ -107,7 +126,7 @@ export class MobileBiometricEngine {
       }
       return {
         verified: true,
-        message: 'Mobile biometric signature verified successfully.',
+        message: 'Mobile phone fingerprint sensor assertion verified successfully.',
       };
     }
 

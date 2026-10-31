@@ -11,16 +11,11 @@ import {
   CheckCircle2,
   XCircle,
   Percent,
-  Play,
-  Square,
   RefreshCw,
   UserCheck,
   AlertCircle,
-  Sun,
-  Moon,
   CheckCheck,
   MapPin,
-  Compass,
   Bus as BusIcon,
   CalendarCheck,
   ArrowRight,
@@ -52,19 +47,14 @@ export const AdminDashboard: React.FC = () => {
     buses: Bus[];
   } | null>(null);
 
-  // Active Session & Live Dispatcher
+  // Active Session Telemetry
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
-  const [selectedBusId, setSelectedBusId] = useState<string>('ALL');
-  const [sessionType, setSessionType] = useState<'MORNING' | 'EVENING'>('MORNING');
-  const [attendanceMode, setAttendanceMode] = useState<'GROUND' | 'TRAVELLING'>('GROUND');
-  const [isStarting, setIsStarting] = useState<boolean>(false);
-  const [isEnding, setIsEnding] = useState<boolean>(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Pending Approvals List
   const [pendingStudents, setPendingStudents] = useState<Student[]>([]);
   const [pendingIncharges, setPendingIncharges] = useState<User[]>([]);
   const [isProcessingApproval, setIsProcessingApproval] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -74,10 +64,6 @@ export const AdminDashboard: React.FC = () => {
     try {
       const res = await api.getTodayAttendance();
       setData(res);
-
-      if (res.buses && res.buses.length > 0 && selectedBusId === 'ALL') {
-        setSelectedBusId(res.buses[0].id);
-      }
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     }
@@ -138,95 +124,12 @@ export const AdminDashboard: React.FC = () => {
     };
   }, []);
 
-  // 1-Click Start Attendance (Location Geofence Mode)
-  const handleStartAttendance = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsStarting(true);
-    setFeedback(null);
-
-    try {
-      let lat = undefined;
-      let lon = undefined;
-      if (typeof navigator !== 'undefined' && navigator.geolocation) {
-        try {
-          const pos = await new Promise<any>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 6000 });
-          });
-          lat = Math.round(pos.coords.latitude * 1000000) / 1000000;
-          lon = Math.round(pos.coords.longitude * 1000000) / 1000000;
-        } catch {
-          // Continue if permission denied
-        }
-      }
-
-      const res = await fetch('/api/admin/attendance/start', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('bus_token')}`,
-        },
-        body: JSON.stringify({
-          sessionType,
-          attendanceMode,
-          verificationMethod: 'CODE_GPS',
-          busId: selectedBusId,
-          latitude: lat,
-          longitude: lon,
-          radiusMeters: attendanceMode === 'TRAVELLING' ? 1000 : 35,
-        }),
-      });
-
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to start session');
-
-      setActiveSession(json.session);
-      setFeedback({
-        type: 'success',
-        message: `Location attendance active for ${selectedBusId === 'ALL' ? 'All Buses' : selectedBusId}.`,
-      });
-      await refreshAll();
-    } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'Failed to start attendance.' });
-    } finally {
-      setIsStarting(false);
-    }
-  };
-
-  // 1-Click End Attendance
-  const handleEndAttendance = async () => {
-    if (!activeSession) return;
-    setIsEnding(true);
-    setFeedback(null);
-
-    try {
-      const res = await fetch('/api/admin/attendance/end', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('bus_token')}`,
-        },
-        body: JSON.stringify({ sessionId: activeSession.id }),
-      });
-
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to end session');
-
-      setActiveSession(null);
-      setFeedback({
-        type: 'success',
-        message: 'Attendance session ended.',
-      });
-      await refreshAll();
-    } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'Failed to end attendance.' });
-    } finally {
-      setIsEnding(false);
-    }
-  };
-
   // 1-Click Quick Approval from dashboard snapshot
   const handleQuickApproveStudent = async (studentId: string, preferredBusId?: string | null) => {
-    const busId = preferredBusId || data?.buses[0]?.id;
+    const matchingBus = (data?.buses || []).find(
+      (b) => b.id === preferredBusId || b.busNumber.toUpperCase() === (preferredBusId || '').toUpperCase()
+    );
+    const busId = matchingBus?.id || preferredBusId || data?.buses[0]?.id;
     if (!busId) {
       alert('Please configure at least one bus before approving student registrations.');
       return;
@@ -234,9 +137,16 @@ export const AdminDashboard: React.FC = () => {
     setIsProcessingApproval(studentId);
     try {
       await api.approveStudent(studentId, busId);
+      setFeedback({
+        type: 'success',
+        message: 'Student registration approved successfully.',
+      });
       await Promise.all([fetchPendingApprovals(), fetchDashboardData()]);
     } catch (err: any) {
-      alert(err.message || 'Failed to approve student.');
+      setFeedback({
+        type: 'error',
+        message: err.message || 'Failed to approve student.',
+      });
     } finally {
       setIsProcessingApproval(null);
     }
@@ -322,160 +232,64 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. ATTENDANCE SESSION CONTROLLER                                          */}
+      {/* 2. FLEET TELEMETRY & ATTENDANCE STATUS BAR                                */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] shadow-xs overflow-hidden transition-all">
-        {activeSession && activeSession.status === 'ACTIVE' ? (
-          <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-50/70 via-teal-50/30 to-emerald-50/50 dark:from-emerald-950/20 dark:via-[#141418] dark:to-emerald-950/10 border-b border-emerald-200 dark:border-emerald-500/20">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black tracking-wider uppercase bg-emerald-600 text-white shadow-xs">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                    LIVE SESSION BROADCASTING
-                  </span>
-                  <span className="text-[11px] font-bold text-zinc-700 dark:text-zinc-300 uppercase bg-white dark:bg-[#1a1a20] px-2.5 py-0.5 rounded-md border border-zinc-200 dark:border-[#26262e]">
-                    {activeSession.sessionType}
-                  </span>
-                </div>
+      {activeSession && activeSession.status === 'ACTIVE' ? (
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-emerald-500/5 dark:from-emerald-950/30 dark:via-[#141418] dark:to-emerald-950/20 border border-emerald-500/30 dark:border-emerald-500/20 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black tracking-wider uppercase bg-emerald-600 text-white shadow-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                LIVE SESSION BROADCASTING
+              </span>
+              <span className="text-[11px] font-bold text-zinc-700 dark:text-zinc-300 uppercase bg-white dark:bg-[#1a1a20] px-2.5 py-0.5 rounded-md border border-zinc-200 dark:border-[#26262e]">
+                {activeSession.sessionType} TRANSIT
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-zinc-900 dark:text-white pt-0.5">
+              <MapPin className="w-4 h-4 text-emerald-600 dark:text-[#4ade80] shrink-0" />
+              <span>
+                Active Route: <strong className="text-emerald-700 dark:text-[#4ade80]">{activeSession.busId === 'ALL' ? 'All Transit Buses' : activeSession.busId}</strong> • {data?.stats.present || 0} students verified present
+              </span>
+            </div>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Live smartphone geofence & biometric telemetry is active. Full live roster and session controls are in Attendance Hub.
+            </p>
+          </div>
 
-                <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-zinc-900 dark:text-white">
-                  <MapPin className="w-4 h-4 text-emerald-600 dark:text-[#4ade80] shrink-0" />
-                  <span>
-                    Route: <strong className="text-emerald-700 dark:text-[#4ade80]">{activeSession.busId === 'ALL' ? 'All Buses' : activeSession.busId}</strong>
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Live session active with {data?.stats.present || 0} students verified present today.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2.5">
-                <Link
-                  to="/admin/attendance"
-                  className="px-3.5 py-2 text-xs font-bold text-emerald-700 dark:text-[#4ade80] bg-emerald-100/60 dark:bg-emerald-950/40 border border-emerald-300/60 dark:border-emerald-800 rounded-xl hover:bg-emerald-200/60 transition"
-                >
-                  Live Roster →
-                </Link>
-                <Button
-                  onClick={handleEndAttendance}
-                  disabled={isEnding}
-                  variant="danger"
-                  size="md"
-                >
-                  {isEnding ? (
-                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <Square className="w-3.5 h-3.5 fill-white" />
-                  )}
-                  <span>END SESSION</span>
-                </Button>
-              </div>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Link
+              to="/admin/attendance?tab=today"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-600 dark:hover:bg-emerald-500 rounded-xl transition shadow-xs active:scale-95"
+            >
+              <Radio className="w-3.5 h-3.5 animate-pulse" />
+              <span>Open Live Session Controls →</span>
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#141418] border border-zinc-200/90 dark:border-[#26262e] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-[#1a1a20] flex items-center justify-center text-zinc-500 dark:text-zinc-400">
+              <Radio className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="font-bold text-zinc-900 dark:text-white">
+                Transit Fleet Idle • No Active Attendance Broadcast
+              </p>
+              <p className="text-zinc-500 dark:text-zinc-400 text-[11px]">
+                Attendance sessions are initiated per scheduled route in Attendance Hub or directly by route in-charges.
+              </p>
             </div>
           </div>
-        ) : (
-          <form onSubmit={handleStartAttendance} className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-[#1a1a20] text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-[#26262e]">
-                <Compass className="w-5 h-5 text-emerald-600 dark:text-[#4ade80]" />
-              </div>
-              <div>
-                <h2 className="text-sm sm:text-base font-black text-zinc-900 dark:text-white tracking-tight">
-                  Launch Attendance Session
-                </h2>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Broadcast verified smartphone geofence attendance for transit buses
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <div className="flex-1 sm:flex-initial min-w-[150px]">
-                <select
-                  value={selectedBusId}
-                  onChange={(e) => setSelectedBusId(e.target.value)}
-                  className="w-full h-10 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#26262e] bg-zinc-50 dark:bg-[#1a1a20] text-zinc-900 dark:text-white outline-none"
-                >
-                  <option value="ALL">All Buses</option>
-                  {(data?.buses || []).map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.busNumber} — {b.routeName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center gap-1 bg-zinc-100 dark:bg-[#1a1a20] p-1 rounded-xl border border-zinc-200 dark:border-[#26262e]">
-                <button
-                  type="button"
-                  onClick={() => setAttendanceMode('GROUND')}
-                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    attendanceMode === 'GROUND'
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                  }`}
-                  title="Stationary Bay (~35m radius)"
-                >
-                  <span>🛑 Bay (~35m)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAttendanceMode('TRAVELLING')}
-                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    attendanceMode === 'TRAVELLING'
-                      ? 'bg-amber-500 text-white shadow-xs'
-                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                  }`}
-                  title="Highway Transit (~1000m radius)"
-                >
-                  <span>🚌 Transit (~1000m)</span>
-                </button>
-              </div>
-
-              <div className="flex items-center gap-1 bg-zinc-100 dark:bg-[#1a1a20] p-1 rounded-xl border border-zinc-200 dark:border-[#26262e]">
-                <button
-                  type="button"
-                  onClick={() => setSessionType('MORNING')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    sessionType === 'MORNING'
-                      ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-xs'
-                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Sun className="w-3.5 h-3.5" />
-                  <span>Morning</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSessionType('EVENING')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    sessionType === 'EVENING'
-                      ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-xs'
-                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Moon className="w-3.5 h-3.5" />
-                  <span>Evening</span>
-                </button>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={isStarting}
-                variant="emerald"
-                size="md"
-              >
-                {isStarting ? (
-                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <Play className="w-3.5 h-3.5 fill-white" />
-                )}
-                <span>START ATTENDANCE</span>
-              </Button>
-            </div>
-          </form>
-        )}
-      </div>
+          <Link
+            to="/admin/attendance?tab=today"
+            className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-[#4ade80] hover:underline self-start sm:self-auto"
+          >
+            <span>Launch Attendance in Hub →</span>
+          </Link>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 3. OPERATIONAL METRICS (4 KPI Cards)                                      */}

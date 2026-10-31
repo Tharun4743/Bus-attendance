@@ -192,12 +192,15 @@ export const StudentsManagement: React.FC = () => {
           onChange={(e) => setSelectedBus(e.target.value)}
           className="h-10 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white outline-none"
         >
-          <option value="ALL">All Buses</option>
-          {buses.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.busNumber} ({b.routeName})
-            </option>
-          ))}
+          <option value="ALL">All Fleet Buses ({buses.length})</option>
+          {buses.map((b) => {
+            const count = students.filter((s) => s.busId === b.id || s.bus?.busNumber === b.busNumber).length;
+            return (
+              <option key={b.id} value={b.id}>
+                {b.busNumber} — {b.routeName} ({count} Student{count === 1 ? '' : 's'})
+              </option>
+            );
+          })}
         </select>
 
         {/* Status Filter */}
@@ -206,9 +209,9 @@ export const StudentsManagement: React.FC = () => {
           onChange={(e) => setSelectedActive(e.target.value)}
           className="h-10 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white outline-none"
         >
-          <option value="ALL">All Statuses</option>
-          <option value="true">Active Only</option>
-          <option value="false">Inactive Only</option>
+          <option value="ALL">All Statuses ({students.length})</option>
+          <option value="true">Active Only ({students.filter((s) => s.active).length})</option>
+          <option value="false">Inactive Only ({students.filter((s) => !s.active).length})</option>
         </select>
       </div>
 
@@ -387,6 +390,7 @@ export const StudentsManagement: React.FC = () => {
               required
               className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none"
             >
+              <option value="">-- Choose Assigned Fleet Bus ({buses.length}) --</option>
               {buses.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.busNumber} — {b.routeName}

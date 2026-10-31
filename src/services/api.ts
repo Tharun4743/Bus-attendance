@@ -215,6 +215,7 @@ class ApiClient {
   async registerMobileBiometric(payload: {
     credentialId: string;
     rawId?: string;
+    transports?: string[];
   }): Promise<{ success: boolean; message: string }> {
     return this.request<{ success: boolean; message: string }>('/attendance/mobile/register-biometric', {
       method: 'POST',
@@ -223,10 +224,10 @@ class ApiClient {
   }
 
   async getMobileBiometricCredential(): Promise<{
-    credential: { studentId: string; credentialId: string; rawId?: string; registeredAt: string } | null;
+    credential: { studentId: string; credentialId: string; rawId?: string; transports?: string[]; registeredAt: string } | null;
   }> {
     return this.request<{
-      credential: { studentId: string; credentialId: string; rawId?: string; registeredAt: string } | null;
+      credential: { studentId: string; credentialId: string; rawId?: string; transports?: string[]; registeredAt: string } | null;
     }>('/attendance/mobile/credential');
   }
 

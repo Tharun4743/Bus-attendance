@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { describe, it, expect } from 'vitest';
 import { faceVerificationEngine } from '../src/lib/faceVerification';
-import { mobileBiometricEngine } from '../src/lib/webauthn';
+import { mobileBiometricEngine, PLATFORM_AUTHENTICATOR_CONFIG } from '../src/lib/webauthn';
 import { calculateDistance } from '../src/server/attendance/haversine';
 import {
   padBase64,
@@ -204,6 +204,29 @@ describe('⚡ Mobile Zero-Hardware Attendance Verification Circuits', () => {
       const result = mobileBiometricEngine.verifyAssertion(testStudentId, invalidPayload);
       expect(result.verified).toBe(false);
       expect(result.message).toContain('Invalid biometric authentication response');
+    });
+
+    it('enforces platform authenticator parameters for phone in-display & side-mounted fingerprint sensors', () => {
+      expect(PLATFORM_AUTHENTICATOR_CONFIG).toBeDefined();
+      expect(PLATFORM_AUTHENTICATOR_CONFIG.authenticatorSelection.authenticatorAttachment).toBe('platform');
+      expect(PLATFORM_AUTHENTICATOR_CONFIG.authenticatorSelection.userVerification).toBe('required');
+      expect(PLATFORM_AUTHENTICATOR_CONFIG.authenticatorSelection.residentKey).toBe('preferred');
+      expect(PLATFORM_AUTHENTICATOR_CONFIG.transports).toEqual(['internal']);
+    });
+
+    it('registers credential with internal transport binding for phone biometric reader', () => {
+      const reg = mobileBiometricEngine.registerCredential(
+        'student_fingerprint_test',
+        'cred_indisplay_sensor_007',
+        'raw_indisplay_007',
+        ['internal']
+      );
+
+      expect(reg.success).toBe(true);
+      expect(reg.credential?.transports).toContain('internal');
+
+      const retrieved = mobileBiometricEngine.getRegisteredCredential('student_fingerprint_test');
+      expect(retrieved?.transports).toEqual(['internal']);
     });
   });
 

@@ -379,8 +379,8 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
           ],
           authenticatorSelection: {
             authenticatorAttachment: 'platform',
-            userVerification: 'preferred',
-            requireResidentKey: false,
+            userVerification: 'required',
+            residentKey: 'preferred',
           },
           timeout: 60000,
           attestation: 'none',
@@ -400,10 +400,15 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
       const storageKey = getStorageKey();
       localStorage.setItem(storageKey, credId);
       localStorage.setItem(`${storageKey}_raw`, rawIdB64);
+      localStorage.setItem(`${storageKey}_transports`, JSON.stringify(['internal']));
       setRegisteredCredId(credId);
 
       try {
-        await api.registerMobileBiometric({ credentialId: credId, rawId: rawIdB64 });
+        await api.registerMobileBiometric({
+          credentialId: credId,
+          rawId: rawIdB64,
+          transports: ['internal'],
+        });
       } catch (syncErr) {
         console.warn('Backend biometric registration sync notice:', syncErr);
       }
@@ -454,11 +459,14 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
           publicKey: {
             challenge: challengeBytes as unknown as BufferSource,
             timeout: 60000,
-            userVerification: 'preferred',
+            userVerification: 'required',
             allowCredentials: [
               {
-                id: base64UrlToUint8Array(registeredCredId) as unknown as BufferSource,
+                id: base64UrlToUint8Array(
+                  localStorage.getItem(`${getStorageKey()}_raw`) || registeredCredId
+                ) as unknown as BufferSource,
                 type: 'public-key',
+                transports: ['internal'],
               },
             ],
           },
@@ -581,7 +589,7 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
             }`}
           >
             <Fingerprint className="w-3.5 h-3.5" />
-            Phone Biometric + GPS
+            Fingerprint (In-Display / Side) + GPS
           </button>
         </div>
 
@@ -692,7 +700,7 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
                   <AlertTriangle className="w-8 h-8 text-amber-600 dark:text-amber-400 mb-2" />
                   <h4 className="text-xs font-bold text-amber-800 dark:text-amber-300">Biometrics Not Supported</h4>
                   <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 max-w-xs">
-                    Hardware platform biometrics (TouchID/FaceID) are not available on this browser or device. Please use Face & GPS verification.
+                    Hardware platform biometrics (In-display/Side Fingerprint or FaceID) are not available on this browser or device. Please use Face & GPS verification.
                   </p>
                   <button
                     type="button"
@@ -715,11 +723,11 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
                     <KeyRound className="w-10 h-10 animate-bounce" />
                   </div>
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold uppercase tracking-wider mb-1">
-                    <Smartphone className="w-3 h-3" /> One-Time Device Setup
+                    <Smartphone className="w-3 h-3" /> One-Time Device Sensor Setup
                   </div>
-                  <h4 className="text-sm font-bold text-zinc-900 dark:text-white">Register Phone Biometric</h4>
+                  <h4 className="text-sm font-bold text-zinc-900 dark:text-white">Register Phone Fingerprint</h4>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center max-w-xs mt-1">
-                    TouchID, FaceID, or Fingerprint is not yet enrolled on this phone. Register once to enable quick 1-tap boarding.
+                    Use your phone's in-display or side-mounted fingerprint scanner (or TouchID/FaceID) to register once for instant 1-tap transit attendance.
                   </p>
 
                   {/* Status Banner */}
@@ -761,11 +769,11 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
                   >
                     {isLoading ? (
                       <>
-                        <RefreshCw className="w-4 h-4 animate-spin" /> Registering Biometric...
+                        <RefreshCw className="w-4 h-4 animate-spin" /> Prompting Fingerprint Sensor...
                       </>
                     ) : (
                       <>
-                        <Fingerprint className="w-4 h-4" /> Register Phone TouchID / Fingerprint / Face
+                        <Fingerprint className="w-4 h-4" /> Scan Fingerprint (In-Display / Side Sensor)
                       </>
                     )}
                   </button>
@@ -795,12 +803,12 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
                   </div>
 
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-1">
-                    <CheckCircle2 className="w-3 h-3" /> Device Biometric Ready
+                    <CheckCircle2 className="w-3 h-3" /> Fingerprint Sensor Ready
                   </div>
 
-                  <h4 className="text-sm font-bold text-zinc-900 dark:text-white">Phone Biometric Attendance</h4>
+                  <h4 className="text-sm font-bold text-zinc-900 dark:text-white">In-Display / Side Fingerprint Attendance</h4>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center max-w-xs mt-1">
-                    Touch your phone's fingerprint sensor or verify with FaceID alongside your current GPS position.
+                    Touch your phone's in-display or side-mounted fingerprint reader (or TouchID/FaceID) alongside your live GPS location.
                   </p>
 
                   {/* Status Banner */}
@@ -850,11 +858,11 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
                   >
                     {isLoading ? (
                       <>
-                        <RefreshCw className="w-4 h-4 animate-spin" /> Verifying Biometrics & GPS...
+                        <RefreshCw className="w-4 h-4 animate-spin" /> Verifying Fingerprint & GPS...
                       </>
                     ) : (
                       <>
-                        <Fingerprint className="w-4 h-4" /> Verify with Phone Biometric (TouchID/Fingerprint)
+                        <Fingerprint className="w-4 h-4" /> Scan In-Display / Side Fingerprint to Verify
                       </>
                     )}
                   </button>
