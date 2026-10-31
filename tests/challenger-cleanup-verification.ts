@@ -1,3 +1,6 @@
+process.env.NODE_ENV = 'test';
+process.env.ALLOW_MEMORY_STORAGE = 'true';
+
 // Shim browser environment for Leaflet and DOM-dependent UI components
 if (typeof (globalThis as any).window === 'undefined') {
   const win: any = {

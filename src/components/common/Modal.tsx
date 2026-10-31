@@ -35,16 +35,16 @@ export const Modal: React.FC<ModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center p-4 text-center sm:p-0">
+      <div className="flex min-h-screen items-center justify-center p-3 sm:p-4 text-center">
         <div
           className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
           onClick={onClose}
         />
         <div
-          className={`relative transform overflow-hidden rounded-2xl bg-white dark:bg-[#141418] text-left shadow-2xl transition-all sm:my-8 w-full ${maxWidthClasses} border border-zinc-200 dark:border-[#26262e]`}
+          className={`relative transform overflow-hidden rounded-2xl bg-white dark:bg-[#141418] text-left shadow-2xl transition-all w-full max-h-[90vh] flex flex-col ${maxWidthClasses} border border-zinc-200 dark:border-[#26262e] my-auto`}
         >
-          <div className="flex items-center justify-between border-b border-zinc-100 dark:border-[#26262e] px-6 py-4">
-            <h3 className="text-lg font-black tracking-tight text-zinc-900 dark:text-white">{title}</h3>
+          <div className="flex items-center justify-between border-b border-zinc-100 dark:border-[#26262e] px-5 sm:px-6 py-4 shrink-0">
+            <h3 className="text-base sm:text-lg font-black tracking-tight text-zinc-900 dark:text-white">{title}</h3>
             <button
               onClick={onClose}
               className="rounded-xl p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-[#202028] hover:text-zinc-600 dark:hover:text-zinc-200 transition cursor-pointer active:scale-95"
@@ -52,7 +52,7 @@ export const Modal: React.FC<ModalProps> = ({
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div className="p-6 text-zinc-700 dark:text-zinc-200">{children}</div>
+          <div className="p-5 sm:p-6 text-zinc-700 dark:text-zinc-200 overflow-y-auto flex-1">{children}</div>
         </div>
       </div>
     </div>

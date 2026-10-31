@@ -12,6 +12,8 @@ import {
   ActiveSession,
   SessionType,
   CampusCheckpoint,
+  OtpRecord,
+  PasswordResetRecord,
 } from '../../types';
 import { getISTDateString } from '../attendance/session';
 
@@ -65,6 +67,35 @@ export class PostgresStorageAdapter implements StorageAdapter {
           description TEXT,
           created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
         );
+
+        CREATE TABLE IF NOT EXISTS public.otp_verifications (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          email TEXT NOT NULL,
+          otp_code VARCHAR(6),
+          otp_hash TEXT NOT NULL,
+          expires_at TIMESTAMPTZ NOT NULL,
+          attempts INTEGER NOT NULL DEFAULT 0,
+          verified BOOLEAN NOT NULL DEFAULT false,
+          signup_data JSONB,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+        );
+
+        ALTER TABLE public.otp_verifications
+          ADD COLUMN IF NOT EXISTS otp_hash TEXT,
+          ADD COLUMN IF NOT EXISTS signup_data JSONB;
+
+        CREATE TABLE IF NOT EXISTS public.password_resets (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          email TEXT NOT NULL,
+          token TEXT,
+          token_hash TEXT NOT NULL,
+          expires_at TIMESTAMPTZ NOT NULL,
+          used BOOLEAN NOT NULL DEFAULT false,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+        );
+
+        ALTER TABLE public.password_resets
+          ADD COLUMN IF NOT EXISTS token_hash TEXT;
       `);
 
       this.isInitialized = true;
@@ -1029,20 +1060,22 @@ export class PostgresStorageAdapter implements StorageAdapter {
        )
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW())
        ON CONFLICT (student_id, attendance_date, session_type) DO UPDATE SET
-         session_id = EXCLUDED.session_id,
-         bus_id = EXCLUDED.bus_id,
-         status = EXCLUDED.status,
-         code_used = EXCLUDED.code_used,
-         latitude = EXCLUDED.latitude,
-         longitude = EXCLUDED.longitude,
-         accuracy_meters = EXCLUDED.accuracy_meters,
-         distance_meters = EXCLUDED.distance_meters,
-         selfie_image_url = EXCLUDED.selfie_image_url,
-         selfie_public_id = EXCLUDED.selfie_public_id,
-         face_match_confidence = EXCLUDED.face_match_confidence,
-         device_biometric_passed = EXCLUDED.device_biometric_passed,
-         verification_method = EXCLUDED.verification_method,
-         verified_at = NOW()
+         session_id = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.session_id ELSE EXCLUDED.session_id END,
+         bus_id = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.bus_id ELSE EXCLUDED.bus_id END,
+         status = CASE WHEN public.attendance_records.status = 'PRESENT' THEN 'PRESENT' ELSE EXCLUDED.status END,
+         code_used = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.code_used ELSE EXCLUDED.code_used END,
+         latitude = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.latitude ELSE EXCLUDED.latitude END,
+         longitude = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.longitude ELSE EXCLUDED.longitude END,
+         accuracy_meters = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.accuracy_meters ELSE EXCLUDED.accuracy_meters END,
+         distance_meters = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.distance_meters ELSE EXCLUDED.distance_meters END,
+         selfie_image_url = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.selfie_image_url ELSE EXCLUDED.selfie_image_url END,
+         selfie_public_id = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.selfie_public_id ELSE EXCLUDED.selfie_public_id END,
+         face_match_confidence = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.face_match_confidence ELSE EXCLUDED.face_match_confidence END,
+         device_biometric_passed = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.device_biometric_passed ELSE EXCLUDED.device_biometric_passed END,
+         verification_method = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.verification_method ELSE EXCLUDED.verification_method END,
+         override_reason = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.override_reason ELSE EXCLUDED.override_reason END,
+         override_by = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.override_by ELSE EXCLUDED.override_by END,
+         verified_at = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.verified_at ELSE NOW() END
        RETURNING *;`,
       [
         record.sessionId || null,
@@ -1123,6 +1156,41 @@ export class PostgresStorageAdapter implements StorageAdapter {
 
     sql += ` ORDER BY started_at DESC LIMIT 1;`;
     const res = await this.pool.query(sql, params);
+    if (res.rows.length === 0) return null;
+    const data = res.rows[0];
+
+    return {
+      id: data.id,
+      sessionType: data.session_type,
+      attendanceMode: data.attendance_mode,
+      verificationMethod: data.verification_method,
+      busId: data.bus_id,
+      status: data.status,
+      startedBy: data.started_by,
+      currentCode: data.current_code,
+      codeIssuedAt: data.code_issued_at,
+      codeExpiresAt: data.code_expires_at,
+      radiusMeters: Number(data.radius_meters),
+      maxGpsAccuracyMeters: Number(data.max_gps_accuracy_meters),
+      location: data.latitude
+        ? {
+            type: 'FIXED',
+            name: data.location_name,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            updatedAt: data.started_at,
+          }
+        : undefined,
+      startedAt: data.started_at,
+      endedAt: data.ended_at,
+    };
+  }
+
+  async getSessionById(sessionId: string): Promise<ActiveSession | null> {
+    const res = await this.pool.query(
+      `SELECT * FROM public.active_sessions WHERE id::text = $1 LIMIT 1;`,
+      [sessionId]
+    );
     if (res.rows.length === 0) return null;
     const data = res.rows[0];
 
@@ -1501,5 +1569,134 @@ export class PostgresStorageAdapter implements StorageAdapter {
       ]
     );
     return report;
+  }
+
+  // ==========================================================================
+  // PERSISTENT OTP & PASSWORD RESET METHODS (SUPABASE POSTGRESQL)
+  // ==========================================================================
+  async saveOtp(record: OtpRecord): Promise<void> {
+    await this.ensureSchema();
+    await this.pool.query(
+      `INSERT INTO public.otp_verifications (id, email, otp_hash, expires_at, attempts, verified, signup_data, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+       ON CONFLICT (id) DO UPDATE SET
+         otp_hash = EXCLUDED.otp_hash,
+         expires_at = EXCLUDED.expires_at,
+         attempts = EXCLUDED.attempts,
+         verified = EXCLUDED.verified,
+         signup_data = EXCLUDED.signup_data;`,
+      [
+        record.id || crypto.randomUUID(),
+        record.email.trim().toLowerCase(),
+        record.otpHash,
+        record.expiresAt,
+        record.attempts || 0,
+        record.verified || false,
+        record.signupData ? JSON.stringify(record.signupData) : null,
+      ]
+    );
+  }
+
+  async getOtp(email: string): Promise<OtpRecord | null> {
+    await this.ensureSchema();
+    const clean = email.trim().toLowerCase();
+    const res = await this.pool.query(
+      `SELECT * FROM public.otp_verifications
+       WHERE LOWER(email) = LOWER($1) AND verified = false AND expires_at > NOW()
+       ORDER BY created_at DESC LIMIT 1;`,
+      [clean]
+    );
+    if (res.rows.length === 0) return null;
+    const r = res.rows[0];
+    return {
+      id: r.id,
+      email: r.email,
+      otpHash: r.otp_hash || r.otp_code,
+      expiresAt: r.expires_at,
+      attempts: r.attempts || 0,
+      verified: r.verified || false,
+      signupData: typeof r.signup_data === 'string' ? JSON.parse(r.signup_data) : r.signup_data,
+      createdAt: r.created_at,
+    };
+  }
+
+  async incrementOtpAttempts(idOrEmail: string): Promise<number> {
+    await this.ensureSchema();
+    const res = await this.pool.query(
+      `UPDATE public.otp_verifications
+       SET attempts = attempts + 1
+       WHERE id = $1 OR LOWER(email) = LOWER($1)
+       RETURNING attempts;`,
+      [idOrEmail]
+    );
+    return res.rows[0]?.attempts || 0;
+  }
+
+  async markOtpVerified(idOrEmail: string): Promise<void> {
+    await this.ensureSchema();
+    await this.pool.query(
+      `UPDATE public.otp_verifications
+       SET verified = true
+       WHERE id = $1 OR LOWER(email) = LOWER($1);`,
+      [idOrEmail]
+    );
+  }
+
+  async deleteExpiredOtps(): Promise<number> {
+    await this.ensureSchema();
+    const res = await this.pool.query(
+      `DELETE FROM public.otp_verifications
+       WHERE expires_at < NOW() - INTERVAL '1 day';`
+    );
+    return res.rowCount || 0;
+  }
+
+  async savePasswordReset(record: PasswordResetRecord): Promise<void> {
+    await this.ensureSchema();
+    await this.pool.query(
+      `INSERT INTO public.password_resets (id, email, token_hash, expires_at, used, created_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
+       ON CONFLICT (id) DO UPDATE SET
+         token_hash = EXCLUDED.token_hash,
+         expires_at = EXCLUDED.expires_at,
+         used = EXCLUDED.used;`,
+      [
+        record.id || crypto.randomUUID(),
+        record.email.trim().toLowerCase(),
+        record.tokenHash,
+        record.expiresAt,
+        record.used || false,
+      ]
+    );
+  }
+
+  async getPasswordReset(tokenHash: string): Promise<PasswordResetRecord | null> {
+    await this.ensureSchema();
+    const res = await this.pool.query(
+      `SELECT * FROM public.password_resets
+       WHERE (token_hash = $1 OR token = $1) AND used = false AND expires_at > NOW()
+       ORDER BY created_at DESC LIMIT 1;`,
+      [tokenHash]
+    );
+    if (res.rows.length === 0) return null;
+    const r = res.rows[0];
+    return {
+      id: r.id,
+      email: r.email,
+      tokenHash: r.token_hash || r.token,
+      expiresAt: r.expires_at,
+      used: r.used || false,
+      createdAt: r.created_at,
+    };
+  }
+
+  async markPasswordResetUsed(id: string): Promise<void> {
+    await this.ensureSchema();
+    await this.pool.query(
+      `UPDATE public.password_resets
+       SET used = true
+       WHERE id = $1;`,
+      [id]
+    );
   }
 }

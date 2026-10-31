@@ -12,6 +12,8 @@ import {
   Lock,
   AlertCircle,
   CheckCircle2,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 export const SetupPage: React.FC = () => {
@@ -21,6 +23,8 @@ export const SetupPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,17 +84,21 @@ export const SetupPage: React.FC = () => {
         <ThemeToggle />
       </div>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-1">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-600 dark:bg-emerald-500 shadow-lg shadow-emerald-600/25 text-white mb-2">
-          <ShieldCheck className="w-8 h-8" />
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
+        <div className="flex flex-col items-center justify-center gap-2 mb-3">
+          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-600 dark:bg-emerald-500 shadow-lg shadow-emerald-600/25 text-white">
+            <ShieldCheck className="w-8 h-8" />
+          </div>
+          <div>
+            <Badge variant="emerald">
+              INITIAL INITIALIZATION
+            </Badge>
+          </div>
         </div>
-        <Badge variant="emerald" className="mb-1">
-          INITIAL INITIALIZATION
-        </Badge>
         <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
           First-Time Admin Setup
         </h1>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-1">
           Configure your master System Administrator account
         </p>
       </div>
@@ -110,7 +118,7 @@ export const SetupPage: React.FC = () => {
                 Administrator Name
               </label>
               <div className="relative">
-                <UserIcon className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
+                <UserIcon className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3 pointer-events-none" />
                 <input
                   type="text"
                   required
@@ -127,7 +135,7 @@ export const SetupPage: React.FC = () => {
                 Admin Email Address
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
+                <Mail className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3 pointer-events-none" />
                 <input
                   type="email"
                   required
@@ -145,15 +153,24 @@ export const SetupPage: React.FC = () => {
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
+                  <Lock className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3 pointer-events-none" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full h-10 pl-10 pr-4 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
+                    className="w-full h-10 pl-10 pr-10 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-2.5 p-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors focus:outline-none"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -162,15 +179,24 @@ export const SetupPage: React.FC = () => {
                   Confirm Password
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
+                  <Lock className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3 pointer-events-none" />
                   <input
-                    type="password"
+                    type={showConfirmPassword ? 'text' : 'password'}
                     required
                     placeholder="••••••••"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full h-10 pl-10 pr-4 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
+                    className="w-full h-10 pl-10 pr-10 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    className="absolute right-3 top-2.5 p-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors focus:outline-none"
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
             </div>

@@ -15,6 +15,7 @@ import {
   XCircle,
   AlertCircle,
   Bus as BusIcon,
+  History,
 } from 'lucide-react';
 
 export const StudentsManagement: React.FC = () => {
@@ -30,6 +31,11 @@ export const StudentsManagement: React.FC = () => {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // History Modal State
+  const [historyModalStudent, setHistoryModalStudent] = useState<Student | null>(null);
+  const [studentHistoryRecords, setStudentHistoryRecords] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
 
   // Form Fields
   const [regNo, setRegNo] = useState<string>('');
@@ -84,6 +90,20 @@ export const StudentsManagement: React.FC = () => {
     setActive(stu.active);
     setFormError(null);
     setIsModalOpen(true);
+  };
+
+  const handleOpenHistoryModal = async (stu: Student) => {
+    setHistoryModalStudent(stu);
+    setIsLoadingHistory(true);
+    try {
+      const res = await api.getStudentAttendanceHistoryForAdmin(stu.id);
+      setStudentHistoryRecords(res.records || []);
+    } catch (err) {
+      console.error('Failed to load student history:', err);
+      setStudentHistoryRecords([]);
+    } finally {
+      setIsLoadingHistory(false);
+    }
   };
 
   const handleSaveStudent = async (e: React.FormEvent) => {
@@ -234,7 +254,7 @@ export const StudentsManagement: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[640px]">
               <thead className="bg-zinc-50/80 dark:bg-[#101014] text-zinc-500 dark:text-zinc-400 font-black uppercase tracking-wider text-[10px] border-b border-zinc-200 dark:border-[#26262e]">
                 <tr>
                   <th className="px-5 py-3.5">Register Number</th>
@@ -285,6 +305,13 @@ export const StudentsManagement: React.FC = () => {
                           }`}
                         >
                           {stu.active ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                        </button>
+                        <button
+                          onClick={() => handleOpenHistoryModal(stu)}
+                          title="View Attendance History"
+                          className="p-1.5 rounded-xl text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 transition active:scale-95 cursor-pointer"
+                        >
+                          <History className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleOpenEditModal(stu)}
@@ -431,6 +458,72 @@ export const StudentsManagement: React.FC = () => {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Student Attendance History Modal */}
+      <Modal
+        isOpen={Boolean(historyModalStudent)}
+        onClose={() => setHistoryModalStudent(null)}
+        title={`Attendance History: ${historyModalStudent?.name || ''}`}
+      >
+        <div className="space-y-4">
+          <div className="p-3 bg-zinc-50 dark:bg-[#181820] rounded-xl text-xs flex items-center justify-between">
+            <div>
+              <p className="font-bold text-zinc-900 dark:text-white">{historyModalStudent?.name}</p>
+              <p className="font-mono text-zinc-500 text-[11px]">{historyModalStudent?.registerNumber}</p>
+            </div>
+            <div className="text-right">
+              <span className="font-bold text-blue-600 dark:text-sky-400">
+                {studentHistoryRecords.filter((r) => r.status === 'PRESENT').length} / {studentHistoryRecords.length} Present
+              </span>
+              <p className="text-[10px] text-zinc-400">Total Recorded Sessions</p>
+            </div>
+          </div>
+
+          {isLoadingHistory ? (
+            <div className="py-12 flex flex-col items-center justify-center space-y-2">
+              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs text-zinc-500">Loading attendance history...</p>
+            </div>
+          ) : studentHistoryRecords.length === 0 ? (
+            <div className="py-8 text-center text-xs text-zinc-400 font-bold">
+              No attendance records found for this student.
+            </div>
+          ) : (
+            <div className="max-h-72 overflow-y-auto space-y-2">
+              {studentHistoryRecords.map((r) => (
+                <div
+                  key={r.id}
+                  className="p-2.5 rounded-xl border border-zinc-200 dark:border-[#26262e] bg-white dark:bg-[#141418] flex items-center justify-between text-xs"
+                >
+                  <div className="space-y-0.5">
+                    <p className="font-bold font-mono text-zinc-900 dark:text-white">
+                      {r.attendanceDate} • {r.sessionType}
+                    </p>
+                    <p className="text-[11px] text-zinc-500">
+                      Method: {r.verificationMethod || 'Standard'} {r.distanceMeters != null ? `(${Math.round(r.distanceMeters)}m)` : ''}
+                    </p>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                      r.status === 'PRESENT'
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-[#4ade80]'
+                        : 'bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-[#fb7185]'
+                    }`}
+                  >
+                    {r.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex justify-end pt-3 border-t border-zinc-100 dark:border-[#26262e]">
+            <Button variant="secondary" size="sm" onClick={() => setHistoryModalStudent(null)}>
+              Close
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

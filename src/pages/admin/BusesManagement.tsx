@@ -17,12 +17,31 @@ export const BusesManagement: React.FC = () => {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
+  // View Assigned Students Modal
+  const [selectedBusForStudents, setSelectedBusForStudents] = useState<Bus | null>(null);
+  const [assignedStudents, setAssignedStudents] = useState<any[]>([]);
+  const [isLoadingAssignedStudents, setIsLoadingAssignedStudents] = useState<boolean>(false);
+
   // Form Fields
   const [busNumber, setBusNumber] = useState<string>('');
   const [routeName, setRouteName] = useState<string>('');
   const [capacity, setCapacity] = useState<number>(60);
   const [inchargeId, setInchargeId] = useState<string>('');
   const [active, setActive] = useState<boolean>(true);
+
+  const handleViewBusStudents = async (bus: Bus) => {
+    setSelectedBusForStudents(bus);
+    setIsLoadingAssignedStudents(true);
+    try {
+      const students = await api.getStudents({ busId: bus.id, active: 'true' });
+      setAssignedStudents(students || []);
+    } catch (err) {
+      console.error('Failed to load bus students:', err);
+      setAssignedStudents([]);
+    } finally {
+      setIsLoadingAssignedStudents(false);
+    }
+  };
 
   const fetchBuses = async () => {
     try {
@@ -178,7 +197,7 @@ export const BusesManagement: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[640px]">
               <thead className="bg-zinc-50/80 dark:bg-[#101014] text-zinc-500 dark:text-zinc-400 font-black uppercase tracking-wider text-[10px] border-b border-zinc-200 dark:border-[#26262e]">
                 <tr>
                   <th className="px-5 py-3.5">Bus Code</th>
@@ -202,10 +221,15 @@ export const BusesManagement: React.FC = () => {
                       {bus.inchargeName || 'Unassigned'}
                     </td>
                     <td className="px-5 py-4">
-                      <span className="inline-flex items-center gap-1.5 font-bold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-[#1a1a20] border border-zinc-200/80 dark:border-[#26262e] px-2.5 py-1 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => handleViewBusStudents(bus)}
+                        className="inline-flex items-center gap-1.5 font-bold text-zinc-700 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-[#1a1a20] dark:hover:bg-[#22222a] border border-zinc-200/80 dark:border-[#26262e] px-2.5 py-1 rounded-lg transition cursor-pointer"
+                        title="Click to view assigned students"
+                      >
                         <Users className="w-3.5 h-3.5 text-zinc-400" />
                         {bus.studentsCount} Students
-                      </span>
+                      </button>
                     </td>
                     <td className="px-5 py-4">
                       {bus.active ? (
@@ -354,6 +378,59 @@ export const BusesManagement: React.FC = () => {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Assigned Students Modal */}
+      <Modal
+        isOpen={Boolean(selectedBusForStudents)}
+        onClose={() => setSelectedBusForStudents(null)}
+        title={`Assigned Students — ${selectedBusForStudents?.busNumber || ''} (${selectedBusForStudents?.routeName || ''})`}
+      >
+        <div className="space-y-4">
+          <div className="p-3 bg-zinc-50 dark:bg-[#181820] rounded-xl text-xs flex items-center justify-between">
+            <div>
+              <p className="font-bold text-zinc-900 dark:text-white">Total Enrolled Commuters</p>
+              <p className="text-zinc-500 text-[11px]">Bus Capacity: {selectedBusForStudents?.capacity || 60} Seats</p>
+            </div>
+            <span className="font-bold font-mono text-emerald-600 dark:text-[#4ade80] text-sm">
+              {assignedStudents.length} Students
+            </span>
+          </div>
+
+          {isLoadingAssignedStudents ? (
+            <div className="py-12 flex flex-col items-center justify-center space-y-2">
+              <div className="w-6 h-6 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs text-zinc-500">Loading student roster...</p>
+            </div>
+          ) : assignedStudents.length === 0 ? (
+            <div className="py-8 text-center text-xs text-zinc-400 font-bold">
+              No students are currently assigned to this bus.
+            </div>
+          ) : (
+            <div className="max-h-72 overflow-y-auto space-y-2">
+              {assignedStudents.map((s) => (
+                <div
+                  key={s.id}
+                  className="p-2.5 rounded-xl border border-zinc-200 dark:border-[#26262e] bg-white dark:bg-[#141418] flex items-center justify-between text-xs"
+                >
+                  <div>
+                    <p className="font-bold text-zinc-900 dark:text-white">{s.name}</p>
+                    <p className="font-mono text-zinc-500 text-[11px]">{s.registerNumber}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[11px] text-zinc-500">{s.phone || s.email}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex justify-end pt-3 border-t border-zinc-100 dark:border-[#26262e]">
+            <Button variant="secondary" size="sm" onClick={() => setSelectedBusForStudents(null)}>
+              Close
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

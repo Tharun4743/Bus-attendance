@@ -1035,12 +1035,12 @@ var require_debug = __commonJS({
     exports.formatters = {};
     var prevTime;
     function selectColor(namespace) {
-      var hash = 0, i;
+      var hash2 = 0, i;
       for (i in namespace) {
-        hash = (hash << 5) - hash + namespace.charCodeAt(i);
-        hash |= 0;
+        hash2 = (hash2 << 5) - hash2 + namespace.charCodeAt(i);
+        hash2 |= 0;
       }
-      return exports.colors[Math.abs(hash) % exports.colors.length];
+      return exports.colors[Math.abs(hash2) % exports.colors.length];
     }
     function createDebug(namespace) {
       function debug() {
@@ -17468,12 +17468,12 @@ var require_debug2 = __commonJS({
     exports.formatters = {};
     var prevTime;
     function selectColor(namespace) {
-      var hash = 0, i;
+      var hash2 = 0, i;
       for (i in namespace) {
-        hash = (hash << 5) - hash + namespace.charCodeAt(i);
-        hash |= 0;
+        hash2 = (hash2 << 5) - hash2 + namespace.charCodeAt(i);
+        hash2 |= 0;
       }
-      return exports.colors[Math.abs(hash) % exports.colors.length];
+      return exports.colors[Math.abs(hash2) % exports.colors.length];
     }
     function createDebug(namespace) {
       function debug() {
@@ -18187,12 +18187,12 @@ var require_debug3 = __commonJS({
     exports.formatters = {};
     var prevTime;
     function selectColor(namespace) {
-      var hash = 0, i;
+      var hash2 = 0, i;
       for (i in namespace) {
-        hash = (hash << 5) - hash + namespace.charCodeAt(i);
-        hash |= 0;
+        hash2 = (hash2 << 5) - hash2 + namespace.charCodeAt(i);
+        hash2 |= 0;
       }
-      return exports.colors[Math.abs(hash) % exports.colors.length];
+      return exports.colors[Math.abs(hash2) % exports.colors.length];
     }
     function createDebug(namespace) {
       function debug() {
@@ -19753,12 +19753,12 @@ var require_debug4 = __commonJS({
     exports.formatters = {};
     var prevTime;
     function selectColor(namespace) {
-      var hash = 0, i;
+      var hash2 = 0, i;
       for (i in namespace) {
-        hash = (hash << 5) - hash + namespace.charCodeAt(i);
-        hash |= 0;
+        hash2 = (hash2 << 5) - hash2 + namespace.charCodeAt(i);
+        hash2 |= 0;
       }
-      return exports.colors[Math.abs(hash) % exports.colors.length];
+      return exports.colors[Math.abs(hash2) % exports.colors.length];
     }
     function createDebug(namespace) {
       function debug() {
@@ -20073,9 +20073,9 @@ var require_etag = __commonJS({
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash = crypto6.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash2 = crypto6.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
-      return '"' + len.toString(16) + "-" + hash + '"';
+      return '"' + len.toString(16) + "-" + hash2 + '"';
     }
     function etag(entity, options) {
       if (entity == null) {
@@ -25115,29 +25115,29 @@ var require_utils3 = __commonJS({
 // node_modules/pg/lib/crypto/utils.js
 var require_utils4 = __commonJS({
   "node_modules/pg/lib/crypto/utils.js"(exports, module) {
-    var nodeCrypto = __require("crypto");
+    var nodeCrypto2 = __require("crypto");
     module.exports = {
       postgresMd5PasswordHash,
-      randomBytes,
+      randomBytes: randomBytes2,
       deriveKey,
       sha256,
       hashByName,
       hmacSha256,
       md5
     };
-    var webCrypto = nodeCrypto.webcrypto || globalThis.crypto;
+    var webCrypto = nodeCrypto2.webcrypto || globalThis.crypto;
     var subtleCrypto = webCrypto.subtle;
     var textEncoder = new TextEncoder();
-    function randomBytes(length) {
+    function randomBytes2(length) {
       return webCrypto.getRandomValues(Buffer.alloc(length));
     }
     async function md5(string) {
       try {
-        return nodeCrypto.createHash("md5").update(string, "utf-8").digest("hex");
+        return nodeCrypto2.createHash("md5").update(string, "utf-8").digest("hex");
       } catch (e) {
         const data = typeof string === "string" ? textEncoder.encode(string) : string;
-        const hash = await subtleCrypto.digest("MD5", data);
-        return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+        const hash2 = await subtleCrypto.digest("MD5", data);
+        return Array.from(new Uint8Array(hash2)).map((b) => b.toString(16).padStart(2, "0")).join("");
       }
     }
     async function postgresMd5PasswordHash(user, password, salt) {
@@ -30696,8 +30696,8 @@ var require_compare = __commonJS({
   "node_modules/jsonwebtoken/node_modules/semver/functions/compare.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
-    var compare = (a, b, loose) => new SemVer(a, loose).compare(new SemVer(b, loose));
-    module.exports = compare;
+    var compare2 = (a, b, loose) => new SemVer(a, loose).compare(new SemVer(b, loose));
+    module.exports = compare2;
   }
 });
 
@@ -30705,8 +30705,8 @@ var require_compare = __commonJS({
 var require_rcompare = __commonJS({
   "node_modules/jsonwebtoken/node_modules/semver/functions/rcompare.js"(exports, module) {
     "use strict";
-    var compare = require_compare();
-    var rcompare = (a, b, loose) => compare(b, a, loose);
+    var compare2 = require_compare();
+    var rcompare = (a, b, loose) => compare2(b, a, loose);
     module.exports = rcompare;
   }
 });
@@ -30715,8 +30715,8 @@ var require_rcompare = __commonJS({
 var require_compare_loose = __commonJS({
   "node_modules/jsonwebtoken/node_modules/semver/functions/compare-loose.js"(exports, module) {
     "use strict";
-    var compare = require_compare();
-    var compareLoose = (a, b) => compare(a, b, true);
+    var compare2 = require_compare();
+    var compareLoose = (a, b) => compare2(a, b, true);
     module.exports = compareLoose;
   }
 });
@@ -30759,8 +30759,8 @@ var require_rsort = __commonJS({
 var require_gt = __commonJS({
   "node_modules/jsonwebtoken/node_modules/semver/functions/gt.js"(exports, module) {
     "use strict";
-    var compare = require_compare();
-    var gt = (a, b, loose) => compare(a, b, loose) > 0;
+    var compare2 = require_compare();
+    var gt = (a, b, loose) => compare2(a, b, loose) > 0;
     module.exports = gt;
   }
 });
@@ -30769,8 +30769,8 @@ var require_gt = __commonJS({
 var require_lt = __commonJS({
   "node_modules/jsonwebtoken/node_modules/semver/functions/lt.js"(exports, module) {
     "use strict";
-    var compare = require_compare();
-    var lt = (a, b, loose) => compare(a, b, loose) < 0;
+    var compare2 = require_compare();
+    var lt = (a, b, loose) => compare2(a, b, loose) < 0;
     module.exports = lt;
   }
 });
@@ -30779,8 +30779,8 @@ var require_lt = __commonJS({
 var require_eq = __commonJS({
   "node_modules/jsonwebtoken/node_modules/semver/functions/eq.js"(exports, module) {
     "use strict";
-    var compare = require_compare();
-    var eq = (a, b, loose) => compare(a, b, loose) === 0;
+    var compare2 = require_compare();
+    var eq = (a, b, loose) => compare2(a, b, loose) === 0;
     module.exports = eq;
   }
 });
@@ -30789,8 +30789,8 @@ var require_eq = __commonJS({
 var require_neq = __commonJS({
   "node_modules/jsonwebtoken/node_modules/semver/functions/neq.js"(exports, module) {
     "use strict";
-    var compare = require_compare();
-    var neq = (a, b, loose) => compare(a, b, loose) !== 0;
+    var compare2 = require_compare();
+    var neq = (a, b, loose) => compare2(a, b, loose) !== 0;
     module.exports = neq;
   }
 });
@@ -30799,8 +30799,8 @@ var require_neq = __commonJS({
 var require_gte = __commonJS({
   "node_modules/jsonwebtoken/node_modules/semver/functions/gte.js"(exports, module) {
     "use strict";
-    var compare = require_compare();
-    var gte = (a, b, loose) => compare(a, b, loose) >= 0;
+    var compare2 = require_compare();
+    var gte = (a, b, loose) => compare2(a, b, loose) >= 0;
     module.exports = gte;
   }
 });
@@ -30809,8 +30809,8 @@ var require_gte = __commonJS({
 var require_lte = __commonJS({
   "node_modules/jsonwebtoken/node_modules/semver/functions/lte.js"(exports, module) {
     "use strict";
-    var compare = require_compare();
-    var lte = (a, b, loose) => compare(a, b, loose) <= 0;
+    var compare2 = require_compare();
+    var lte = (a, b, loose) => compare2(a, b, loose) <= 0;
     module.exports = lte;
   }
 });
@@ -31756,12 +31756,12 @@ var require_simplify = __commonJS({
   "node_modules/jsonwebtoken/node_modules/semver/ranges/simplify.js"(exports, module) {
     "use strict";
     var satisfies = require_satisfies();
-    var compare = require_compare();
+    var compare2 = require_compare();
     module.exports = (versions, range, options) => {
       const set = [];
       let first = null;
       let prev = null;
-      const v = versions.sort((a, b) => compare(a, b, options));
+      const v = versions.sort((a, b) => compare2(a, b, options));
       for (const version of v) {
         const included = satisfies(version, range, options);
         if (included) {
@@ -31809,7 +31809,7 @@ var require_subset = __commonJS({
     var Comparator = require_comparator();
     var { ANY } = Comparator;
     var satisfies = require_satisfies();
-    var compare = require_compare();
+    var compare2 = require_compare();
     var subset = (sub, dom, options = {}) => {
       if (sub === dom) {
         return true;
@@ -31869,7 +31869,7 @@ var require_subset = __commonJS({
       }
       let gtltComp;
       if (gt && lt) {
-        gtltComp = compare(gt.semver, lt.semver, options);
+        gtltComp = compare2(gt.semver, lt.semver, options);
         if (gtltComp > 0) {
           return null;
         } else if (gtltComp === 0 && (gt.operator !== ">=" || lt.operator !== "<=")) {
@@ -31949,14 +31949,14 @@ var require_subset = __commonJS({
       if (!a) {
         return b;
       }
-      const comp = compare(a.semver, b.semver, options);
+      const comp = compare2(a.semver, b.semver, options);
       return comp > 0 ? a : comp < 0 ? b : b.operator === ">" && a.operator === ">=" ? b : a;
     };
     var lowerLT = (a, b, options) => {
       if (!a) {
         return b;
       }
-      const comp = compare(a.semver, b.semver, options);
+      const comp = compare2(a.semver, b.semver, options);
       return comp < 0 ? a : comp > 0 ? b : b.operator === "<" && a.operator === "<=" ? b : a;
     };
     module.exports = subset;
@@ -31980,7 +31980,7 @@ var require_semver2 = __commonJS({
     var minor = require_minor();
     var patch = require_patch();
     var prerelease = require_prerelease();
-    var compare = require_compare();
+    var compare2 = require_compare();
     var rcompare = require_rcompare();
     var compareLoose = require_compare_loose();
     var compareBuild = require_compare_build();
@@ -32019,7 +32019,7 @@ var require_semver2 = __commonJS({
       minor,
       patch,
       prerelease,
-      compare,
+      compare: compare2,
       rcompare,
       compareLoose,
       compareBuild,
@@ -33034,7 +33034,7 @@ var TypeOverrides = import_lib.default.TypeOverrides;
 var defaults = import_lib.default.defaults;
 
 // src/server/storage/PostgresStorageAdapter.ts
-import crypto from "crypto";
+import crypto2 from "crypto";
 
 // src/server/attendance/session.ts
 function getISTDateString(d = /* @__PURE__ */ new Date(), timezone = "Asia/Kolkata") {
@@ -33144,6 +33144,35 @@ var PostgresStorageAdapter = class {
           description TEXT,
           created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
         );
+
+        CREATE TABLE IF NOT EXISTS public.otp_verifications (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          email TEXT NOT NULL,
+          otp_code VARCHAR(6),
+          otp_hash TEXT NOT NULL,
+          expires_at TIMESTAMPTZ NOT NULL,
+          attempts INTEGER NOT NULL DEFAULT 0,
+          verified BOOLEAN NOT NULL DEFAULT false,
+          signup_data JSONB,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+        );
+
+        ALTER TABLE public.otp_verifications
+          ADD COLUMN IF NOT EXISTS otp_hash TEXT,
+          ADD COLUMN IF NOT EXISTS signup_data JSONB;
+
+        CREATE TABLE IF NOT EXISTS public.password_resets (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          email TEXT NOT NULL,
+          token TEXT,
+          token_hash TEXT NOT NULL,
+          expires_at TIMESTAMPTZ NOT NULL,
+          used BOOLEAN NOT NULL DEFAULT false,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+        );
+
+        ALTER TABLE public.password_resets
+          ADD COLUMN IF NOT EXISTS token_hash TEXT;
       `);
       this.isInitialized = true;
     } catch (err) {
@@ -33322,7 +33351,7 @@ var PostgresStorageAdapter = class {
          status = 'PENDING',
          active = false
        RETURNING id, email, name, phone, role, assigned_bus_id, status, active, created_at;`,
-      [email, data.password || crypto.randomUUID(), data.name.trim(), data.phone?.trim() || null, busId]
+      [email, data.password || crypto2.randomUUID(), data.name.trim(), data.phone?.trim() || null, busId]
     );
     const u = res.rows[0];
     return {
@@ -33565,7 +33594,7 @@ var PostgresStorageAdapter = class {
     }
     const email = data.email ? data.email.trim().toLowerCase() : `${regNo}@college.edu`;
     const studentId = `STU-${regNo.toUpperCase()}`;
-    const password = data.password || crypto.randomUUID();
+    const password = data.password || crypto2.randomUUID();
     await this.pool.query(
       `INSERT INTO public.users (email, password_hash, name, role, student_id, status, active)
        VALUES ($1, $2, $3, 'STUDENT', $4, 'PENDING', true)
@@ -33590,7 +33619,7 @@ var PostgresStorageAdapter = class {
       `INSERT INTO public.users (email, password_hash, name, role, student_id, status, active)
        VALUES ($1, $2, $3, 'STUDENT', $4, $5, true)
        ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, status = EXCLUDED.status;`,
-      [email, student.password || crypto.randomUUID(), student.name, studentId, student.status || "APPROVED"]
+      [email, student.password || crypto2.randomUUID(), student.name, studentId, student.status || "APPROVED"]
     );
     const res = await this.pool.query(
       `INSERT INTO public.students (
@@ -33989,20 +34018,22 @@ var PostgresStorageAdapter = class {
        )
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW())
        ON CONFLICT (student_id, attendance_date, session_type) DO UPDATE SET
-         session_id = EXCLUDED.session_id,
-         bus_id = EXCLUDED.bus_id,
-         status = EXCLUDED.status,
-         code_used = EXCLUDED.code_used,
-         latitude = EXCLUDED.latitude,
-         longitude = EXCLUDED.longitude,
-         accuracy_meters = EXCLUDED.accuracy_meters,
-         distance_meters = EXCLUDED.distance_meters,
-         selfie_image_url = EXCLUDED.selfie_image_url,
-         selfie_public_id = EXCLUDED.selfie_public_id,
-         face_match_confidence = EXCLUDED.face_match_confidence,
-         device_biometric_passed = EXCLUDED.device_biometric_passed,
-         verification_method = EXCLUDED.verification_method,
-         verified_at = NOW()
+         session_id = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.session_id ELSE EXCLUDED.session_id END,
+         bus_id = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.bus_id ELSE EXCLUDED.bus_id END,
+         status = CASE WHEN public.attendance_records.status = 'PRESENT' THEN 'PRESENT' ELSE EXCLUDED.status END,
+         code_used = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.code_used ELSE EXCLUDED.code_used END,
+         latitude = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.latitude ELSE EXCLUDED.latitude END,
+         longitude = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.longitude ELSE EXCLUDED.longitude END,
+         accuracy_meters = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.accuracy_meters ELSE EXCLUDED.accuracy_meters END,
+         distance_meters = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.distance_meters ELSE EXCLUDED.distance_meters END,
+         selfie_image_url = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.selfie_image_url ELSE EXCLUDED.selfie_image_url END,
+         selfie_public_id = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.selfie_public_id ELSE EXCLUDED.selfie_public_id END,
+         face_match_confidence = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.face_match_confidence ELSE EXCLUDED.face_match_confidence END,
+         device_biometric_passed = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.device_biometric_passed ELSE EXCLUDED.device_biometric_passed END,
+         verification_method = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.verification_method ELSE EXCLUDED.verification_method END,
+         override_reason = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.override_reason ELSE EXCLUDED.override_reason END,
+         override_by = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.override_by ELSE EXCLUDED.override_by END,
+         verified_at = CASE WHEN public.attendance_records.status = 'PRESENT' THEN public.attendance_records.verified_at ELSE NOW() END
        RETURNING *;`,
       [
         record.sessionId || null,
@@ -34074,6 +34105,37 @@ var PostgresStorageAdapter = class {
     }
     sql += ` ORDER BY started_at DESC LIMIT 1;`;
     const res = await this.pool.query(sql, params);
+    if (res.rows.length === 0) return null;
+    const data = res.rows[0];
+    return {
+      id: data.id,
+      sessionType: data.session_type,
+      attendanceMode: data.attendance_mode,
+      verificationMethod: data.verification_method,
+      busId: data.bus_id,
+      status: data.status,
+      startedBy: data.started_by,
+      currentCode: data.current_code,
+      codeIssuedAt: data.code_issued_at,
+      codeExpiresAt: data.code_expires_at,
+      radiusMeters: Number(data.radius_meters),
+      maxGpsAccuracyMeters: Number(data.max_gps_accuracy_meters),
+      location: data.latitude ? {
+        type: "FIXED",
+        name: data.location_name,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        updatedAt: data.started_at
+      } : void 0,
+      startedAt: data.started_at,
+      endedAt: data.ended_at
+    };
+  }
+  async getSessionById(sessionId) {
+    const res = await this.pool.query(
+      `SELECT * FROM public.active_sessions WHERE id::text = $1 LIMIT 1;`,
+      [sessionId]
+    );
     if (res.rows.length === 0) return null;
     const data = res.rows[0];
     return {
@@ -34423,6 +34485,127 @@ var PostgresStorageAdapter = class {
     );
     return report;
   }
+  // ==========================================================================
+  // PERSISTENT OTP & PASSWORD RESET METHODS (SUPABASE POSTGRESQL)
+  // ==========================================================================
+  async saveOtp(record) {
+    await this.ensureSchema();
+    await this.pool.query(
+      `INSERT INTO public.otp_verifications (id, email, otp_hash, expires_at, attempts, verified, signup_data, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+       ON CONFLICT (id) DO UPDATE SET
+         otp_hash = EXCLUDED.otp_hash,
+         expires_at = EXCLUDED.expires_at,
+         attempts = EXCLUDED.attempts,
+         verified = EXCLUDED.verified,
+         signup_data = EXCLUDED.signup_data;`,
+      [
+        record.id || crypto2.randomUUID(),
+        record.email.trim().toLowerCase(),
+        record.otpHash,
+        record.expiresAt,
+        record.attempts || 0,
+        record.verified || false,
+        record.signupData ? JSON.stringify(record.signupData) : null
+      ]
+    );
+  }
+  async getOtp(email) {
+    await this.ensureSchema();
+    const clean = email.trim().toLowerCase();
+    const res = await this.pool.query(
+      `SELECT * FROM public.otp_verifications
+       WHERE LOWER(email) = LOWER($1) AND verified = false AND expires_at > NOW()
+       ORDER BY created_at DESC LIMIT 1;`,
+      [clean]
+    );
+    if (res.rows.length === 0) return null;
+    const r = res.rows[0];
+    return {
+      id: r.id,
+      email: r.email,
+      otpHash: r.otp_hash || r.otp_code,
+      expiresAt: r.expires_at,
+      attempts: r.attempts || 0,
+      verified: r.verified || false,
+      signupData: typeof r.signup_data === "string" ? JSON.parse(r.signup_data) : r.signup_data,
+      createdAt: r.created_at
+    };
+  }
+  async incrementOtpAttempts(idOrEmail) {
+    await this.ensureSchema();
+    const res = await this.pool.query(
+      `UPDATE public.otp_verifications
+       SET attempts = attempts + 1
+       WHERE id = $1 OR LOWER(email) = LOWER($1)
+       RETURNING attempts;`,
+      [idOrEmail]
+    );
+    return res.rows[0]?.attempts || 0;
+  }
+  async markOtpVerified(idOrEmail) {
+    await this.ensureSchema();
+    await this.pool.query(
+      `UPDATE public.otp_verifications
+       SET verified = true
+       WHERE id = $1 OR LOWER(email) = LOWER($1);`,
+      [idOrEmail]
+    );
+  }
+  async deleteExpiredOtps() {
+    await this.ensureSchema();
+    const res = await this.pool.query(
+      `DELETE FROM public.otp_verifications
+       WHERE expires_at < NOW() - INTERVAL '1 day';`
+    );
+    return res.rowCount || 0;
+  }
+  async savePasswordReset(record) {
+    await this.ensureSchema();
+    await this.pool.query(
+      `INSERT INTO public.password_resets (id, email, token_hash, expires_at, used, created_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
+       ON CONFLICT (id) DO UPDATE SET
+         token_hash = EXCLUDED.token_hash,
+         expires_at = EXCLUDED.expires_at,
+         used = EXCLUDED.used;`,
+      [
+        record.id || crypto2.randomUUID(),
+        record.email.trim().toLowerCase(),
+        record.tokenHash,
+        record.expiresAt,
+        record.used || false
+      ]
+    );
+  }
+  async getPasswordReset(tokenHash) {
+    await this.ensureSchema();
+    const res = await this.pool.query(
+      `SELECT * FROM public.password_resets
+       WHERE (token_hash = $1 OR token = $1) AND used = false AND expires_at > NOW()
+       ORDER BY created_at DESC LIMIT 1;`,
+      [tokenHash]
+    );
+    if (res.rows.length === 0) return null;
+    const r = res.rows[0];
+    return {
+      id: r.id,
+      email: r.email,
+      tokenHash: r.token_hash || r.token,
+      expiresAt: r.expires_at,
+      used: r.used || false,
+      createdAt: r.created_at
+    };
+  }
+  async markPasswordResetUsed(id) {
+    await this.ensureSchema();
+    await this.pool.query(
+      `UPDATE public.password_resets
+       SET used = true
+       WHERE id = $1;`,
+      [id]
+    );
+  }
 };
 
 // src/server/storage/MemoryStorageAdapter.ts
@@ -34432,9 +34615,12 @@ var MemoryStorageAdapter = class {
   buses = [];
   attendance = [];
   activeSession = null;
+  activeSessions = /* @__PURE__ */ new Map();
   notifications = [];
   reports = [];
   checkpoints = [];
+  otps = [];
+  passwordResets = [];
   settings = {
     sessionType: "EVENING",
     startTime: "16:50",
@@ -34755,6 +34941,9 @@ var MemoryStorageAdapter = class {
       (a) => a.studentId === record.studentId && a.attendanceDate === record.attendanceDate && a.sessionType === record.sessionType
     );
     if (idx !== -1) {
+      if (this.attendance[idx].status === "PRESENT") {
+        return this.attendance[idx];
+      }
       this.attendance[idx] = record;
     } else {
       this.attendance.push(record);
@@ -34769,23 +34958,64 @@ var MemoryStorageAdapter = class {
   }
   // Active Session
   async getActiveSession(busId) {
-    if (!this.activeSession || this.activeSession.status !== "ACTIVE") return null;
-    if (busId && busId !== "ALL" && this.activeSession.busId !== busId && this.activeSession.busId !== "ALL") {
-      const normBus = (b) => (b || "").trim().toUpperCase().replace(/^BUS-/i, "");
-      if (normBus(this.activeSession.busId) !== normBus(busId)) {
-        return null;
+    const normBus = (b) => (b || "").trim().toUpperCase().replace(/^BUS-/i, "");
+    if (busId && busId !== "ALL") {
+      for (const s of Array.from(this.activeSessions.values()).reverse()) {
+        if (s.status === "ACTIVE" && (s.busId === "ALL" || normBus(s.busId) === normBus(busId))) {
+          return s;
+        }
       }
+      if (this.activeSession && this.activeSession.status === "ACTIVE") {
+        if (this.activeSession.busId === "ALL" || normBus(this.activeSession.busId) === normBus(busId)) {
+          return this.activeSession;
+        }
+      }
+      return null;
     }
-    return this.activeSession;
+    for (const s of Array.from(this.activeSessions.values()).reverse()) {
+      if (s.status === "ACTIVE") return s;
+    }
+    if (this.activeSession && this.activeSession.status === "ACTIVE") {
+      return this.activeSession;
+    }
+    return null;
+  }
+  async getSessionById(sessionId) {
+    const s = this.activeSessions.get(sessionId);
+    if (s) return s;
+    if (this.activeSession && this.activeSession.id === sessionId) {
+      return this.activeSession;
+    }
+    return null;
   }
   async saveActiveSession(session) {
-    this.activeSession = session;
+    this.activeSessions.set(session.id, { ...session });
+    this.activeSession = { ...session };
     return session;
   }
-  async endActiveSession(_sessionId) {
-    if (this.activeSession) {
-      this.activeSession.status = "CLOSED";
-      this.activeSession.endedAt = (/* @__PURE__ */ new Date()).toISOString();
+  async endActiveSession(sessionId) {
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    if (sessionId) {
+      const s = this.activeSessions.get(sessionId);
+      if (s) {
+        s.status = "CLOSED";
+        s.endedAt = now;
+      }
+      if (this.activeSession && this.activeSession.id === sessionId) {
+        this.activeSession.status = "CLOSED";
+        this.activeSession.endedAt = now;
+      }
+    } else {
+      for (const s of this.activeSessions.values()) {
+        if (s.status === "ACTIVE") {
+          s.status = "CLOSED";
+          s.endedAt = now;
+        }
+      }
+      if (this.activeSession) {
+        this.activeSession.status = "CLOSED";
+        this.activeSession.endedAt = now;
+      }
     }
     return true;
   }
@@ -34886,22 +35116,81 @@ var MemoryStorageAdapter = class {
     }
     return report;
   }
+  // Persistent OTP Storage
+  async saveOtp(record) {
+    const idx = this.otps.findIndex((o) => o.id === record.id || o.email.toLowerCase() === record.email.toLowerCase());
+    if (idx !== -1) {
+      this.otps[idx] = record;
+    } else {
+      this.otps.push(record);
+    }
+  }
+  async getOtp(email) {
+    const clean = email.trim().toLowerCase();
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    return this.otps.filter((o) => o.email.toLowerCase() === clean && !o.verified && o.expiresAt > now).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] || null;
+  }
+  async incrementOtpAttempts(idOrEmail) {
+    const clean = idOrEmail.trim().toLowerCase();
+    const otp = this.otps.find((o) => o.id === idOrEmail || o.email.toLowerCase() === clean);
+    if (!otp) return 0;
+    otp.attempts = (otp.attempts || 0) + 1;
+    return otp.attempts;
+  }
+  async markOtpVerified(idOrEmail) {
+    const clean = idOrEmail.trim().toLowerCase();
+    const otp = this.otps.find((o) => o.id === idOrEmail || o.email.toLowerCase() === clean);
+    if (otp) otp.verified = true;
+  }
+  async deleteExpiredOtps() {
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const initialCount = this.otps.length;
+    this.otps = this.otps.filter((o) => o.expiresAt >= now);
+    return initialCount - this.otps.length;
+  }
+  // Persistent Password Reset Storage
+  async savePasswordReset(record) {
+    const idx = this.passwordResets.findIndex((p) => p.id === record.id || p.tokenHash === record.tokenHash);
+    if (idx !== -1) {
+      this.passwordResets[idx] = record;
+    } else {
+      this.passwordResets.push(record);
+    }
+  }
+  async getPasswordReset(tokenHash) {
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    return this.passwordResets.find((p) => p.tokenHash === tokenHash && !p.used && p.expiresAt > now) || null;
+  }
+  async markPasswordResetUsed(id) {
+    const p = this.passwordResets.find((pr) => pr.id === id || pr.tokenHash === id);
+    if (p) p.used = true;
+  }
 };
 
 // src/server/storage/index.ts
 var instance = null;
 function getStorage() {
   if (!instance) {
+    const isTestMode = (process.env.NODE_ENV || "").trim() === "test" || (process.env.ALLOW_MEMORY_STORAGE || "").trim() === "true" || Boolean(process.env.VITEST);
     if (process.env.DATABASE_URL) {
       try {
         instance = new PostgresStorageAdapter();
       } catch (err) {
-        console.warn("\u26A0\uFE0F [Storage] Failed to initialize PostgresStorageAdapter, falling back to MemoryStorageAdapter:", err);
-        instance = new MemoryStorageAdapter();
+        if (isTestMode) {
+          console.warn("\u26A0\uFE0F [Storage] Failed to initialize PostgresStorageAdapter, falling back to MemoryStorageAdapter for test environment:", err?.message || err);
+          instance = new MemoryStorageAdapter();
+        } else {
+          console.error("\u{1F6A8} [Storage Error] Failed to initialize PostgresStorageAdapter:", err?.message || err);
+          throw new Error(`DATABASE INITIALIZATION FAILED: ${err?.message || err}. Production requires a valid Supabase PostgreSQL connection.`);
+        }
       }
     } else {
-      console.warn("\u26A0\uFE0F [Storage] DATABASE_URL is not configured in environment variables. Falling back to MemoryStorageAdapter.");
-      instance = new MemoryStorageAdapter();
+      if (isTestMode) {
+        console.warn("\u26A0\uFE0F [Storage] DATABASE_URL is not configured. Using MemoryStorageAdapter for local test suite only.");
+        instance = new MemoryStorageAdapter();
+      } else {
+        throw new Error("CRITICAL CONFIGURATION ERROR: DATABASE_URL is missing in environment variables. MemoryStorageAdapter fallback is prohibited in production.");
+      }
     }
   }
   return instance;
@@ -34909,7 +35198,1743 @@ function getStorage() {
 
 // src/server/auth.ts
 var import_jsonwebtoken = __toESM(require_jsonwebtoken(), 1);
+
+// node_modules/bcryptjs/index.js
+import nodeCrypto from "crypto";
+var randomFallback = null;
+function randomBytes(len) {
+  try {
+    return crypto.getRandomValues(new Uint8Array(len));
+  } catch {
+  }
+  try {
+    return nodeCrypto.randomBytes(len);
+  } catch {
+  }
+  if (!randomFallback) {
+    throw Error(
+      "Neither WebCryptoAPI nor a crypto module is available. Use bcrypt.setRandomFallback to set an alternative"
+    );
+  }
+  return randomFallback(len);
+}
+function setRandomFallback(random) {
+  randomFallback = random;
+}
+function genSaltSync(rounds, seed_length) {
+  rounds = rounds || GENSALT_DEFAULT_LOG2_ROUNDS;
+  if (typeof rounds !== "number")
+    throw Error(
+      "Illegal arguments: " + typeof rounds + ", " + typeof seed_length
+    );
+  if (rounds < 4) rounds = 4;
+  else if (rounds > 31) rounds = 31;
+  var salt = [];
+  salt.push("$2b$");
+  if (rounds < 10) salt.push("0");
+  salt.push(rounds.toString());
+  salt.push("$");
+  salt.push(base64_encode(randomBytes(BCRYPT_SALT_LEN), BCRYPT_SALT_LEN));
+  return salt.join("");
+}
+function genSalt(rounds, seed_length, callback) {
+  if (typeof seed_length === "function")
+    callback = seed_length, seed_length = void 0;
+  if (typeof rounds === "function") callback = rounds, rounds = void 0;
+  if (typeof rounds === "undefined") rounds = GENSALT_DEFAULT_LOG2_ROUNDS;
+  else if (typeof rounds !== "number")
+    throw Error("illegal arguments: " + typeof rounds);
+  function _async(callback2) {
+    nextTick(function() {
+      try {
+        callback2(null, genSaltSync(rounds));
+      } catch (err) {
+        callback2(err);
+      }
+    });
+  }
+  if (callback) {
+    if (typeof callback !== "function")
+      throw Error("Illegal callback: " + typeof callback);
+    _async(callback);
+  } else
+    return new Promise(function(resolve, reject) {
+      _async(function(err, res) {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(res);
+      });
+    });
+}
+function hashSync(password, salt) {
+  if (typeof salt === "undefined") salt = GENSALT_DEFAULT_LOG2_ROUNDS;
+  if (typeof salt === "number") salt = genSaltSync(salt);
+  if (typeof password !== "string" || typeof salt !== "string")
+    throw Error("Illegal arguments: " + typeof password + ", " + typeof salt);
+  return _hash(password, salt);
+}
+function hash(password, salt, callback, progressCallback) {
+  function _async(callback2) {
+    if (typeof password === "string" && typeof salt === "number")
+      genSalt(salt, function(err, salt2) {
+        _hash(password, salt2, callback2, progressCallback);
+      });
+    else if (typeof password === "string" && typeof salt === "string")
+      _hash(password, salt, callback2, progressCallback);
+    else
+      nextTick(
+        callback2.bind(
+          this,
+          Error("Illegal arguments: " + typeof password + ", " + typeof salt)
+        )
+      );
+  }
+  if (callback) {
+    if (typeof callback !== "function")
+      throw Error("Illegal callback: " + typeof callback);
+    _async(callback);
+  } else
+    return new Promise(function(resolve, reject) {
+      _async(function(err, res) {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(res);
+      });
+    });
+}
+function safeStringCompare(known, unknown) {
+  var diff = known.length ^ unknown.length;
+  for (var i = 0; i < known.length; ++i) {
+    diff |= known.charCodeAt(i) ^ unknown.charCodeAt(i);
+  }
+  return diff === 0;
+}
+function compareSync(password, hash2) {
+  if (typeof password !== "string" || typeof hash2 !== "string")
+    throw Error("Illegal arguments: " + typeof password + ", " + typeof hash2);
+  if (hash2.length !== 60) return false;
+  return safeStringCompare(
+    hashSync(password, hash2.substring(0, hash2.length - 31)),
+    hash2
+  );
+}
+function compare(password, hashValue, callback, progressCallback) {
+  function _async(callback2) {
+    if (typeof password !== "string" || typeof hashValue !== "string") {
+      nextTick(
+        callback2.bind(
+          this,
+          Error(
+            "Illegal arguments: " + typeof password + ", " + typeof hashValue
+          )
+        )
+      );
+      return;
+    }
+    if (hashValue.length !== 60) {
+      nextTick(callback2.bind(this, null, false));
+      return;
+    }
+    hash(
+      password,
+      hashValue.substring(0, 29),
+      function(err, comp) {
+        if (err) callback2(err);
+        else callback2(null, safeStringCompare(comp, hashValue));
+      },
+      progressCallback
+    );
+  }
+  if (callback) {
+    if (typeof callback !== "function")
+      throw Error("Illegal callback: " + typeof callback);
+    _async(callback);
+  } else
+    return new Promise(function(resolve, reject) {
+      _async(function(err, res) {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(res);
+      });
+    });
+}
+function getRounds(hash2) {
+  if (typeof hash2 !== "string")
+    throw Error("Illegal arguments: " + typeof hash2);
+  return parseInt(hash2.split("$")[2], 10);
+}
+function getSalt(hash2) {
+  if (typeof hash2 !== "string")
+    throw Error("Illegal arguments: " + typeof hash2);
+  if (hash2.length !== 60)
+    throw Error("Illegal hash length: " + hash2.length + " != 60");
+  return hash2.substring(0, 29);
+}
+function truncates(password) {
+  if (typeof password !== "string")
+    throw Error("Illegal arguments: " + typeof password);
+  return utf8Length(password) > 72;
+}
+var nextTick = typeof setImmediate === "function" ? setImmediate : typeof scheduler === "object" && typeof scheduler.postTask === "function" ? scheduler.postTask.bind(scheduler) : setTimeout;
+function utf8Length(string) {
+  var len = 0, c = 0;
+  for (var i = 0; i < string.length; ++i) {
+    c = string.charCodeAt(i);
+    if (c < 128) len += 1;
+    else if (c < 2048) len += 2;
+    else if ((c & 64512) === 55296 && (string.charCodeAt(i + 1) & 64512) === 56320) {
+      ++i;
+      len += 4;
+    } else len += 3;
+  }
+  return len;
+}
+function utf8Array(string) {
+  var offset = 0, c1, c2;
+  var buffer = new Array(utf8Length(string));
+  for (var i = 0, k = string.length; i < k; ++i) {
+    c1 = string.charCodeAt(i);
+    if (c1 < 128) {
+      buffer[offset++] = c1;
+    } else if (c1 < 2048) {
+      buffer[offset++] = c1 >> 6 | 192;
+      buffer[offset++] = c1 & 63 | 128;
+    } else if ((c1 & 64512) === 55296 && ((c2 = string.charCodeAt(i + 1)) & 64512) === 56320) {
+      c1 = 65536 + ((c1 & 1023) << 10) + (c2 & 1023);
+      ++i;
+      buffer[offset++] = c1 >> 18 | 240;
+      buffer[offset++] = c1 >> 12 & 63 | 128;
+      buffer[offset++] = c1 >> 6 & 63 | 128;
+      buffer[offset++] = c1 & 63 | 128;
+    } else {
+      buffer[offset++] = c1 >> 12 | 224;
+      buffer[offset++] = c1 >> 6 & 63 | 128;
+      buffer[offset++] = c1 & 63 | 128;
+    }
+  }
+  return buffer;
+}
+var BASE64_CODE = "./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".split("");
+var BASE64_INDEX = [
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  0,
+  1,
+  54,
+  55,
+  56,
+  57,
+  58,
+  59,
+  60,
+  61,
+  62,
+  63,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  19,
+  20,
+  21,
+  22,
+  23,
+  24,
+  25,
+  26,
+  27,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,
+  28,
+  29,
+  30,
+  31,
+  32,
+  33,
+  34,
+  35,
+  36,
+  37,
+  38,
+  39,
+  40,
+  41,
+  42,
+  43,
+  44,
+  45,
+  46,
+  47,
+  48,
+  49,
+  50,
+  51,
+  52,
+  53,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1
+];
+function base64_encode(b, len) {
+  var off = 0, rs = [], c1, c2;
+  if (len <= 0 || len > b.length) throw Error("Illegal len: " + len);
+  while (off < len) {
+    c1 = b[off++] & 255;
+    rs.push(BASE64_CODE[c1 >> 2 & 63]);
+    c1 = (c1 & 3) << 4;
+    if (off >= len) {
+      rs.push(BASE64_CODE[c1 & 63]);
+      break;
+    }
+    c2 = b[off++] & 255;
+    c1 |= c2 >> 4 & 15;
+    rs.push(BASE64_CODE[c1 & 63]);
+    c1 = (c2 & 15) << 2;
+    if (off >= len) {
+      rs.push(BASE64_CODE[c1 & 63]);
+      break;
+    }
+    c2 = b[off++] & 255;
+    c1 |= c2 >> 6 & 3;
+    rs.push(BASE64_CODE[c1 & 63]);
+    rs.push(BASE64_CODE[c2 & 63]);
+  }
+  return rs.join("");
+}
+function base64_decode(s, len) {
+  var off = 0, slen = s.length, olen = 0, rs = [], c1, c2, c3, c4, o, code;
+  if (len <= 0) throw Error("Illegal len: " + len);
+  while (off < slen - 1 && olen < len) {
+    code = s.charCodeAt(off++);
+    c1 = code < BASE64_INDEX.length ? BASE64_INDEX[code] : -1;
+    code = s.charCodeAt(off++);
+    c2 = code < BASE64_INDEX.length ? BASE64_INDEX[code] : -1;
+    if (c1 == -1 || c2 == -1) break;
+    o = c1 << 2 >>> 0;
+    o |= (c2 & 48) >> 4;
+    rs.push(String.fromCharCode(o));
+    if (++olen >= len || off >= slen) break;
+    code = s.charCodeAt(off++);
+    c3 = code < BASE64_INDEX.length ? BASE64_INDEX[code] : -1;
+    if (c3 == -1) break;
+    o = (c2 & 15) << 4 >>> 0;
+    o |= (c3 & 60) >> 2;
+    rs.push(String.fromCharCode(o));
+    if (++olen >= len || off >= slen) break;
+    code = s.charCodeAt(off++);
+    c4 = code < BASE64_INDEX.length ? BASE64_INDEX[code] : -1;
+    o = (c3 & 3) << 6 >>> 0;
+    o |= c4;
+    rs.push(String.fromCharCode(o));
+    ++olen;
+  }
+  var res = [];
+  for (off = 0; off < olen; off++) res.push(rs[off].charCodeAt(0));
+  return res;
+}
+var BCRYPT_SALT_LEN = 16;
+var GENSALT_DEFAULT_LOG2_ROUNDS = 10;
+var BLOWFISH_NUM_ROUNDS = 16;
+var MAX_EXECUTION_TIME = 100;
+var P_ORIG = [
+  608135816,
+  2242054355,
+  320440878,
+  57701188,
+  2752067618,
+  698298832,
+  137296536,
+  3964562569,
+  1160258022,
+  953160567,
+  3193202383,
+  887688300,
+  3232508343,
+  3380367581,
+  1065670069,
+  3041331479,
+  2450970073,
+  2306472731
+];
+var S_ORIG = [
+  3509652390,
+  2564797868,
+  805139163,
+  3491422135,
+  3101798381,
+  1780907670,
+  3128725573,
+  4046225305,
+  614570311,
+  3012652279,
+  134345442,
+  2240740374,
+  1667834072,
+  1901547113,
+  2757295779,
+  4103290238,
+  227898511,
+  1921955416,
+  1904987480,
+  2182433518,
+  2069144605,
+  3260701109,
+  2620446009,
+  720527379,
+  3318853667,
+  677414384,
+  3393288472,
+  3101374703,
+  2390351024,
+  1614419982,
+  1822297739,
+  2954791486,
+  3608508353,
+  3174124327,
+  2024746970,
+  1432378464,
+  3864339955,
+  2857741204,
+  1464375394,
+  1676153920,
+  1439316330,
+  715854006,
+  3033291828,
+  289532110,
+  2706671279,
+  2087905683,
+  3018724369,
+  1668267050,
+  732546397,
+  1947742710,
+  3462151702,
+  2609353502,
+  2950085171,
+  1814351708,
+  2050118529,
+  680887927,
+  999245976,
+  1800124847,
+  3300911131,
+  1713906067,
+  1641548236,
+  4213287313,
+  1216130144,
+  1575780402,
+  4018429277,
+  3917837745,
+  3693486850,
+  3949271944,
+  596196993,
+  3549867205,
+  258830323,
+  2213823033,
+  772490370,
+  2760122372,
+  1774776394,
+  2652871518,
+  566650946,
+  4142492826,
+  1728879713,
+  2882767088,
+  1783734482,
+  3629395816,
+  2517608232,
+  2874225571,
+  1861159788,
+  326777828,
+  3124490320,
+  2130389656,
+  2716951837,
+  967770486,
+  1724537150,
+  2185432712,
+  2364442137,
+  1164943284,
+  2105845187,
+  998989502,
+  3765401048,
+  2244026483,
+  1075463327,
+  1455516326,
+  1322494562,
+  910128902,
+  469688178,
+  1117454909,
+  936433444,
+  3490320968,
+  3675253459,
+  1240580251,
+  122909385,
+  2157517691,
+  634681816,
+  4142456567,
+  3825094682,
+  3061402683,
+  2540495037,
+  79693498,
+  3249098678,
+  1084186820,
+  1583128258,
+  426386531,
+  1761308591,
+  1047286709,
+  322548459,
+  995290223,
+  1845252383,
+  2603652396,
+  3431023940,
+  2942221577,
+  3202600964,
+  3727903485,
+  1712269319,
+  422464435,
+  3234572375,
+  1170764815,
+  3523960633,
+  3117677531,
+  1434042557,
+  442511882,
+  3600875718,
+  1076654713,
+  1738483198,
+  4213154764,
+  2393238008,
+  3677496056,
+  1014306527,
+  4251020053,
+  793779912,
+  2902807211,
+  842905082,
+  4246964064,
+  1395751752,
+  1040244610,
+  2656851899,
+  3396308128,
+  445077038,
+  3742853595,
+  3577915638,
+  679411651,
+  2892444358,
+  2354009459,
+  1767581616,
+  3150600392,
+  3791627101,
+  3102740896,
+  284835224,
+  4246832056,
+  1258075500,
+  768725851,
+  2589189241,
+  3069724005,
+  3532540348,
+  1274779536,
+  3789419226,
+  2764799539,
+  1660621633,
+  3471099624,
+  4011903706,
+  913787905,
+  3497959166,
+  737222580,
+  2514213453,
+  2928710040,
+  3937242737,
+  1804850592,
+  3499020752,
+  2949064160,
+  2386320175,
+  2390070455,
+  2415321851,
+  4061277028,
+  2290661394,
+  2416832540,
+  1336762016,
+  1754252060,
+  3520065937,
+  3014181293,
+  791618072,
+  3188594551,
+  3933548030,
+  2332172193,
+  3852520463,
+  3043980520,
+  413987798,
+  3465142937,
+  3030929376,
+  4245938359,
+  2093235073,
+  3534596313,
+  375366246,
+  2157278981,
+  2479649556,
+  555357303,
+  3870105701,
+  2008414854,
+  3344188149,
+  4221384143,
+  3956125452,
+  2067696032,
+  3594591187,
+  2921233993,
+  2428461,
+  544322398,
+  577241275,
+  1471733935,
+  610547355,
+  4027169054,
+  1432588573,
+  1507829418,
+  2025931657,
+  3646575487,
+  545086370,
+  48609733,
+  2200306550,
+  1653985193,
+  298326376,
+  1316178497,
+  3007786442,
+  2064951626,
+  458293330,
+  2589141269,
+  3591329599,
+  3164325604,
+  727753846,
+  2179363840,
+  146436021,
+  1461446943,
+  4069977195,
+  705550613,
+  3059967265,
+  3887724982,
+  4281599278,
+  3313849956,
+  1404054877,
+  2845806497,
+  146425753,
+  1854211946,
+  1266315497,
+  3048417604,
+  3681880366,
+  3289982499,
+  290971e4,
+  1235738493,
+  2632868024,
+  2414719590,
+  3970600049,
+  1771706367,
+  1449415276,
+  3266420449,
+  422970021,
+  1963543593,
+  2690192192,
+  3826793022,
+  1062508698,
+  1531092325,
+  1804592342,
+  2583117782,
+  2714934279,
+  4024971509,
+  1294809318,
+  4028980673,
+  1289560198,
+  2221992742,
+  1669523910,
+  35572830,
+  157838143,
+  1052438473,
+  1016535060,
+  1802137761,
+  1753167236,
+  1386275462,
+  3080475397,
+  2857371447,
+  1040679964,
+  2145300060,
+  2390574316,
+  1461121720,
+  2956646967,
+  4031777805,
+  4028374788,
+  33600511,
+  2920084762,
+  1018524850,
+  629373528,
+  3691585981,
+  3515945977,
+  2091462646,
+  2486323059,
+  586499841,
+  988145025,
+  935516892,
+  3367335476,
+  2599673255,
+  2839830854,
+  265290510,
+  3972581182,
+  2759138881,
+  3795373465,
+  1005194799,
+  847297441,
+  406762289,
+  1314163512,
+  1332590856,
+  1866599683,
+  4127851711,
+  750260880,
+  613907577,
+  1450815602,
+  3165620655,
+  3734664991,
+  3650291728,
+  3012275730,
+  3704569646,
+  1427272223,
+  778793252,
+  1343938022,
+  2676280711,
+  2052605720,
+  1946737175,
+  3164576444,
+  3914038668,
+  3967478842,
+  3682934266,
+  1661551462,
+  3294938066,
+  4011595847,
+  840292616,
+  3712170807,
+  616741398,
+  312560963,
+  711312465,
+  1351876610,
+  322626781,
+  1910503582,
+  271666773,
+  2175563734,
+  1594956187,
+  70604529,
+  3617834859,
+  1007753275,
+  1495573769,
+  4069517037,
+  2549218298,
+  2663038764,
+  504708206,
+  2263041392,
+  3941167025,
+  2249088522,
+  1514023603,
+  1998579484,
+  1312622330,
+  694541497,
+  2582060303,
+  2151582166,
+  1382467621,
+  776784248,
+  2618340202,
+  3323268794,
+  2497899128,
+  2784771155,
+  503983604,
+  4076293799,
+  907881277,
+  423175695,
+  432175456,
+  1378068232,
+  4145222326,
+  3954048622,
+  3938656102,
+  3820766613,
+  2793130115,
+  2977904593,
+  26017576,
+  3274890735,
+  3194772133,
+  1700274565,
+  1756076034,
+  4006520079,
+  3677328699,
+  720338349,
+  1533947780,
+  354530856,
+  688349552,
+  3973924725,
+  1637815568,
+  332179504,
+  3949051286,
+  53804574,
+  2852348879,
+  3044236432,
+  1282449977,
+  3583942155,
+  3416972820,
+  4006381244,
+  1617046695,
+  2628476075,
+  3002303598,
+  1686838959,
+  431878346,
+  2686675385,
+  1700445008,
+  1080580658,
+  1009431731,
+  832498133,
+  3223435511,
+  2605976345,
+  2271191193,
+  2516031870,
+  1648197032,
+  4164389018,
+  2548247927,
+  300782431,
+  375919233,
+  238389289,
+  3353747414,
+  2531188641,
+  2019080857,
+  1475708069,
+  455242339,
+  2609103871,
+  448939670,
+  3451063019,
+  1395535956,
+  2413381860,
+  1841049896,
+  1491858159,
+  885456874,
+  4264095073,
+  4001119347,
+  1565136089,
+  3898914787,
+  1108368660,
+  540939232,
+  1173283510,
+  2745871338,
+  3681308437,
+  4207628240,
+  3343053890,
+  4016749493,
+  1699691293,
+  1103962373,
+  3625875870,
+  2256883143,
+  3830138730,
+  1031889488,
+  3479347698,
+  1535977030,
+  4236805024,
+  3251091107,
+  2132092099,
+  1774941330,
+  1199868427,
+  1452454533,
+  157007616,
+  2904115357,
+  342012276,
+  595725824,
+  1480756522,
+  206960106,
+  497939518,
+  591360097,
+  863170706,
+  2375253569,
+  3596610801,
+  1814182875,
+  2094937945,
+  3421402208,
+  1082520231,
+  3463918190,
+  2785509508,
+  435703966,
+  3908032597,
+  1641649973,
+  2842273706,
+  3305899714,
+  1510255612,
+  2148256476,
+  2655287854,
+  3276092548,
+  4258621189,
+  236887753,
+  3681803219,
+  274041037,
+  1734335097,
+  3815195456,
+  3317970021,
+  1899903192,
+  1026095262,
+  4050517792,
+  356393447,
+  2410691914,
+  3873677099,
+  3682840055,
+  3913112168,
+  2491498743,
+  4132185628,
+  2489919796,
+  1091903735,
+  1979897079,
+  3170134830,
+  3567386728,
+  3557303409,
+  857797738,
+  1136121015,
+  1342202287,
+  507115054,
+  2535736646,
+  337727348,
+  3213592640,
+  1301675037,
+  2528481711,
+  1895095763,
+  1721773893,
+  3216771564,
+  62756741,
+  2142006736,
+  835421444,
+  2531993523,
+  1442658625,
+  3659876326,
+  2882144922,
+  676362277,
+  1392781812,
+  170690266,
+  3921047035,
+  1759253602,
+  3611846912,
+  1745797284,
+  664899054,
+  1329594018,
+  3901205900,
+  3045908486,
+  2062866102,
+  2865634940,
+  3543621612,
+  3464012697,
+  1080764994,
+  553557557,
+  3656615353,
+  3996768171,
+  991055499,
+  499776247,
+  1265440854,
+  648242737,
+  3940784050,
+  980351604,
+  3713745714,
+  1749149687,
+  3396870395,
+  4211799374,
+  3640570775,
+  1161844396,
+  3125318951,
+  1431517754,
+  545492359,
+  4268468663,
+  3499529547,
+  1437099964,
+  2702547544,
+  3433638243,
+  2581715763,
+  2787789398,
+  1060185593,
+  1593081372,
+  2418618748,
+  4260947970,
+  69676912,
+  2159744348,
+  86519011,
+  2512459080,
+  3838209314,
+  1220612927,
+  3339683548,
+  133810670,
+  1090789135,
+  1078426020,
+  1569222167,
+  845107691,
+  3583754449,
+  4072456591,
+  1091646820,
+  628848692,
+  1613405280,
+  3757631651,
+  526609435,
+  236106946,
+  48312990,
+  2942717905,
+  3402727701,
+  1797494240,
+  859738849,
+  992217954,
+  4005476642,
+  2243076622,
+  3870952857,
+  3732016268,
+  765654824,
+  3490871365,
+  2511836413,
+  1685915746,
+  3888969200,
+  1414112111,
+  2273134842,
+  3281911079,
+  4080962846,
+  172450625,
+  2569994100,
+  980381355,
+  4109958455,
+  2819808352,
+  2716589560,
+  2568741196,
+  3681446669,
+  3329971472,
+  1835478071,
+  660984891,
+  3704678404,
+  4045999559,
+  3422617507,
+  3040415634,
+  1762651403,
+  1719377915,
+  3470491036,
+  2693910283,
+  3642056355,
+  3138596744,
+  1364962596,
+  2073328063,
+  1983633131,
+  926494387,
+  3423689081,
+  2150032023,
+  4096667949,
+  1749200295,
+  3328846651,
+  309677260,
+  2016342300,
+  1779581495,
+  3079819751,
+  111262694,
+  1274766160,
+  443224088,
+  298511866,
+  1025883608,
+  3806446537,
+  1145181785,
+  168956806,
+  3641502830,
+  3584813610,
+  1689216846,
+  3666258015,
+  3200248200,
+  1692713982,
+  2646376535,
+  4042768518,
+  1618508792,
+  1610833997,
+  3523052358,
+  4130873264,
+  2001055236,
+  3610705100,
+  2202168115,
+  4028541809,
+  2961195399,
+  1006657119,
+  2006996926,
+  3186142756,
+  1430667929,
+  3210227297,
+  1314452623,
+  4074634658,
+  4101304120,
+  2273951170,
+  1399257539,
+  3367210612,
+  3027628629,
+  1190975929,
+  2062231137,
+  2333990788,
+  2221543033,
+  2438960610,
+  1181637006,
+  548689776,
+  2362791313,
+  3372408396,
+  3104550113,
+  3145860560,
+  296247880,
+  1970579870,
+  3078560182,
+  3769228297,
+  1714227617,
+  3291629107,
+  3898220290,
+  166772364,
+  1251581989,
+  493813264,
+  448347421,
+  195405023,
+  2709975567,
+  677966185,
+  3703036547,
+  1463355134,
+  2715995803,
+  1338867538,
+  1343315457,
+  2802222074,
+  2684532164,
+  233230375,
+  2599980071,
+  2000651841,
+  3277868038,
+  1638401717,
+  4028070440,
+  3237316320,
+  6314154,
+  819756386,
+  300326615,
+  590932579,
+  1405279636,
+  3267499572,
+  3150704214,
+  2428286686,
+  3959192993,
+  3461946742,
+  1862657033,
+  1266418056,
+  963775037,
+  2089974820,
+  2263052895,
+  1917689273,
+  448879540,
+  3550394620,
+  3981727096,
+  150775221,
+  3627908307,
+  1303187396,
+  508620638,
+  2975983352,
+  2726630617,
+  1817252668,
+  1876281319,
+  1457606340,
+  908771278,
+  3720792119,
+  3617206836,
+  2455994898,
+  1729034894,
+  1080033504,
+  976866871,
+  3556439503,
+  2881648439,
+  1522871579,
+  1555064734,
+  1336096578,
+  3548522304,
+  2579274686,
+  3574697629,
+  3205460757,
+  3593280638,
+  3338716283,
+  3079412587,
+  564236357,
+  2993598910,
+  1781952180,
+  1464380207,
+  3163844217,
+  3332601554,
+  1699332808,
+  1393555694,
+  1183702653,
+  3581086237,
+  1288719814,
+  691649499,
+  2847557200,
+  2895455976,
+  3193889540,
+  2717570544,
+  1781354906,
+  1676643554,
+  2592534050,
+  3230253752,
+  1126444790,
+  2770207658,
+  2633158820,
+  2210423226,
+  2615765581,
+  2414155088,
+  3127139286,
+  673620729,
+  2805611233,
+  1269405062,
+  4015350505,
+  3341807571,
+  4149409754,
+  1057255273,
+  2012875353,
+  2162469141,
+  2276492801,
+  2601117357,
+  993977747,
+  3918593370,
+  2654263191,
+  753973209,
+  36408145,
+  2530585658,
+  25011837,
+  3520020182,
+  2088578344,
+  530523599,
+  2918365339,
+  1524020338,
+  1518925132,
+  3760827505,
+  3759777254,
+  1202760957,
+  3985898139,
+  3906192525,
+  674977740,
+  4174734889,
+  2031300136,
+  2019492241,
+  3983892565,
+  4153806404,
+  3822280332,
+  352677332,
+  2297720250,
+  60907813,
+  90501309,
+  3286998549,
+  1016092578,
+  2535922412,
+  2839152426,
+  457141659,
+  509813237,
+  4120667899,
+  652014361,
+  1966332200,
+  2975202805,
+  55981186,
+  2327461051,
+  676427537,
+  3255491064,
+  2882294119,
+  3433927263,
+  1307055953,
+  942726286,
+  933058658,
+  2468411793,
+  3933900994,
+  4215176142,
+  1361170020,
+  2001714738,
+  2830558078,
+  3274259782,
+  1222529897,
+  1679025792,
+  2729314320,
+  3714953764,
+  1770335741,
+  151462246,
+  3013232138,
+  1682292957,
+  1483529935,
+  471910574,
+  1539241949,
+  458788160,
+  3436315007,
+  1807016891,
+  3718408830,
+  978976581,
+  1043663428,
+  3165965781,
+  1927990952,
+  4200891579,
+  2372276910,
+  3208408903,
+  3533431907,
+  1412390302,
+  2931980059,
+  4132332400,
+  1947078029,
+  3881505623,
+  4168226417,
+  2941484381,
+  1077988104,
+  1320477388,
+  886195818,
+  18198404,
+  3786409e3,
+  2509781533,
+  112762804,
+  3463356488,
+  1866414978,
+  891333506,
+  18488651,
+  661792760,
+  1628790961,
+  3885187036,
+  3141171499,
+  876946877,
+  2693282273,
+  1372485963,
+  791857591,
+  2686433993,
+  3759982718,
+  3167212022,
+  3472953795,
+  2716379847,
+  445679433,
+  3561995674,
+  3504004811,
+  3574258232,
+  54117162,
+  3331405415,
+  2381918588,
+  3769707343,
+  4154350007,
+  1140177722,
+  4074052095,
+  668550556,
+  3214352940,
+  367459370,
+  261225585,
+  2610173221,
+  4209349473,
+  3468074219,
+  3265815641,
+  314222801,
+  3066103646,
+  3808782860,
+  282218597,
+  3406013506,
+  3773591054,
+  379116347,
+  1285071038,
+  846784868,
+  2669647154,
+  3771962079,
+  3550491691,
+  2305946142,
+  453669953,
+  1268987020,
+  3317592352,
+  3279303384,
+  3744833421,
+  2610507566,
+  3859509063,
+  266596637,
+  3847019092,
+  517658769,
+  3462560207,
+  3443424879,
+  370717030,
+  4247526661,
+  2224018117,
+  4143653529,
+  4112773975,
+  2788324899,
+  2477274417,
+  1456262402,
+  2901442914,
+  1517677493,
+  1846949527,
+  2295493580,
+  3734397586,
+  2176403920,
+  1280348187,
+  1908823572,
+  3871786941,
+  846861322,
+  1172426758,
+  3287448474,
+  3383383037,
+  1655181056,
+  3139813346,
+  901632758,
+  1897031941,
+  2986607138,
+  3066810236,
+  3447102507,
+  1393639104,
+  373351379,
+  950779232,
+  625454576,
+  3124240540,
+  4148612726,
+  2007998917,
+  544563296,
+  2244738638,
+  2330496472,
+  2058025392,
+  1291430526,
+  424198748,
+  50039436,
+  29584100,
+  3605783033,
+  2429876329,
+  2791104160,
+  1057563949,
+  3255363231,
+  3075367218,
+  3463963227,
+  1469046755,
+  985887462
+];
+var C_ORIG = [
+  1332899944,
+  1700884034,
+  1701343084,
+  1684370003,
+  1668446532,
+  1869963892
+];
+function _encipher(lr, off, P, S) {
+  var n, l = lr[off], r = lr[off + 1];
+  l ^= P[0];
+  n = S[l >>> 24];
+  n += S[256 | l >> 16 & 255];
+  n ^= S[512 | l >> 8 & 255];
+  n += S[768 | l & 255];
+  r ^= n ^ P[1];
+  n = S[r >>> 24];
+  n += S[256 | r >> 16 & 255];
+  n ^= S[512 | r >> 8 & 255];
+  n += S[768 | r & 255];
+  l ^= n ^ P[2];
+  n = S[l >>> 24];
+  n += S[256 | l >> 16 & 255];
+  n ^= S[512 | l >> 8 & 255];
+  n += S[768 | l & 255];
+  r ^= n ^ P[3];
+  n = S[r >>> 24];
+  n += S[256 | r >> 16 & 255];
+  n ^= S[512 | r >> 8 & 255];
+  n += S[768 | r & 255];
+  l ^= n ^ P[4];
+  n = S[l >>> 24];
+  n += S[256 | l >> 16 & 255];
+  n ^= S[512 | l >> 8 & 255];
+  n += S[768 | l & 255];
+  r ^= n ^ P[5];
+  n = S[r >>> 24];
+  n += S[256 | r >> 16 & 255];
+  n ^= S[512 | r >> 8 & 255];
+  n += S[768 | r & 255];
+  l ^= n ^ P[6];
+  n = S[l >>> 24];
+  n += S[256 | l >> 16 & 255];
+  n ^= S[512 | l >> 8 & 255];
+  n += S[768 | l & 255];
+  r ^= n ^ P[7];
+  n = S[r >>> 24];
+  n += S[256 | r >> 16 & 255];
+  n ^= S[512 | r >> 8 & 255];
+  n += S[768 | r & 255];
+  l ^= n ^ P[8];
+  n = S[l >>> 24];
+  n += S[256 | l >> 16 & 255];
+  n ^= S[512 | l >> 8 & 255];
+  n += S[768 | l & 255];
+  r ^= n ^ P[9];
+  n = S[r >>> 24];
+  n += S[256 | r >> 16 & 255];
+  n ^= S[512 | r >> 8 & 255];
+  n += S[768 | r & 255];
+  l ^= n ^ P[10];
+  n = S[l >>> 24];
+  n += S[256 | l >> 16 & 255];
+  n ^= S[512 | l >> 8 & 255];
+  n += S[768 | l & 255];
+  r ^= n ^ P[11];
+  n = S[r >>> 24];
+  n += S[256 | r >> 16 & 255];
+  n ^= S[512 | r >> 8 & 255];
+  n += S[768 | r & 255];
+  l ^= n ^ P[12];
+  n = S[l >>> 24];
+  n += S[256 | l >> 16 & 255];
+  n ^= S[512 | l >> 8 & 255];
+  n += S[768 | l & 255];
+  r ^= n ^ P[13];
+  n = S[r >>> 24];
+  n += S[256 | r >> 16 & 255];
+  n ^= S[512 | r >> 8 & 255];
+  n += S[768 | r & 255];
+  l ^= n ^ P[14];
+  n = S[l >>> 24];
+  n += S[256 | l >> 16 & 255];
+  n ^= S[512 | l >> 8 & 255];
+  n += S[768 | l & 255];
+  r ^= n ^ P[15];
+  n = S[r >>> 24];
+  n += S[256 | r >> 16 & 255];
+  n ^= S[512 | r >> 8 & 255];
+  n += S[768 | r & 255];
+  l ^= n ^ P[16];
+  lr[off] = r ^ P[BLOWFISH_NUM_ROUNDS + 1];
+  lr[off + 1] = l;
+  return lr;
+}
+function _streamtoword(data, offp) {
+  for (var i = 0, word = 0; i < 4; ++i)
+    word = word << 8 | data[offp] & 255, offp = (offp + 1) % data.length;
+  return { key: word, offp };
+}
+function _key(key, P, S) {
+  var offset = 0, lr = [0, 0], plen = P.length, slen = S.length, sw;
+  for (var i = 0; i < plen; i++)
+    sw = _streamtoword(key, offset), offset = sw.offp, P[i] = P[i] ^ sw.key;
+  for (i = 0; i < plen; i += 2)
+    lr = _encipher(lr, 0, P, S), P[i] = lr[0], P[i + 1] = lr[1];
+  for (i = 0; i < slen; i += 2)
+    lr = _encipher(lr, 0, P, S), S[i] = lr[0], S[i + 1] = lr[1];
+}
+function _ekskey(data, key, P, S) {
+  var offp = 0, lr = [0, 0], plen = P.length, slen = S.length, sw;
+  for (var i = 0; i < plen; i++)
+    sw = _streamtoword(key, offp), offp = sw.offp, P[i] = P[i] ^ sw.key;
+  offp = 0;
+  for (i = 0; i < plen; i += 2)
+    sw = _streamtoword(data, offp), offp = sw.offp, lr[0] ^= sw.key, sw = _streamtoword(data, offp), offp = sw.offp, lr[1] ^= sw.key, lr = _encipher(lr, 0, P, S), P[i] = lr[0], P[i + 1] = lr[1];
+  for (i = 0; i < slen; i += 2)
+    sw = _streamtoword(data, offp), offp = sw.offp, lr[0] ^= sw.key, sw = _streamtoword(data, offp), offp = sw.offp, lr[1] ^= sw.key, lr = _encipher(lr, 0, P, S), S[i] = lr[0], S[i + 1] = lr[1];
+}
+function _crypt(b, salt, rounds, callback, progressCallback) {
+  var cdata = C_ORIG.slice(), clen = cdata.length, err;
+  if (rounds < 4 || rounds > 31) {
+    err = Error("Illegal number of rounds (4-31): " + rounds);
+    if (callback) {
+      nextTick(callback.bind(this, err));
+      return;
+    } else throw err;
+  }
+  if (salt.length !== BCRYPT_SALT_LEN) {
+    err = Error(
+      "Illegal salt length: " + salt.length + " != " + BCRYPT_SALT_LEN
+    );
+    if (callback) {
+      nextTick(callback.bind(this, err));
+      return;
+    } else throw err;
+  }
+  rounds = 1 << rounds >>> 0;
+  var P, S, i = 0, j;
+  if (typeof Int32Array === "function") {
+    P = new Int32Array(P_ORIG);
+    S = new Int32Array(S_ORIG);
+  } else {
+    P = P_ORIG.slice();
+    S = S_ORIG.slice();
+  }
+  _ekskey(salt, b, P, S);
+  function next() {
+    if (progressCallback) progressCallback(i / rounds);
+    if (i < rounds) {
+      var start = Date.now();
+      for (; i < rounds; ) {
+        i = i + 1;
+        _key(b, P, S);
+        _key(salt, P, S);
+        if (Date.now() - start > MAX_EXECUTION_TIME) break;
+      }
+    } else {
+      for (i = 0; i < 64; i++)
+        for (j = 0; j < clen >> 1; j++) _encipher(cdata, j << 1, P, S);
+      var ret = [];
+      for (i = 0; i < clen; i++)
+        ret.push((cdata[i] >> 24 & 255) >>> 0), ret.push((cdata[i] >> 16 & 255) >>> 0), ret.push((cdata[i] >> 8 & 255) >>> 0), ret.push((cdata[i] & 255) >>> 0);
+      if (callback) {
+        callback(null, ret);
+        return;
+      } else return ret;
+    }
+    if (callback) nextTick(next);
+  }
+  if (typeof callback !== "undefined") {
+    next();
+  } else {
+    var res;
+    while (true) if (typeof (res = next()) !== "undefined") return res || [];
+  }
+}
+function _hash(password, salt, callback, progressCallback) {
+  var err;
+  if (typeof password !== "string" || typeof salt !== "string") {
+    err = Error("Invalid string / salt: Not a string");
+    if (callback) {
+      nextTick(callback.bind(this, err));
+      return;
+    } else throw err;
+  }
+  var minor, offset;
+  if (salt.charAt(0) !== "$" || salt.charAt(1) !== "2") {
+    err = Error("Invalid salt version: " + salt.substring(0, 2));
+    if (callback) {
+      nextTick(callback.bind(this, err));
+      return;
+    } else throw err;
+  }
+  if (salt.charAt(2) === "$") minor = String.fromCharCode(0), offset = 3;
+  else {
+    minor = salt.charAt(2);
+    if (minor !== "a" && minor !== "b" && minor !== "y" || salt.charAt(3) !== "$") {
+      err = Error("Invalid salt revision: " + salt.substring(2, 4));
+      if (callback) {
+        nextTick(callback.bind(this, err));
+        return;
+      } else throw err;
+    }
+    offset = 4;
+  }
+  if (salt.charAt(offset + 2) > "$") {
+    err = Error("Missing salt rounds");
+    if (callback) {
+      nextTick(callback.bind(this, err));
+      return;
+    } else throw err;
+  }
+  var r1 = parseInt(salt.substring(offset, offset + 1), 10) * 10, r2 = parseInt(salt.substring(offset + 1, offset + 2), 10), rounds = r1 + r2, real_salt = salt.substring(offset + 3, offset + 25);
+  password += minor >= "a" ? "\0" : "";
+  var passwordb = utf8Array(password), saltb = base64_decode(real_salt, BCRYPT_SALT_LEN);
+  function finish(bytes) {
+    var res = [];
+    res.push("$2");
+    if (minor >= "a") res.push(minor);
+    res.push("$");
+    if (rounds < 10) res.push("0");
+    res.push(rounds.toString());
+    res.push("$");
+    res.push(base64_encode(saltb, saltb.length));
+    res.push(base64_encode(bytes, C_ORIG.length * 4 - 1));
+    return res.join("");
+  }
+  if (typeof callback == "undefined")
+    return finish(_crypt(passwordb, saltb, rounds));
+  else {
+    _crypt(
+      passwordb,
+      saltb,
+      rounds,
+      function(err2, bytes) {
+        if (err2) callback(err2, null);
+        else callback(null, finish(bytes));
+      },
+      progressCallback
+    );
+  }
+}
+function encodeBase64(bytes, length) {
+  return base64_encode(bytes, length);
+}
+function decodeBase64(string, length) {
+  return base64_decode(string, length);
+}
+var bcryptjs_default = {
+  setRandomFallback,
+  genSaltSync,
+  genSalt,
+  hashSync,
+  hash,
+  compareSync,
+  compare,
+  getRounds,
+  getSalt,
+  truncates,
+  encodeBase64,
+  decodeBase64
+};
+
+// src/server/auth.ts
 var JWT_SECRET = process.env.JWT_SECRET || process.env.AUTH_SECRET || "bus-attendance-secret-key-2026";
+async function hashPassword(password) {
+  const salt = await bcryptjs_default.genSalt(10);
+  return bcryptjs_default.hash(password, salt);
+}
+async function comparePassword(password, hash2) {
+  if (!password || !hash2) return false;
+  if (hash2.startsWith("$2a$") || hash2.startsWith("$2b$") || hash2.startsWith("$2y$")) {
+    return bcryptjs_default.compare(password, hash2);
+  }
+  return password === hash2;
+}
 function generateToken(user) {
   const payload = {
     id: user.id,
@@ -34961,19 +36986,19 @@ var AttendanceVerifier = class {
     if (!student) {
       return {
         status: "LOCATION_UNAVAILABLE",
-        message: "Student record not found."
+        message: "Student record not found in registered commuter roster."
       };
     }
-    if (!student.active) {
+    if (!student.active || !student.approved || student.status !== "APPROVED") {
       return {
         status: "NOT_PRESENT",
-        message: "Student account is inactive. Please contact your administrator."
+        message: "Student account is pending approval or inactive. Please contact your administrator."
       };
     }
     if (!student.busId) {
       return {
-        status: "LOCATION_UNAVAILABLE",
-        message: "No bus assigned to this student."
+        status: "BUS_MISMATCH",
+        message: "No bus assigned to this student. Please wait for administrator bus assignment."
       };
     }
     const bus = await this.storage.getBusById(student.busId);
@@ -34985,27 +37010,25 @@ var AttendanceVerifier = class {
     }
     const settings = await this.storage.getSettings();
     const todayDate = getISTDateString();
-    const activeDynamicSession = await this.storage.getActiveSession();
+    const activeDynamicSession = await this.storage.getActiveSession(student.busId);
     let sessionType = "EVENING";
     let targetLat = settings.location.latitude;
     let targetLon = settings.location.longitude;
     let targetRadius = settings.location.radiusMeters || 10;
     let maxAccuracy = settings.location.maxGpsAccuracyMeters || 20;
-    let targetName = settings.location.name;
+    let targetName = settings.location.name || "College Ground";
     let isGroundMode = true;
-    let requiresGps = true;
     let sessionId = void 0;
     if (activeDynamicSession && activeDynamicSession.status === "ACTIVE") {
       sessionId = activeDynamicSession.id;
       sessionType = activeDynamicSession.sessionType;
       isGroundMode = activeDynamicSession.attendanceMode === "GROUND";
-      requiresGps = activeDynamicSession.verificationMethod !== "CODE_ONLY";
-      targetRadius = activeDynamicSession.radiusMeters || (isGroundMode ? settings.location.radiusMeters || 35 : 1e3);
-      maxAccuracy = activeDynamicSession.maxGpsAccuracyMeters || (isGroundMode ? settings.location.maxGpsAccuracyMeters || 60 : 1500);
+      targetRadius = activeDynamicSession.radiusMeters || (isGroundMode ? settings.location.radiusMeters || 10 : 1e3);
+      maxAccuracy = activeDynamicSession.maxGpsAccuracyMeters || (isGroundMode ? settings.location.maxGpsAccuracyMeters || 20 : 1500);
       if (activeDynamicSession.busId !== "ALL" && activeDynamicSession.busId !== student.busId) {
         return {
           status: "BUS_MISMATCH",
-          message: "You are not assigned to this bus."
+          message: `Active session is for Bus ${activeDynamicSession.busId}. You are assigned to Bus ${student.busId}.`
         };
       }
       if (activeDynamicSession.location) {
@@ -35015,19 +37038,20 @@ var AttendanceVerifier = class {
       }
     } else {
       const sessionInfo = evaluateSessionStatus(settings);
-      if (sessionInfo.status !== "ACTIVE") {
-        if (sessionInfo.status === "UPCOMING") {
-          return {
-            status: "NOT_PRESENT",
-            message: `Attendance is currently inactive. Scheduled evening window opens at ${settings.startTime} IST.`
-          };
-        }
+      if (sessionInfo.status === "ACTIVE") {
+        sessionType = "EVENING";
+        isGroundMode = true;
+      } else if (sessionInfo.status === "UPCOMING") {
         return {
-          status: "NOT_PRESENT",
-          message: `Attendance session is no longer active.`
+          status: "SESSION_NOT_FOUND",
+          message: `No active attendance session found. Scheduled evening window opens at ${settings.startTime} IST.`
+        };
+      } else {
+        return {
+          status: "SESSION_CLOSED",
+          message: "The attendance session is currently closed or not started by the bus in-charge."
         };
       }
-      sessionType = "EVENING";
     }
     const existingRecord = await this.storage.getAttendanceRecord(
       student.id,
@@ -35037,7 +37061,7 @@ var AttendanceVerifier = class {
     if (existingRecord && existingRecord.status === "PRESENT") {
       return {
         status: "PRESENT",
-        message: "Attendance already recorded for this session.",
+        message: "Attendance already recorded and verified for this session.",
         distanceMeters: existingRecord.distanceMeters ?? void 0,
         accuracyMeters: existingRecord.accuracyMeters ?? void 0,
         verifiedAt: existingRecord.verifiedAt,
@@ -35048,31 +37072,30 @@ var AttendanceVerifier = class {
       };
     }
     const nowIso = (/* @__PURE__ */ new Date()).toISOString();
-    if (!requiresGps) {
-      const presentRecord = {
+    if (!isGroundMode) {
+      const travellingRecord = {
         id: `ATT-${todayDate.replace(/-/g, "")}-${sessionType}-${student.id}`,
         studentId: student.id,
         busId: student.busId,
         attendanceDate: todayDate,
         sessionType,
-        attendanceMode: activeDynamicSession?.attendanceMode || "TRAVELLING",
+        attendanceMode: "TRAVELLING",
         sessionId,
         status: "PRESENT",
-        codeUsed: req.code?.trim(),
         latitude: typeof req.latitude === "number" ? req.latitude : null,
         longitude: typeof req.longitude === "number" ? req.longitude : null,
         accuracyMeters: typeof req.accuracy === "number" ? req.accuracy : null,
         distanceMeters: null,
         capturedAt: req.capturedAt || nowIso,
         verifiedAt: nowIso,
-        verificationMethod: "DYNAMIC_CODE"
+        verificationMethod: "TRAVELLING_SESSION_PARTICIPATION"
       };
-      await this.storage.createAttendance(presentRecord);
+      const saved = await this.storage.createAttendance(travellingRecord);
       return {
         status: "PRESENT",
-        message: "Attendance verified successfully.",
+        message: `Travelling bus participation verified for Bus ${bus.busNumber}.`,
         verifiedAt: nowIso,
-        record: presentRecord,
+        record: saved,
         studentName: student.name,
         registerNumber: student.registerNumber,
         busId: student.busId
@@ -35081,19 +37104,19 @@ var AttendanceVerifier = class {
     let readings = [];
     if (req.readings && Array.isArray(req.readings) && req.readings.length > 0) {
       readings = req.readings;
-    } else if (typeof req.latitude === "number" && typeof req.longitude === "number" && typeof req.accuracy === "number") {
+    } else if (typeof req.latitude === "number" && typeof req.longitude === "number") {
       readings = [
         {
           latitude: req.latitude,
           longitude: req.longitude,
-          accuracy: req.accuracy,
+          accuracy: typeof req.accuracy === "number" ? req.accuracy : 5,
           timestamp: req.capturedAt || nowIso
         }
       ];
     } else {
       return {
-        status: "LOCATION_UNAVAILABLE",
-        message: "Location access required. Enable location in Chrome and try again."
+        status: "LOCATION_PERMISSION_DENIED",
+        message: "Location access is required for ground verification. Please allow GPS permissions in your browser and retry."
       };
     }
     const calculatedDistances = [];
@@ -35102,25 +37125,20 @@ var AttendanceVerifier = class {
       if (typeof r.latitude !== "number" || isNaN(r.latitude) || r.latitude < -90 || r.latitude > 90 || typeof r.longitude !== "number" || isNaN(r.longitude) || r.longitude < -180 || r.longitude > 180) {
         return {
           status: "INVALID_LOCATION",
-          message: "Invalid GPS coordinates detected."
+          message: "Invalid GPS coordinates detected from mobile device."
         };
       }
-      if (typeof r.accuracy !== "number" || isNaN(r.accuracy) || r.accuracy < 0) {
+      const acc = typeof r.accuracy === "number" && !isNaN(r.accuracy) ? r.accuracy : 10;
+      if (acc > maxAccuracy) {
         return {
-          status: "LOCATION_UNAVAILABLE",
-          message: "Invalid GPS accuracy received."
-        };
-      }
-      if (r.accuracy > maxAccuracy) {
-        return {
-          status: "LOCATION_UNAVAILABLE",
-          message: `Location accuracy (${Math.round(r.accuracy)}m) is insufficient. Move to an open area and try again.`,
-          accuracyMeters: r.accuracy
+          status: "LOW_GPS_ACCURACY",
+          message: `Location accuracy (${Math.round(acc)}m) is insufficient. Acceptable tolerance is within ${maxAccuracy}m. Move to an open area away from tall obstacles and retry.`,
+          accuracyMeters: acc
         };
       }
       const dist = calculateDistance(r.latitude, r.longitude, targetLat, targetLon);
       calculatedDistances.push(dist);
-      accuracies.push(r.accuracy);
+      accuracies.push(acc);
     }
     const avgDistance = Math.round(
       calculatedDistances.reduce((a, b) => a + b, 0) / calculatedDistances.length * 100
@@ -35131,8 +37149,8 @@ var AttendanceVerifier = class {
     const jitterSpread = Math.round((maxDist - minDist) * 100) / 100;
     if (readings.length >= 2 && jitterSpread > 25) {
       return {
-        status: "LOCATION_UNAVAILABLE",
-        message: "Your current location cannot be verified accurately. Move to an open area and try again.",
+        status: "LOW_GPS_ACCURACY",
+        message: "High GPS jitter detected. Move to an open area with clear sky view and retry.",
         distanceMeters: avgDistance,
         accuracyMeters: avgAccuracy
       };
@@ -35144,34 +37162,33 @@ var AttendanceVerifier = class {
         busId: student.busId,
         attendanceDate: todayDate,
         sessionType,
-        attendanceMode: activeDynamicSession?.attendanceMode || "GROUND",
+        attendanceMode: "GROUND",
         sessionId,
         status: "PRESENT",
-        codeUsed: req.code?.trim(),
         latitude: readings[0].latitude,
         longitude: readings[0].longitude,
         accuracyMeters: avgAccuracy,
         distanceMeters: avgDistance,
         capturedAt: req.capturedAt || nowIso,
         verifiedAt: nowIso,
-        verificationMethod: "DYNAMIC_CODE_GPS"
+        verificationMethod: "GROUND_GEOFENCE"
       };
-      await this.storage.createAttendance(presentRecord);
+      const saved = await this.storage.createAttendance(presentRecord);
       return {
         status: "PRESENT",
-        message: `Verified at ${targetName} (${avgDistance}m).`,
+        message: `Verified at ${targetName} (${avgDistance}m from bay, geofence radius: ${targetRadius}m).`,
         distanceMeters: avgDistance,
         accuracyMeters: avgAccuracy,
         verifiedAt: nowIso,
-        record: presentRecord,
+        record: saved,
         studentName: student.name,
         registerNumber: student.registerNumber,
         busId: student.busId
       };
     } else {
       return {
-        status: "INVALID_LOCATION",
-        message: isGroundMode ? `Outside stationary bus bay boundary (${avgDistance}m away). Stay within ${targetRadius}m of ${targetName}.` : `Outside travelling transit boundary (${avgDistance}m away). Allowable transit motion radius is ${targetRadius}m.`,
+        status: "OUTSIDE_GEOFENCE",
+        message: `Outside College Ground geofence (${avgDistance}m away). You must be within ${targetRadius}m of ${targetName}.`,
         distanceMeters: avgDistance,
         accuracyMeters: avgAccuracy
       };
@@ -35185,17 +37202,33 @@ var ReportGenerator = class {
     this.storage = storage2;
   }
   storage;
-  async generateDailyReport(customDate) {
-    const date = customDate || getISTDateString();
+  async generateDailyReport(customDateOrSession, sessionTypeParam) {
+    let date = getISTDateString();
+    let sessionType = "EVENING";
+    if (customDateOrSession === "MORNING" || customDateOrSession === "EVENING") {
+      sessionType = customDateOrSession;
+      if (sessionTypeParam && /^\d{4}-\d{2}-\d{2}$/.test(sessionTypeParam)) {
+        date = sessionTypeParam;
+      }
+    } else if (customDateOrSession) {
+      date = customDateOrSession;
+      if (sessionTypeParam) {
+        sessionType = sessionTypeParam;
+      }
+    } else if (sessionTypeParam) {
+      sessionType = sessionTypeParam;
+    }
     const students = await this.storage.getStudents();
-    const activeStudents = students.filter((s) => s.active);
+    const eligibleStudents = students.filter(
+      (s) => s.active && s.approved && (s.status === "APPROVED" || s.status === void 0) && s.busId
+    );
     const buses = await this.storage.getBuses();
     const attendanceRecords = await this.storage.getAttendance({
       date,
-      sessionType: "EVENING"
+      sessionType
     });
     const attendanceMap = new Map(attendanceRecords.map((r) => [r.studentId, r]));
-    const studentWise = activeStudents.map((s) => {
+    const studentWise = eligibleStudents.map((s) => {
       const bus = buses.find((b) => b.id === s.busId);
       const record = attendanceMap.get(s.id);
       return {
@@ -35207,17 +37240,29 @@ var ReportGenerator = class {
         status: record ? record.status : "NOT_PRESENT",
         verifiedAt: record?.verifiedAt,
         distanceMeters: record?.distanceMeters,
-        accuracyMeters: record?.accuracyMeters
+        accuracyMeters: record?.accuracyMeters,
+        verificationMethod: record?.verificationMethod
       };
     });
     const busWise = buses.filter((b) => b.active).map((bus) => {
-      const busStudents = activeStudents.filter((s) => s.busId === bus.id);
+      const busStudents = eligibleStudents.filter((s) => s.busId === bus.id);
       const total = busStudents.length;
-      const present2 = busStudents.filter((s) => {
+      let groundCount = 0;
+      let travellingCount = 0;
+      const presentStudents = busStudents.filter((s) => {
         const rec = attendanceMap.get(s.id);
-        return rec && rec.status === "PRESENT";
-      }).length;
-      const notPresent2 = total - present2;
+        if (rec && rec.status === "PRESENT") {
+          if (rec.verificationMethod === "TRAVELLING_SESSION_PARTICIPATION") {
+            travellingCount++;
+          } else {
+            groundCount++;
+          }
+          return true;
+        }
+        return false;
+      });
+      const present2 = presentStudents.length;
+      const notPresent2 = Math.max(0, total - present2);
       const percentage2 = total > 0 ? Math.round(present2 / total * 1e4) / 100 : 0;
       return {
         busId: bus.id,
@@ -35226,17 +37271,19 @@ var ReportGenerator = class {
         total,
         present: present2,
         notPresent: notPresent2,
-        percentage: percentage2
+        percentage: percentage2,
+        groundCount,
+        travellingCount
       };
     });
-    const totalStudents = activeStudents.length;
+    const totalStudents = eligibleStudents.length;
     const present = studentWise.filter((s) => s.status === "PRESENT").length;
-    const notPresent = totalStudents - present;
+    const notPresent = Math.max(0, totalStudents - present);
     const percentage = totalStudents > 0 ? Math.round(present / totalStudents * 1e4) / 100 : 0;
     const report = {
-      id: `REP-${date.replace(/-/g, "")}-EVENING`,
+      id: `REP-${date.replace(/-/g, "")}-${sessionType}`,
       date,
-      sessionType: "EVENING",
+      sessionType,
       totalStudents,
       present,
       notPresent,
@@ -35247,8 +37294,8 @@ var ReportGenerator = class {
     };
     await this.storage.saveReport(report);
     await this.storage.createNotification({
-      title: "\u{1F514} Evening Bus Attendance Report",
-      message: `Attendance completed for today. Total Students: ${totalStudents}, Present: ${present}, Not Present: ${notPresent}, Attendance: ${percentage}%`,
+      title: `\u{1F514} ${sessionType === "MORNING" ? "Morning" : "Evening"} Bus Attendance Report`,
+      message: `${sessionType} attendance finalized for ${date}. Total Eligible: ${totalStudents}, Present: ${present}, Absent: ${notPresent}, Turnout: ${percentage}%`,
       type: "REPORT",
       date,
       read: false,
@@ -35258,19 +37305,13 @@ var ReportGenerator = class {
         present,
         notPresent,
         percentage,
+        sessionType,
         reportId: report.id
       }
     });
     return report;
   }
 };
-
-// src/server/attendance/codeGenerator.ts
-import crypto2 from "crypto";
-function generateDynamic6DigitCode() {
-  return crypto2.randomInt(1e5, 1e6).toString();
-}
-var CODE_VALIDITY_MS = 60 * 1e3;
 
 // src/server/api.ts
 import crypto5 from "crypto";
@@ -35984,38 +38025,193 @@ var MobileBiometricEngine = class {
   /**
    * Verifies the cryptographic assertion returned by the phone's biometric sensor.
    */
-  verifyAssertion(studentId, payload) {
-    const stored = this.activeChallenges.get(studentId);
-    if (stored && stored.expiresAt < Date.now()) {
-      this.activeChallenges.delete(studentId);
-      return { verified: false, message: "Biometric authentication challenge expired. Please retry." };
-    }
-    if (payload.credentialId || payload.rawId || payload.signature) {
-      if (stored) {
-        this.activeChallenges.delete(studentId);
-      }
-      return {
-        verified: true,
-        message: "Mobile phone fingerprint sensor assertion verified successfully."
-      };
-    }
+  verifyAssertion(_studentId, _payload) {
     return {
       verified: false,
-      message: "Invalid biometric authentication response from mobile device."
+      message: "Mobile biometric WebAuthn verification is disabled pending server-side cryptographic public-key validation."
     };
   }
 };
 var mobileBiometricEngine = new MobileBiometricEngine();
 
+// src/server/attendance/scheduleEngine.ts
+async function reconcileEveningSchedule(storage2, reportGen2, forceDate, simulatedTime) {
+  const settings = await storage2.getSettings();
+  const tz = settings.timezone || "Asia/Kolkata";
+  const timeIST = simulatedTime || getISTTimeString(/* @__PURE__ */ new Date(), tz);
+  const dateIST = forceDate || getISTDateString(/* @__PURE__ */ new Date(), tz);
+  const startMinutes = timeToMinutes(settings.startTime || "16:50");
+  const endMinutes = timeToMinutes(settings.endTime || "16:55");
+  const reportMinutes = timeToMinutes(settings.reportTime || "16:57");
+  const currentMinutes = timeToMinutes(timeIST);
+  const autoScheduleEnabled = Boolean(settings.autoScheduleEnabled || settings.simulation?.enabled);
+  if (currentMinutes < startMinutes) {
+    return {
+      executedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      timeIST,
+      dateIST,
+      autoScheduleEnabled,
+      action: "IDLE",
+      details: `Current time ${timeIST} IST is prior to scheduled window (${settings.startTime} IST).`
+    };
+  }
+  if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
+    if (!autoScheduleEnabled) {
+      return {
+        executedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        timeIST,
+        dateIST,
+        autoScheduleEnabled,
+        action: "IDLE",
+        details: "Auto-scheduling is disabled. In-Charge manual start available."
+      };
+    }
+    const existingSession = await storage2.getActiveSession();
+    if (existingSession && existingSession.status === "ACTIVE" && existingSession.sessionType === "EVENING") {
+      return {
+        executedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        timeIST,
+        dateIST,
+        autoScheduleEnabled,
+        action: "IDLE",
+        details: `Active evening session ${existingSession.id} is already in progress.`
+      };
+    }
+    const buses = await storage2.getBuses();
+    const activeBuses = buses.filter((b) => b.active);
+    const busId = activeBuses.length > 0 ? activeBuses[0].id : "BUS01";
+    const sessionId = `SCHED-EVENING-${dateIST.replace(/-/g, "")}-${busId}`;
+    const newSession = await storage2.saveActiveSession({
+      id: sessionId,
+      sessionType: "EVENING",
+      attendanceMode: "GROUND",
+      verificationMethod: "GROUND_GEOFENCE",
+      busId,
+      status: "ACTIVE",
+      startedBy: "Application-Level Schedule Engine",
+      radiusMeters: settings.location?.radiusMeters || 10,
+      maxGpsAccuracyMeters: settings.location?.maxGpsAccuracyMeters || 20,
+      location: {
+        type: "FIXED",
+        name: settings.location?.name || "College Ground",
+        latitude: settings.location?.latitude || 10.9572,
+        longitude: settings.location?.longitude || 78.0766,
+        accuracyMeters: 5,
+        updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+      },
+      startedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      endedAt: null
+    });
+    const eligibleStudents = await storage2.getStudents({ busId, status: "APPROVED" });
+    await storage2.createNotification({
+      title: "\u{1F68C} Scheduled Evening Attendance Started",
+      message: `Evening attendance is now active at College Ground. Please verify within the 5-minute window.`,
+      type: "SESSION_START",
+      date: dateIST,
+      read: false,
+      link: "/student/dashboard",
+      busId,
+      targetRole: "STUDENT"
+    });
+    return {
+      executedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      timeIST,
+      dateIST,
+      autoScheduleEnabled,
+      action: "STARTED_SESSION",
+      sessionId: newSession.id,
+      details: `Evening attendance session started for ${busId} (${eligibleStudents.length} commuters notified).`
+    };
+  }
+  const activeSession = await storage2.getActiveSession();
+  if (activeSession && activeSession.status === "ACTIVE" && activeSession.sessionType === "EVENING") {
+    await storage2.endActiveSession(activeSession.id);
+    await storage2.createNotification({
+      title: "\u{1F68C} Evening Attendance Window Closed",
+      message: `The evening attendance session has been finalized.`,
+      type: "SYSTEM",
+      date: dateIST,
+      read: false,
+      link: "/student/dashboard",
+      busId: activeSession.busId,
+      targetRole: "STUDENT"
+    });
+    if (currentMinutes >= reportMinutes) {
+      const finalReport = await reportGen2.generateDailyReport(dateIST, "EVENING");
+      await storage2.createNotification({
+        title: "\u{1F4CA} Daily Evening Attendance Report Finalized",
+        message: `Evening report: ${finalReport.present}/${finalReport.totalStudents} commuters present (${finalReport.percentage}%).`,
+        type: "REPORT",
+        date: dateIST,
+        read: false,
+        link: "/admin/reports",
+        targetRole: "ADMIN"
+      });
+      return {
+        executedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        timeIST,
+        dateIST,
+        autoScheduleEnabled,
+        action: "RECOVERED_SESSION",
+        sessionId: activeSession.id,
+        reportId: finalReport.id,
+        details: `Active session closed and report finalized during schedule reconciliation.`
+      };
+    }
+    return {
+      executedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      timeIST,
+      dateIST,
+      autoScheduleEnabled,
+      action: "CLOSED_SESSION",
+      sessionId: activeSession.id,
+      details: "Active evening session closed idempotently at scheduled close boundary."
+    };
+  }
+  if (currentMinutes >= reportMinutes) {
+    const finalReport = await reportGen2.generateDailyReport(dateIST, "EVENING");
+    await storage2.createNotification({
+      title: "\u{1F4CA} Daily Evening Attendance Report Finalized",
+      message: `Evening report: ${finalReport.present}/${finalReport.totalStudents} present (${finalReport.percentage}%).`,
+      type: "REPORT",
+      date: dateIST,
+      read: false,
+      link: "/admin/reports",
+      targetRole: "ADMIN"
+    });
+    return {
+      executedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      timeIST,
+      dateIST,
+      autoScheduleEnabled,
+      action: "FINALIZED_REPORT",
+      reportId: finalReport.id,
+      details: `Daily evening report generated and Admin notified.`
+    };
+  }
+  return {
+    executedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    timeIST,
+    dateIST,
+    autoScheduleEnabled,
+    action: "IDLE",
+    details: "Schedule state is reconciled and up-to-date."
+  };
+}
+
 // src/server/api.ts
 var apiRouter = (0, import_express.Router)();
 apiRouter.use(import_express.default.json({ limit: "50mb" }));
 apiRouter.use(import_express.default.urlencoded({ limit: "50mb", extended: true }));
-var storage = getStorage();
+var storage = new Proxy({}, {
+  get(_target, prop) {
+    const inst = getStorage();
+    const val = inst[prop];
+    return typeof val === "function" ? val.bind(inst) : val;
+  }
+});
 var verifier = new AttendanceVerifier(storage);
 var reportGen = new ReportGenerator(storage);
-var otpStore = /* @__PURE__ */ new Map();
-var resetTokenStore = /* @__PURE__ */ new Map();
 function requireAuth(roles) {
   return (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -36053,11 +38249,12 @@ apiRouter.post("/auth/setup", async (req, res) => {
     if (!name || !email || !password) {
       return res.status(400).json({ error: "Name, email, and password are required for initial setup." });
     }
+    const passwordHash = await hashPassword(password);
     const adminUser = {
       id: `ADMIN-${Date.now()}`,
       name: name.trim(),
       email: email.trim().toLowerCase(),
-      password,
+      password: passwordHash,
       role: "ADMIN",
       active: true,
       approved: true,
@@ -36118,29 +38315,28 @@ apiRouter.post("/auth/signup/request-otp", async (req, res) => {
       if (!cleanBusNumber) {
         return res.status(400).json({ error: "Bus Number is mandatory for Bus In-Charge registration." });
       }
-      const otp2 = Math.floor(1e5 + Math.random() * 9e5).toString();
-      const expiresAt2 = Date.now() + 10 * 60 * 1e3;
-      otpStore.set(cleanEmail, {
-        otp: otp2,
+      const otp2 = crypto5.randomInt(1e5, 1e6).toString();
+      const otpHash2 = crypto5.createHash("sha256").update(otp2).digest("hex");
+      const passwordHash2 = await hashPassword(password);
+      const expiresAt2 = new Date(Date.now() + 10 * 60 * 1e3).toISOString();
+      await storage.saveOtp({
+        id: crypto5.randomUUID(),
+        email: cleanEmail,
+        otpHash: otpHash2,
         expiresAt: expiresAt2,
         attempts: 0,
+        verified: false,
         signupData: {
           role: "INCHARGE",
           name: name.trim(),
           email: cleanEmail,
           phone: phone?.trim(),
-          password,
+          passwordHash: passwordHash2,
           busNumber: cleanBusNumber,
           routeName: routeName?.trim() || `${cleanBusNumber} Route`
-        }
+        },
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
       });
-      try {
-        if ("saveOtp" in storage && typeof storage.saveOtp === "function") {
-          await storage.saveOtp(cleanEmail, otp2, new Date(expiresAt2));
-        }
-      } catch (dbErr) {
-        console.warn("\u26A0\uFE0F Could not write OTP to PostgreSQL, proceeding with active memory store:", dbErr);
-      }
       const dispatchResult2 = await brevoMailer.sendOtpEmail(cleanEmail, name.trim(), otp2);
       return res.json({
         success: true,
@@ -36157,51 +38353,39 @@ apiRouter.post("/auth/signup/request-otp", async (req, res) => {
     if (existingStudent) {
       return res.status(400).json({ error: `Register number ${cleanRegNo} is already registered.` });
     }
+    let preferredBus = void 0;
     const cleanBusInput = (preferredBusId || busNumber || "").trim();
-    if (!cleanBusInput) {
-      return res.status(400).json({
-        error: "Bus selection is mandatory. Students can only register for an assigned Bus In-Charge bus."
-      });
+    if (cleanBusInput) {
+      const buses = await storage.getBuses();
+      const matched = buses.find(
+        (b) => b.id.toLowerCase() === cleanBusInput.toLowerCase() || b.busNumber.toLowerCase() === cleanBusInput.toLowerCase()
+      );
+      if (matched) {
+        preferredBus = matched.id;
+      }
     }
-    const buses = await storage.getBuses();
-    const matchedBus = buses.find(
-      (b) => b.id.toLowerCase() === cleanBusInput.toLowerCase() || b.busNumber.toLowerCase() === cleanBusInput.toLowerCase()
-    );
-    if (!matchedBus) {
-      return res.status(400).json({
-        error: `Bus '${cleanBusInput}' is not recognized. Students must register for an operational Bus In-Charge bus.`
-      });
-    }
-    const users = await storage.getUsers();
-    const hasAssignedIncharge = Boolean(matchedBus.inchargeId && matchedBus.inchargeId.length > 0) || users.some((u) => u.role === "INCHARGE" && u.assignedBusId === matchedBus.id);
-    if (!hasAssignedIncharge) {
-      return res.status(400).json({
-        error: `Bus '${matchedBus.busNumber}' does not have an approved Bus In-Charge assigned yet. Please select an operational In-Charge bus.`
-      });
-    }
-    const otp = Math.floor(1e5 + Math.random() * 9e5).toString();
-    const expiresAt = Date.now() + 10 * 60 * 1e3;
-    otpStore.set(cleanEmail, {
-      otp,
+    const otp = crypto5.randomInt(1e5, 1e6).toString();
+    const otpHash = crypto5.createHash("sha256").update(otp).digest("hex");
+    const passwordHash = await hashPassword(password);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1e3).toISOString();
+    await storage.saveOtp({
+      id: crypto5.randomUUID(),
+      email: cleanEmail,
+      otpHash,
       expiresAt,
       attempts: 0,
+      verified: false,
       signupData: {
         role: "STUDENT",
         name: name.trim(),
         registerNumber: cleanRegNo,
         email: cleanEmail,
         phone: phone?.trim(),
-        password,
-        preferredBusId: matchedBus.id
-      }
+        passwordHash,
+        preferredBusId: preferredBus
+      },
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
     });
-    try {
-      if ("saveOtp" in storage && typeof storage.saveOtp === "function") {
-        await storage.saveOtp(cleanEmail, otp, new Date(expiresAt));
-      }
-    } catch (dbErr) {
-      console.warn("\u26A0\uFE0F Could not write OTP to PostgreSQL, proceeding with active memory store:", dbErr);
-    }
     const dispatchResult = await brevoMailer.sendOtpEmail(cleanEmail, name.trim(), otp);
     return res.json({
       success: true,
@@ -36220,35 +38404,38 @@ apiRouter.post("/auth/signup/verify-otp", async (req, res) => {
       return res.status(400).json({ error: "Email and 6-digit OTP code are required." });
     }
     const cleanEmail = email.trim().toLowerCase();
-    const record = otpStore.get(cleanEmail);
-    if (!record) {
+    const record = await storage.getOtp(cleanEmail);
+    if (!record || record.verified) {
       return res.status(400).json({ error: "No pending OTP verification found for this email. Please request a new code." });
     }
-    if (Date.now() > record.expiresAt) {
-      otpStore.delete(cleanEmail);
+    if (new Date(record.expiresAt).getTime() < Date.now()) {
       return res.status(400).json({ error: "Verification code has expired. Please request a new code." });
     }
-    record.attempts += 1;
-    if (record.attempts > 5) {
-      otpStore.delete(cleanEmail);
+    const attempts = await storage.incrementOtpAttempts(record.id);
+    if (attempts > 5) {
       return res.status(429).json({ error: "Too many incorrect attempts. Please request a new code." });
     }
-    if (record.otp !== otp.trim()) {
+    const inputHash = crypto5.createHash("sha256").update(String(otp).trim()).digest("hex");
+    if (record.otpHash !== inputHash) {
       return res.status(400).json({ error: "Invalid verification code. Please check and try again." });
     }
-    if (record.signupData.role === "INCHARGE") {
+    await storage.markOtpVerified(record.id);
+    const signupData = record.signupData;
+    if (!signupData) {
+      return res.status(400).json({ error: "Registration payload expired. Please register again." });
+    }
+    if (signupData.role === "INCHARGE") {
       const incharge = await storage.signupIncharge({
-        name: record.signupData.name,
-        email: record.signupData.email,
-        phone: record.signupData.phone,
-        password: record.signupData.password,
-        busNumber: record.signupData.busNumber || "",
-        routeName: record.signupData.routeName
+        name: signupData.name,
+        email: signupData.email,
+        phone: signupData.phone,
+        password: signupData.passwordHash,
+        busNumber: signupData.busNumber || "",
+        routeName: signupData.routeName
       });
-      otpStore.delete(cleanEmail);
       return res.status(201).json({
         success: true,
-        message: `Email verified successfully! Your Bus In-Charge registration for Bus ${record.signupData.busNumber} has been submitted for Admin approval.`,
+        message: `Email verified successfully! Your Bus In-Charge registration for Bus ${signupData.busNumber} has been submitted for Admin approval.`,
         role: "INCHARGE",
         user: {
           id: incharge.id,
@@ -36262,14 +38449,13 @@ apiRouter.post("/auth/signup/verify-otp", async (req, res) => {
       });
     }
     const student = await storage.signupStudent({
-      name: record.signupData.name,
-      registerNumber: record.signupData.registerNumber,
-      email: record.signupData.email,
-      phone: record.signupData.phone,
-      password: record.signupData.password,
-      preferredBusId: record.signupData.preferredBusId
+      name: signupData.name,
+      registerNumber: signupData.registerNumber,
+      email: signupData.email,
+      phone: signupData.phone,
+      password: signupData.passwordHash,
+      preferredBusId: signupData.preferredBusId
     });
-    otpStore.delete(cleanEmail);
     return res.status(201).json({
       success: true,
       message: "Email verified successfully! Your account is submitted for Admin approval.",
@@ -36301,11 +38487,15 @@ apiRouter.post("/auth/forgot-password", async (req, res) => {
       });
     }
     const token = crypto5.randomBytes(32).toString("hex");
-    const expiresAt = Date.now() + 15 * 60 * 1e3;
-    resetTokenStore.set(token, {
+    const tokenHash = crypto5.createHash("sha256").update(token).digest("hex");
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1e3).toISOString();
+    await storage.savePasswordReset({
+      id: crypto5.randomUUID(),
       email: cleanEmail,
+      tokenHash,
       expiresAt,
-      used: false
+      used: false,
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
     });
     const host = req.get("host") || "localhost:3000";
     const protocol = req.protocol === "https" || req.get("x-forwarded-proto") === "https" ? "https" : "http";
@@ -36325,24 +38515,24 @@ apiRouter.post("/auth/reset-password", async (req, res) => {
     if (!token || !newPassword) {
       return res.status(400).json({ error: "Reset token and new password are required." });
     }
-    if (newPassword.length < 4) {
-      return res.status(400).json({ error: "Password must be at least 4 characters long." });
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters long." });
     }
-    const record = resetTokenStore.get(token);
+    const tokenHash = crypto5.createHash("sha256").update(String(token).trim()).digest("hex");
+    const record = await storage.getPasswordReset(tokenHash);
     if (!record || record.used) {
       return res.status(400).json({ error: "Invalid or already used reset token. Please request a new link." });
     }
-    if (Date.now() > record.expiresAt) {
-      resetTokenStore.delete(token);
+    if (new Date(record.expiresAt).getTime() < Date.now()) {
       return res.status(400).json({ error: "Reset token has expired. Please request a new link." });
     }
     const user = await storage.getUserByEmail(record.email);
     if (!user) {
       return res.status(404).json({ error: "User account not found." });
     }
-    await storage.updateUser(user.id, { password: newPassword });
-    record.used = true;
-    resetTokenStore.delete(token);
+    const passwordHash = await hashPassword(newPassword);
+    await storage.updateUser(user.id, { password: passwordHash });
+    await storage.markPasswordResetUsed(record.id);
     return res.json({
       success: true,
       message: "Password successfully updated! You can now log in with your new credentials."
@@ -36392,7 +38582,7 @@ apiRouter.post("/auth/login", async (req, res) => {
         user = users.find((u) => u.id === student.id || u.studentId === student.id || u.email.toLowerCase() === student.email.toLowerCase());
       }
     }
-    const isPasswordValid = Boolean(user && user.password && user.password === password);
+    const isPasswordValid = Boolean(user && user.password && await comparePassword(password, user.password));
     if (!user || !isPasswordValid) {
       return res.status(401).json({ error: "Invalid email/register number or password." });
     }
@@ -36546,6 +38736,8 @@ apiRouter.post("/admin/incharges/:id/reject", requireAuth(["ADMIN"]), async (req
 });
 apiRouter.get("/attendance/session", async (req, res) => {
   try {
+    await reconcileEveningSchedule(storage, reportGen).catch(() => {
+    });
     const { busId } = req.query;
     const activeDynamic = await storage.getActiveSession(
       typeof busId === "string" ? busId : void 0
@@ -36583,41 +38775,51 @@ apiRouter.get("/attendance/session", async (req, res) => {
 });
 var handleStartSession = async (req, res) => {
   try {
-    const { sessionType, attendanceMode, verificationMethod, busId, radiusMeters, maxGpsAccuracyMeters, latitude, longitude, accuracy } = req.body;
+    if (req.user.role !== "INCHARGE") {
+      return res.status(403).json({
+        error: "Only authorized Bus In-Charges can start attendance sessions. Admin accounts have read-only access."
+      });
+    }
+    const { sessionType, attendanceMode, busId, radiusMeters, maxGpsAccuracyMeters, latitude, longitude, accuracy } = req.body;
     if (!sessionType || !attendanceMode || !busId) {
       return res.status(400).json({
         error: "Session type (MORNING/EVENING), attendance mode (GROUND/TRAVELLING), and busId are required."
       });
     }
-    if (req.user.role === "INCHARGE" && req.user.assignedBusId && req.user.assignedBusId !== busId) {
-      return res.status(403).json({ error: `You are authorized to manage ${req.user.assignedBusId} only.` });
+    const bus = await storage.getBusById(busId);
+    if (!bus) {
+      return res.status(404).json({ error: `Bus ${busId} not found.` });
+    }
+    const isAuthorized = bus.inchargeId === req.user.id || req.user.assignedBusId === bus.id || req.user.assignedBusId === bus.busNumber;
+    if (!isAuthorized) {
+      return res.status(403).json({
+        error: `You are not authorized to start attendance for Bus ${bus.busNumber}. Access is restricted to assigned bus in-charges only.`
+      });
+    }
+    const existingSession = await storage.getActiveSession(busId);
+    if (existingSession && existingSession.status === "ACTIVE") {
+      return res.status(400).json({
+        error: `An active attendance session is already in progress for Bus ${bus.busNumber}.`,
+        session: existingSession
+      });
     }
     const settings = await storage.getSettings();
     const now = Date.now();
     const nowIso = new Date(now).toISOString();
     const sessionId = `SESSION-${now}-${busId}`;
-    const chosenVerification = verificationMethod === "FACE_GPS" || verificationMethod === "PHONE_BIOMETRIC_GPS" || verificationMethod === "CODE_ONLY" ? verificationMethod : "CODE_GPS";
+    const isTravelling = attendanceMode === "TRAVELLING";
+    const chosenVerification = isTravelling ? "TRAVELLING_SESSION_PARTICIPATION" : "GROUND_GEOFENCE";
     let locationLat = Number(latitude);
     let locationLon = Number(longitude);
     let locAccuracy = Number(accuracy) || 10;
-    let locName = req.body.locationName ? String(req.body.locationName).trim() : attendanceMode === "TRAVELLING" ? `Travelling Bus (${busId})` : settings.location.name;
-    if (attendanceMode === "GROUND") {
+    let locName = req.body.locationName ? String(req.body.locationName).trim() : isTravelling ? `Travelling Bus (${bus.busNumber})` : settings.location.name || "College Ground";
+    if (!isTravelling) {
       locationLat = isNaN(locationLat) || !latitude ? settings.location.latitude : locationLat;
       locationLon = isNaN(locationLon) || !longitude ? settings.location.longitude : locationLon;
-      locName = req.body.locationName ? String(req.body.locationName).trim() : settings.location.name;
+      locName = req.body.locationName ? String(req.body.locationName).trim() : settings.location.name || "College Ground";
     }
-    const dynamicCode = generateDynamic6DigitCode();
-    const codeExpiresAt = new Date(now + 60 * 1e3).toISOString();
-    const isTravelling = attendanceMode === "TRAVELLING";
-    let finalRadius;
-    let finalMaxGpsAccuracy;
-    if (isTravelling) {
-      finalRadius = Number(radiusMeters) > 0 ? Number(radiusMeters) : 1e3;
-      finalMaxGpsAccuracy = Number(maxGpsAccuracyMeters) > 0 ? Number(maxGpsAccuracyMeters) : 1500;
-    } else {
-      finalRadius = Number(radiusMeters) > 0 ? Math.min(Number(radiusMeters), 100) : settings.location.radiusMeters || 35;
-      finalMaxGpsAccuracy = Number(maxGpsAccuracyMeters) > 0 ? Math.min(Number(maxGpsAccuracyMeters), 100) : settings.location.maxGpsAccuracyMeters || 60;
-    }
+    const finalRadius = isTravelling ? Number(radiusMeters) > 0 ? Number(radiusMeters) : 1e3 : Number(radiusMeters) > 0 ? Number(radiusMeters) : settings.location.radiusMeters || 10;
+    const finalMaxGpsAccuracy = isTravelling ? Number(maxGpsAccuracyMeters) > 0 ? Number(maxGpsAccuracyMeters) : 1500 : Number(maxGpsAccuracyMeters) > 0 ? Number(maxGpsAccuracyMeters) : settings.location.maxGpsAccuracyMeters || 20;
     const activeSession = await storage.saveActiveSession({
       id: sessionId,
       sessionType,
@@ -36626,9 +38828,6 @@ var handleStartSession = async (req, res) => {
       busId,
       status: "ACTIVE",
       startedBy: req.user.name,
-      currentCode: dynamicCode,
-      codeIssuedAt: nowIso,
-      codeExpiresAt,
       radiusMeters: finalRadius,
       maxGpsAccuracyMeters: finalMaxGpsAccuracy,
       location: {
@@ -36642,11 +38841,9 @@ var handleStartSession = async (req, res) => {
       startedAt: nowIso,
       endedAt: null
     });
-    const bus = await storage.getBusById(busId);
-    const busLabel = bus ? bus.busNumber : busId;
     await storage.createNotification({
       title: `\u{1F68C} ${sessionType === "MORNING" ? "Morning" : "Evening"} Bus Attendance Started`,
-      message: `Bus: ${busLabel} \u2022 Attendance is active. Enter the current attendance code to verify.`,
+      message: `Bus: ${bus.busNumber} \u2022 Attendance session is now active (${attendanceMode} mode). Open your attendance portal to verify presence.`,
       type: "SESSION_START",
       date: getISTDateString(),
       read: false,
@@ -36662,36 +38859,74 @@ var handleStartSession = async (req, res) => {
       }
     });
     return res.status(201).json({
-      message: `${sessionType} attendance session started for ${busId} (${attendanceMode} mode).`,
+      message: `${sessionType} attendance session started for Bus ${bus.busNumber} (${attendanceMode} mode).`,
       session: activeSession
     });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message || "Failed to start session." });
   }
 };
-apiRouter.post("/attendance/session/start", requireAuth(["ADMIN", "INCHARGE"]), handleStartSession);
-apiRouter.post("/admin/attendance/start", requireAuth(["ADMIN", "INCHARGE"]), handleStartSession);
+apiRouter.post("/attendance/session/start", requireAuth(["INCHARGE"]), handleStartSession);
+apiRouter.post("/admin/attendance/start", requireAuth(["ADMIN"]), (_req, res) => {
+  return res.status(403).json({
+    error: "Admins have read-only access to attendance and cannot start sessions. Only assigned Bus In-Charges can operate daily attendance."
+  });
+});
 var handleEndSession = async (req, res) => {
   try {
+    if (req.user.role !== "INCHARGE") {
+      return res.status(403).json({
+        error: "Only authorized Bus In-Charges can end attendance sessions. Admin accounts have read-only access."
+      });
+    }
     const { sessionId } = req.body;
+    if (!sessionId) {
+      return res.status(400).json({ error: "sessionId is required to end attendance." });
+    }
+    const session = await storage.getSessionById(sessionId) || await storage.getActiveSession(req.user.assignedBusId) || await storage.getActiveSession();
+    if (!session) {
+      return res.status(404).json({ error: "Attendance session not found or already concluded." });
+    }
+    if (session.busId && session.busId !== "ALL") {
+      const bus = await storage.getBusById(session.busId);
+      const isAuthorized = !bus || bus.inchargeId === req.user.id || req.user.assignedBusId === bus.id || req.user.assignedBusId === bus.busNumber;
+      if (!isAuthorized) {
+        return res.status(403).json({
+          error: "You are not authorized to close another in-charge\u2019s attendance session."
+        });
+      }
+    }
     await storage.endActiveSession(sessionId);
+    const sessionType = session.sessionType || "EVENING";
+    const todayDate = getISTDateString();
+    const finalReport = await reportGen.generateDailyReport(todayDate, sessionType);
     await storage.createNotification({
       title: "\u{1F68C} Attendance Session Closed",
-      message: "Attendance session has been ended. Submissions are now closed.",
+      message: `Attendance session for ${sessionType} has been finalized. Submissions are now closed.`,
       type: "SYSTEM",
-      date: getISTDateString(),
-      read: false
+      date: todayDate,
+      read: false,
+      link: "/student/dashboard",
+      busId: session.busId,
+      targetRole: "STUDENT"
     });
-    return res.json({ message: "Attendance session ended successfully." });
+    return res.json({
+      message: "Attendance session ended and daily report finalized successfully.",
+      report: finalReport
+    });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message || "Failed to end session." });
   }
 };
-apiRouter.post("/attendance/session/end", requireAuth(["ADMIN", "INCHARGE"]), handleEndSession);
-apiRouter.post("/admin/attendance/end", requireAuth(["ADMIN", "INCHARGE"]), handleEndSession);
+apiRouter.post("/attendance/session/end", requireAuth(["INCHARGE"]), handleEndSession);
+apiRouter.post("/admin/attendance/end", requireAuth(["ADMIN"]), (_req, res) => {
+  return res.status(403).json({
+    error: "Admins have read-only access to attendance and cannot end sessions. Attendance is operated by Bus In-Charges."
+  });
+});
 var handleVerifyAttendance = async (req, res) => {
   try {
-    const { code, latitude, longitude, accuracy, capturedAt, readings } = req.body;
+    const { latitude, longitude, accuracy, capturedAt, readings } = req.body;
     const user = {
       id: req.user.id,
       email: req.user.email,
@@ -36701,7 +38936,6 @@ var handleVerifyAttendance = async (req, res) => {
       assignedBusId: req.user.assignedBusId
     };
     const result = await verifier.verifyStudentLocation(user, {
-      code: code ? String(code).trim() : "",
       latitude: latitude !== void 0 ? Number(latitude) : void 0,
       longitude: longitude !== void 0 ? Number(longitude) : void 0,
       accuracy: accuracy !== void 0 ? Number(accuracy) : void 0,
@@ -36903,9 +39137,11 @@ apiRouter.post(
           message: `The bus in-charge has not opened transit attendance for your bus yet. Please wait until session begins.`
         });
       }
-      if (!student.busId && targetBusId) {
-        await storage.updateStudent(student.id, { busId: targetBusId });
-        student.busId = targetBusId;
+      if (!student.busId) {
+        return res.status(400).json({
+          status: "BUS_MISMATCH",
+          message: "No bus assigned to this student. Please wait for administrator bus assignment."
+        });
       }
       if (latitude === void 0 || longitude === void 0) {
         return res.status(400).json({
@@ -37058,17 +39294,15 @@ apiRouter.get(
       if (!activeDynamic || activeDynamic.status !== "ACTIVE") {
         activeDynamic = await storage.getActiveSession();
       }
-      if (activeDynamic && activeDynamic.status === "ACTIVE" && student && !student.busId && activeDynamic.busId !== "ALL") {
-        await storage.updateStudent(student.id, { busId: activeDynamic.busId });
-        student.busId = activeDynamic.busId;
-        if (!bus) {
-          bus = await storage.getBusById(activeDynamic.busId);
-        }
-      }
       const currentSessionType = activeDynamic ? activeDynamic.sessionType : "EVENING";
       const effectiveStudentId = student ? student.id : req.user.studentId || req.user.id;
       const todayRecord = await storage.getAttendanceRecord(effectiveStudentId, todayDate, currentSessionType);
+      const morningRecord = await storage.getAttendanceRecord(effectiveStudentId, todayDate, "MORNING");
+      const eveningRecord = await storage.getAttendanceRecord(effectiveStudentId, todayDate, "EVENING");
       const history = await storage.getAttendance({ studentId: effectiveStudentId });
+      const presentCount = history.filter((r) => r.status === "PRESENT").length;
+      const totalRecords = history.length;
+      const percentage = totalRecords > 0 ? Math.round(presentCount / totalRecords * 1e4) / 100 : 0;
       let sessionInfo;
       if (activeDynamic && activeDynamic.status === "ACTIVE") {
         sessionInfo = {
@@ -37102,13 +39336,21 @@ apiRouter.get(
       });
       return res.json({
         todayRecord,
+        morningRecord,
+        eveningRecord,
         student,
         bus,
         sessionInfo,
         notifications: notifications.slice(0, 5),
         history: history.sort(
-          (a, b) => String(b.attendanceDate || "").localeCompare(String(a.attendanceDate || ""))
-        )
+          (a, b) => String(b.attendanceDate || "").localeCompare(String(a.attendanceDate || "")) || String(b.verifiedAt || "").localeCompare(String(a.verifiedAt || ""))
+        ),
+        stats: {
+          totalRecords,
+          presentCount,
+          absentCount: totalRecords - presentCount,
+          percentage
+        }
       });
     } catch (err) {
       return res.status(500).json({ error: err.message });
@@ -37222,6 +39464,31 @@ apiRouter.delete(
     }
   }
 );
+apiRouter.get(
+  "/admin/students/:id/attendance",
+  requireAuth(["ADMIN"]),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const student = await storage.getStudentById(id);
+      if (!student) {
+        return res.status(404).json({ error: "Student not found." });
+      }
+      const bus = student.busId ? await storage.getBusById(student.busId) : null;
+      const records = await storage.getAttendance({ studentId: id });
+      const sortedRecords = records.sort(
+        (a, b) => String(b.attendanceDate || "").localeCompare(String(a.attendanceDate || "")) || String(b.verifiedAt || "").localeCompare(String(a.verifiedAt || ""))
+      );
+      return res.json({
+        student,
+        bus,
+        records: sortedRecords
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+);
 apiRouter.get("/admin/buses", requireAuth(["ADMIN"]), async (_req, res) => {
   try {
     const buses = await storage.getBuses();
@@ -37248,6 +39515,40 @@ apiRouter.get("/admin/incharges", requireAuth(["ADMIN"]), async (_req, res) => {
     const incharges = users.filter((u) => u.role === "INCHARGE" && u.active);
     const safeIncharges = incharges.map(({ password: _, ...rest }) => rest);
     return res.json(safeIncharges);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.post("/admin/incharges", requireAuth(["ADMIN"]), async (req, res) => {
+  try {
+    const { name, email, phone, password, assignedBusId } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "Name, email, and password are required." });
+    }
+    const cleanEmail = String(email).trim().toLowerCase();
+    const existing = await storage.getUserByEmail(cleanEmail);
+    if (existing) {
+      return res.status(400).json({ error: `User with email ${cleanEmail} already exists.` });
+    }
+    const hashedPassword = await hashPassword(String(password).trim());
+    const id = `incharge-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    const newIncharge = await storage.createUser({
+      id,
+      email: cleanEmail,
+      name: String(name).trim(),
+      phone: phone ? String(phone).trim() : void 0,
+      password: hashedPassword,
+      role: "INCHARGE",
+      active: true,
+      approved: true,
+      status: "APPROVED",
+      assignedBusId: assignedBusId || void 0
+    });
+    if (assignedBusId) {
+      await storage.updateBus(assignedBusId, { inchargeId: newIncharge.id });
+    }
+    const { password: _, ...safeUser } = newIncharge;
+    return res.status(201).json({ success: true, user: safeUser, message: "In-Charge registered successfully." });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -37304,10 +39605,7 @@ apiRouter.get(
       const busMap = new Map(buses.map((b) => [b.id, b]));
       const activeDynamic = await storage.getActiveSession();
       const currentSessionType = activeDynamic ? activeDynamic.sessionType : sessionInfo.sessionType || "EVENING";
-      let records = await storage.getAttendance({ date, sessionType: currentSessionType });
-      if (records.length === 0) {
-        records = await storage.getAttendance({ date });
-      }
+      const records = await storage.getAttendance({ date, sessionType: currentSessionType });
       const recordMap = new Map(records.map((r) => [r.studentId, r]));
       const roster = activeStudents.map((s) => {
         const bus = busMap.get(s.busId);
@@ -37354,12 +39652,13 @@ apiRouter.get(
   requireAuth(["ADMIN"]),
   async (req, res) => {
     try {
-      const { date, busId, studentId, status } = req.query;
+      const { date, busId, studentId, status, sessionType } = req.query;
+      const validSessionType = sessionType === "MORNING" || sessionType === "EVENING" ? sessionType : void 0;
       let records = await storage.getAttendance({
         date: typeof date === "string" && date !== "" ? date : void 0,
         busId: typeof busId === "string" && busId !== "ALL" ? busId : void 0,
         studentId: typeof studentId === "string" && studentId !== "ALL" ? studentId : void 0,
-        sessionType: "EVENING"
+        sessionType: validSessionType
       });
       if (status && typeof status === "string" && status !== "ALL") {
         records = records.filter((r) => r.status === status);
@@ -37392,52 +39691,10 @@ apiRouter.get(
 apiRouter.post(
   "/admin/override",
   requireAuth(["ADMIN"]),
-  async (req, res) => {
-    try {
-      const { studentId, date, newStatus, reason } = req.body;
-      if (!studentId || !newStatus || !reason) {
-        return res.status(400).json({
-          error: "Student ID, new status, and override reason are required."
-        });
-      }
-      const student = await storage.getStudentById(studentId);
-      if (!student) {
-        return res.status(404).json({ error: "Student not found." });
-      }
-      const targetDate = date || getISTDateString();
-      const nowIso = (/* @__PURE__ */ new Date()).toISOString();
-      let record = await storage.getAttendanceRecord(studentId, targetDate, "EVENING");
-      if (record) {
-        record = await storage.updateAttendance(record.id, {
-          status: newStatus,
-          verificationMethod: "ADMIN_OVERRIDE",
-          overrideReason: reason,
-          overrideBy: req.user.name,
-          verifiedAt: nowIso
-        });
-      } else {
-        record = await storage.createAttendance({
-          id: `ATT-${targetDate.replace(/-/g, "")}-${student.id}`,
-          studentId: student.id,
-          busId: student.busId,
-          attendanceDate: targetDate,
-          sessionType: "EVENING",
-          status: newStatus,
-          latitude: null,
-          longitude: null,
-          accuracyMeters: null,
-          distanceMeters: null,
-          capturedAt: nowIso,
-          verifiedAt: nowIso,
-          verificationMethod: "ADMIN_OVERRIDE",
-          overrideReason: reason,
-          overrideBy: req.user.name
-        });
-      }
-      return res.json({ message: "Override applied successfully.", record });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
+  async (_req, res) => {
+    return res.status(403).json({
+      error: "Admins have read-only attendance access and cannot directly mark or modify attendance records."
+    });
   }
 );
 apiRouter.get("/admin/settings", requireAuth(["ADMIN", "INCHARGE"]), async (_req, res) => {
@@ -37450,8 +39707,21 @@ apiRouter.get("/admin/settings", requireAuth(["ADMIN", "INCHARGE"]), async (_req
 });
 apiRouter.put("/admin/settings", requireAuth(["ADMIN"]), async (req, res) => {
   try {
-    const updates = req.body;
-    const updated = await storage.updateSettings(updates);
+    const { location } = req.body;
+    if (!location) {
+      return res.status(400).json({ error: "Location configuration is required for Ground settings." });
+    }
+    const currentSettings = await storage.getSettings();
+    const sanitizedLocation = {
+      name: location.name ? String(location.name).trim() : currentSettings.location?.name || "College Ground",
+      latitude: Number(location.latitude) || currentSettings.location?.latitude || 10.957585,
+      longitude: Number(location.longitude) || currentSettings.location?.longitude || 78.082725,
+      radiusMeters: Number(location.radiusMeters) > 0 ? Number(location.radiusMeters) : 10,
+      maxGpsAccuracyMeters: Number(location.maxGpsAccuracyMeters) > 0 ? Number(location.maxGpsAccuracyMeters) : 20
+    };
+    const updated = await storage.updateSettings({
+      location: sanitizedLocation
+    });
     return res.json(updated);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -37502,18 +39772,56 @@ apiRouter.get("/admin/reports", requireAuth(["ADMIN"]), async (_req, res) => {
 apiRouter.get("/admin/reports/:date", requireAuth(["ADMIN"]), async (req, res) => {
   try {
     const { date } = req.params;
-    let report = await storage.getReportByDate(date, "EVENING");
+    const sessionType = req.query.sessionType === "MORNING" ? "MORNING" : "EVENING";
+    let report = await storage.getReportByDate(date, sessionType);
     if (!report) {
-      report = await reportGen.generateDailyReport(date);
+      report = await reportGen.generateDailyReport(date, sessionType);
     }
     return res.json(report);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
-apiRouter.get("/admin/notifications", requireAuth(["ADMIN", "INCHARGE", "STUDENT"]), async (_req, res) => {
+apiRouter.get("/admin/notifications", requireAuth(["ADMIN", "INCHARGE", "STUDENT"]), async (req, res) => {
   try {
-    const notifs = await storage.getNotifications();
+    const user = req.user;
+    let notifs = await storage.getNotifications();
+    if (user.role === "STUDENT") {
+      const studentId = user.studentId || user.id;
+      const student = await storage.getStudentById(studentId);
+      const busId = student?.busId || user.assignedBusId;
+      notifs = notifs.filter((n) => (!n.targetRole || n.targetRole === "STUDENT") && (!n.busId || n.busId === busId || n.busId === "ALL"));
+    } else if (user.role === "INCHARGE") {
+      let bus = await storage.getBusByInchargeId(user.id);
+      if (!bus && user.assignedBusId) {
+        bus = await storage.getBusById(user.assignedBusId);
+      }
+      const busId = bus?.id || user.assignedBusId;
+      notifs = notifs.filter((n) => (!n.targetRole || n.targetRole === "INCHARGE") && (!n.busId || n.busId === busId || n.busId === "ALL"));
+    }
+    const unreadCount = notifs.filter((n) => !n.read).length;
+    return res.json({ notifications: notifs, unreadCount });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.get("/notifications", requireAuth(["ADMIN", "INCHARGE", "STUDENT"]), async (req, res) => {
+  try {
+    const user = req.user;
+    let notifs = await storage.getNotifications();
+    if (user.role === "STUDENT") {
+      const studentId = user.studentId || user.id;
+      const student = await storage.getStudentById(studentId);
+      const busId = student?.busId || user.assignedBusId;
+      notifs = notifs.filter((n) => (!n.targetRole || n.targetRole === "STUDENT") && (!n.busId || n.busId === busId || n.busId === "ALL"));
+    } else if (user.role === "INCHARGE") {
+      let bus = await storage.getBusByInchargeId(user.id);
+      if (!bus && user.assignedBusId) {
+        bus = await storage.getBusById(user.assignedBusId);
+      }
+      const busId = bus?.id || user.assignedBusId;
+      notifs = notifs.filter((n) => (!n.targetRole || n.targetRole === "INCHARGE") && (!n.busId || n.busId === busId || n.busId === "ALL"));
+    }
     const unreadCount = notifs.filter((n) => !n.read).length;
     return res.json({ notifications: notifs, unreadCount });
   } catch (err) {
@@ -37593,10 +39901,7 @@ apiRouter.get(
       const activeStudents = students.filter((s) => s.active);
       const activeDynamic = await storage.getActiveSession(bus.id);
       const currentSessionType = activeDynamic ? activeDynamic.sessionType : sessionInfo.sessionType || "EVENING";
-      let records = await storage.getAttendance({ date, busId: bus.id, sessionType: currentSessionType });
-      if (records.length === 0) {
-        records = await storage.getAttendance({ date, busId: bus.id });
-      }
+      const records = await storage.getAttendance({ date, busId: bus.id, sessionType: currentSessionType });
       const recordMap = new Map(records.map((r) => [r.studentId, r]));
       const roster = activeStudents.map((s) => {
         const record = recordMap.get(s.id);
@@ -37635,77 +39940,278 @@ apiRouter.get(
     }
   }
 );
-function requireCronSecret(req, res, next) {
-  const cronSecret = process.env.CRON_SECRET || "bus-cron-secret-2026";
-  const authHeader = req.headers.authorization;
-  const cronHeader = req.headers["x-cron-secret"];
-  if (cronHeader === cronSecret) return next();
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.split(" ")[1];
-    const user = verifyToken(token);
-    if (user && user.role === "ADMIN") return next();
-  }
-  return res.status(401).json({ error: "Unauthorized cron request." });
-}
-apiRouter.all("/cron/open-session", requireCronSecret, async (_req, res) => {
+apiRouter.get("/incharge/my-bus", requireAuth(["INCHARGE"]), async (req, res) => {
   try {
-    const time = getISTTimeString();
-    const settings = await storage.getSettings();
-    const activeSession = await storage.getActiveSession();
+    let bus = await storage.getBusByInchargeId(req.user.id);
+    if (!bus && req.user.assignedBusId) {
+      bus = await storage.getBusById(req.user.assignedBusId);
+    }
+    if (!bus && req.user.email) {
+      bus = await storage.getBusByInchargeId(req.user.email);
+    }
+    if (!bus) {
+      return res.status(404).json({ error: "No bus assigned to your in-charge account." });
+    }
+    const students = await storage.getStudentsByBusId(bus.id);
+    const activeStudents = students.filter((s) => s.active);
     return res.json({
-      message: "Automated scheduled session window verified.",
-      timeIST: time,
-      sessionStatus: activeSession ? "ACTIVE" : "IDLE",
-      activeSessionId: activeSession ? activeSession.id : null,
-      scheduledWindow: {
-        startTimeIST: settings.startTime,
-        endTimeIST: settings.endTime
-      }
+      bus,
+      totalStudents: activeStudents.length,
+      capacity: bus.capacity,
+      activeStudents
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
-apiRouter.all("/cron/close-session", requireCronSecret, async (_req, res) => {
+apiRouter.get("/incharge/students", requireAuth(["INCHARGE"]), async (req, res) => {
   try {
-    const time = getISTTimeString();
-    const activeSession = await storage.getActiveSession();
-    if (activeSession) {
-      await storage.endActiveSession(activeSession.id);
-      await storage.createNotification({
-        title: "\u{1F68C} Automated Scheduled Close",
-        message: `Attendance session ${activeSession.id} closed automatically by scheduler at ${time} IST.`,
-        type: "SYSTEM",
-        date: getISTDateString(),
-        read: false
-      });
-      return res.json({
-        message: "Active session closed by scheduler cron.",
-        sessionId: activeSession.id,
-        timeIST: time,
-        status: "CLOSED"
-      });
+    let bus = await storage.getBusByInchargeId(req.user.id);
+    if (!bus && req.user.assignedBusId) {
+      bus = await storage.getBusById(req.user.assignedBusId);
+    }
+    if (!bus && req.user.email) {
+      bus = await storage.getBusByInchargeId(req.user.email);
+    }
+    if (!bus) {
+      return res.status(404).json({ error: "No bus assigned to your in-charge account." });
+    }
+    const students = await storage.getStudentsByBusId(bus.id);
+    return res.json(students);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.get("/incharge/history", requireAuth(["INCHARGE"]), async (req, res) => {
+  try {
+    let bus = await storage.getBusByInchargeId(req.user.id);
+    if (!bus && req.user.assignedBusId) {
+      bus = await storage.getBusById(req.user.assignedBusId);
+    }
+    if (!bus && req.user.email) {
+      bus = await storage.getBusByInchargeId(req.user.email);
+    }
+    if (!bus) {
+      return res.status(404).json({ error: "No bus assigned to your in-charge account." });
+    }
+    const { date, sessionType } = req.query;
+    const records = await storage.getAttendance({
+      busId: bus.id,
+      date: typeof date === "string" && date ? date : void 0,
+      sessionType: typeof sessionType === "string" && sessionType ? sessionType : void 0
+    });
+    const students = await storage.getStudentsByBusId(bus.id);
+    const studentMap = new Map(students.map((s) => [s.id, s]));
+    const enriched = records.map((r) => {
+      const stu = studentMap.get(r.studentId);
+      return {
+        ...r,
+        studentName: stu ? stu.name : "Unknown",
+        registerNumber: stu ? stu.registerNumber : "Unknown",
+        busNumber: bus.busNumber,
+        routeName: bus.routeName
+      };
+    });
+    return res.json(
+      enriched.sort(
+        (a, b) => String(b.attendanceDate || "").localeCompare(String(a.attendanceDate || "")) || String(b.verifiedAt || "").localeCompare(String(a.verifiedAt || ""))
+      )
+    );
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.get("/incharge/reports", requireAuth(["INCHARGE"]), async (req, res) => {
+  try {
+    let bus = await storage.getBusByInchargeId(req.user.id);
+    if (!bus && req.user.assignedBusId) {
+      bus = await storage.getBusById(req.user.assignedBusId);
+    }
+    if (!bus && req.user.email) {
+      bus = await storage.getBusByInchargeId(req.user.email);
+    }
+    if (!bus) {
+      return res.status(404).json({ error: "No bus assigned to your in-charge account." });
+    }
+    const reports = await storage.getReports();
+    const filteredReports = reports.map((r) => {
+      const matchingBusSummary = r.busWise.filter((b) => b.busId === bus.id);
+      const matchingStudentSummary = r.studentWise.filter((s) => s.busId === bus.id);
+      const total = matchingBusSummary.reduce((sum, b) => sum + b.total, 0);
+      const present = matchingBusSummary.reduce((sum, b) => sum + b.present, 0);
+      const notPresent = matchingBusSummary.reduce((sum, b) => sum + b.notPresent, 0);
+      const percentage = total > 0 ? Math.round(present / total * 1e4) / 100 : 0;
+      return {
+        ...r,
+        totalStudents: total,
+        present,
+        notPresent,
+        percentage,
+        busWise: matchingBusSummary,
+        studentWise: matchingStudentSummary
+      };
+    }).filter((r) => r.busWise.length > 0);
+    return res.json(filteredReports);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.get("/admin/assignments", requireAuth(["ADMIN"]), async (_req, res) => {
+  try {
+    const [buses, students, users] = await Promise.all([
+      storage.getBuses(),
+      storage.getStudents(),
+      storage.getUsers()
+    ]);
+    const incharges = users.filter((u) => u.role === "INCHARGE" && u.active);
+    const inchargeMap = new Map(incharges.map((u) => [u.id, u]));
+    const busAssignments = buses.map((bus) => {
+      const assignedStudents = students.filter((s) => s.busId === bus.id && s.active);
+      const incharge = inchargeMap.get(bus.inchargeId);
+      return {
+        ...bus,
+        assignedCount: assignedStudents.length,
+        incharge: incharge ? { id: incharge.id, name: incharge.name, email: incharge.email, phone: incharge.phone } : null
+      };
+    });
+    const unassignedStudents = students.filter((s) => !s.busId && s.active);
+    return res.json({
+      buses: busAssignments,
+      incharges: incharges.map(({ password: _, ...rest }) => rest),
+      unassignedStudentsCount: unassignedStudents.length,
+      unassignedStudents,
+      allStudents: students.filter((s) => s.active),
+      totalStudents: students.filter((s) => s.active).length
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.post("/admin/assignments/student", requireAuth(["ADMIN"]), async (req, res) => {
+  try {
+    const { studentId, busId } = req.body;
+    if (!studentId || !busId) {
+      return res.status(400).json({ error: "studentId and busId are required." });
+    }
+    const bus = await storage.getBusById(busId);
+    if (!bus) {
+      return res.status(404).json({ error: `Bus ${busId} not found.` });
+    }
+    const student = await storage.getStudentById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: `Student ${studentId} not found.` });
+    }
+    const updatedStudent = await storage.updateStudent(studentId, { busId });
+    const users = await storage.getUsers();
+    const user = users.find(
+      (u) => u.id === studentId || u.studentId === studentId || u.email.toLowerCase() === student.email.toLowerCase()
+    );
+    if (user) {
+      await storage.updateUser(user.id, { assignedBusId: busId });
     }
     return res.json({
-      message: "No active attendance session currently running.",
-      timeIST: time,
-      status: "IDLE"
+      success: true,
+      student: updatedStudent,
+      message: `Student ${student.name} assigned to Bus ${bus.busNumber}.`
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 });
-apiRouter.all("/cron/generate-report", requireCronSecret, async (_req, res) => {
+apiRouter.post("/admin/assignments/incharge", requireAuth(["ADMIN"]), async (req, res) => {
   try {
-    const report = await reportGen.generateDailyReport();
+    const { inchargeId, busId } = req.body;
+    if (!inchargeId || !busId) {
+      return res.status(400).json({ error: "inchargeId and busId are required." });
+    }
+    const bus = await storage.getBusById(busId);
+    if (!bus) {
+      return res.status(404).json({ error: `Bus ${busId} not found.` });
+    }
+    const incharge = await storage.getUserById(inchargeId);
+    if (!incharge || incharge.role !== "INCHARGE") {
+      return res.status(404).json({ error: `In-charge ${inchargeId} not found.` });
+    }
+    await storage.updateBus(busId, { inchargeId });
+    await storage.updateUser(inchargeId, { assignedBusId: busId });
     return res.json({
-      message: "Daily report and admin notification generated successfully.",
-      reportId: report.id,
-      date: report.date,
-      totalStudents: report.totalStudents,
-      present: report.present,
-      percentage: report.percentage
+      success: true,
+      message: `${incharge.name} assigned to Bus ${bus.busNumber}.`
     });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.put("/admin/incharges/:id", requireAuth(["ADMIN"]), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { assignedBusId, active, name, phone } = req.body;
+    const user = await storage.getUserById(id);
+    if (!user || user.role !== "INCHARGE") {
+      return res.status(404).json({ error: "In-Charge not found." });
+    }
+    const updates = {};
+    if (assignedBusId !== void 0) updates.assignedBusId = assignedBusId;
+    if (active !== void 0) updates.active = Boolean(active);
+    if (name !== void 0) updates.name = String(name).trim();
+    if (phone !== void 0) updates.phone = String(phone).trim();
+    const updated = await storage.updateUser(id, updates);
+    if (assignedBusId) {
+      await storage.updateBus(assignedBusId, { inchargeId: id });
+    }
+    return res.json({ success: true, user: updated });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.delete("/admin/incharges/:id", requireAuth(["ADMIN"]), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await storage.getUserById(id);
+    if (!user || user.role !== "INCHARGE") {
+      return res.status(404).json({ error: "In-Charge not found." });
+    }
+    await storage.updateUser(id, { active: false });
+    return res.json({ success: true, message: "In-Charge deactivated successfully." });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.get("/student/my-bus", requireAuth(["STUDENT"]), async (req, res) => {
+  try {
+    const studentId = req.user.studentId || req.user.id;
+    let student = await storage.getStudentById(studentId);
+    if (!student && req.user.email) {
+      student = await storage.getStudentById(req.user.email);
+    }
+    if (!student || !student.busId) {
+      return res.status(404).json({ error: "No bus currently assigned to your account." });
+    }
+    const bus = await storage.getBusById(student.busId);
+    if (!bus) {
+      return res.status(404).json({ error: "Assigned bus details not found." });
+    }
+    const users = await storage.getUsers();
+    const incharge = users.find(
+      (u) => u.id === bus.inchargeId || u.role === "INCHARGE" && u.assignedBusId === bus.id
+    );
+    return res.json({
+      bus,
+      incharge: incharge ? { name: incharge.name, email: incharge.email, phone: incharge.phone } : null
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.get("/student/attendance-history", requireAuth(["STUDENT"]), async (req, res) => {
+  try {
+    const studentId = req.user.studentId || req.user.id;
+    const records = await storage.getAttendance({ studentId });
+    return res.json(
+      records.sort(
+        (a, b) => String(b.attendanceDate || "").localeCompare(String(a.attendanceDate || "")) || String(b.verifiedAt || "").localeCompare(String(a.verifiedAt || ""))
+      )
+    );
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

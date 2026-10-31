@@ -153,7 +153,7 @@ describe('⚡ Mobile Zero-Hardware Attendance Verification Circuits', () => {
       expect(challenge.length).toBeGreaterThanOrEqual(40);
     });
 
-    it('verifies mobile biometric assertion payload successfully', () => {
+    it('safely rejects assertion pending server-side cryptographic public-key validation', () => {
       const challenge = mobileBiometricEngine.generateChallenge(testStudentId);
       const assertionPayload = {
         challenge,
@@ -163,8 +163,8 @@ describe('⚡ Mobile Zero-Hardware Attendance Verification Circuits', () => {
       };
 
       const result = mobileBiometricEngine.verifyAssertion(testStudentId, assertionPayload);
-      expect(result.verified).toBe(true);
-      expect(result.message).toContain('verified successfully');
+      expect(result.verified).toBe(false);
+      expect(result.message).toContain('disabled');
     });
 
     it('registers and retrieves a mobile biometric platform credential', () => {
@@ -203,7 +203,7 @@ describe('⚡ Mobile Zero-Hardware Attendance Verification Circuits', () => {
 
       const result = mobileBiometricEngine.verifyAssertion(testStudentId, invalidPayload);
       expect(result.verified).toBe(false);
-      expect(result.message).toContain('Invalid biometric authentication response');
+      expect(result.message).toContain('disabled');
     });
 
     it('enforces platform authenticator parameters for phone in-display & side-mounted fingerprint sensors', () => {
