@@ -15,16 +15,26 @@ export interface BiometricChallenge {
 
 export interface BiometricVerificationPayload {
   credentialId: string;
-  clientDataJSON: string;
-  authenticatorData: string;
-  signature: string;
+  clientDataJSON?: string;
+  authenticatorData?: string;
+  signature?: string;
+  rawId?: string;
+  challenge?: string;
+}
+
+export interface RegisteredBiometricCredential {
+  studentId: string;
+  credentialId: string;
+  rawId?: string;
+  registeredAt: string;
 }
 
 export class MobileBiometricEngine {
   private activeChallenges = new Map<string, BiometricChallenge>();
+  private registeredCredentials = new Map<string, RegisteredBiometricCredential>();
 
   /**
-   * Generates a cryptographically random challenge for navigator.credentials.get()
+   * Generates a cryptographically random challenge for navigator.credentials.get() or create()
    */
   public generateChallenge(studentId: string): string {
     const challenge = crypto.randomBytes(32).toString('base64url');
@@ -33,6 +43,47 @@ export class MobileBiometricEngine {
       expiresAt: Date.now() + 5 * 60 * 1000, // 5 minute validity
     });
     return challenge;
+  }
+
+  /**
+   * Registers a public key credential for the student's mobile platform authenticator
+   */
+  public registerCredential(
+    studentId: string,
+    credentialId: string,
+    rawId?: string
+  ): { success: boolean; message: string; credential?: RegisteredBiometricCredential } {
+    if (!credentialId || typeof credentialId !== 'string') {
+      return { success: false, message: 'Invalid biometric credential ID provided.' };
+    }
+
+    const entry: RegisteredBiometricCredential = {
+      studentId,
+      credentialId,
+      rawId,
+      registeredAt: new Date().toISOString(),
+    };
+    this.registeredCredentials.set(studentId, entry);
+
+    return {
+      success: true,
+      message: 'Mobile biometric credential registered successfully.',
+      credential: entry,
+    };
+  }
+
+  /**
+   * Retrieves registered credential for a student
+   */
+  public getRegisteredCredential(studentId: string): RegisteredBiometricCredential | null {
+    return this.registeredCredentials.get(studentId) || null;
+  }
+
+  /**
+   * Removes registered credential for a student (e.g. upon unlinking/device reset)
+   */
+  public removeCredential(studentId: string): boolean {
+    return this.registeredCredentials.delete(studentId);
   }
 
   /**

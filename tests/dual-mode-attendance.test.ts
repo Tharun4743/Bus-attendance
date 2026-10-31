@@ -83,6 +83,8 @@ describe('⚡ Dynamic Dual-Radius Attendance Architecture Circuit', () => {
         capacity: 50,
         active: true,
       });
+    } else if (!bus.active) {
+      await storage.updateBus('BUS06', { active: true });
     }
 
     // 1. Ensure test student exists

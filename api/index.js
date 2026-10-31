@@ -35852,8 +35852,9 @@ var faceVerificationEngine = new FaceVerificationEngine();
 import crypto4 from "crypto";
 var MobileBiometricEngine = class {
   activeChallenges = /* @__PURE__ */ new Map();
+  registeredCredentials = /* @__PURE__ */ new Map();
   /**
-   * Generates a cryptographically random challenge for navigator.credentials.get()
+   * Generates a cryptographically random challenge for navigator.credentials.get() or create()
    */
   generateChallenge(studentId) {
     const challenge = crypto4.randomBytes(32).toString("base64url");
@@ -35863,6 +35864,38 @@ var MobileBiometricEngine = class {
       // 5 minute validity
     });
     return challenge;
+  }
+  /**
+   * Registers a public key credential for the student's mobile platform authenticator
+   */
+  registerCredential(studentId, credentialId, rawId) {
+    if (!credentialId || typeof credentialId !== "string") {
+      return { success: false, message: "Invalid biometric credential ID provided." };
+    }
+    const entry = {
+      studentId,
+      credentialId,
+      rawId,
+      registeredAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    this.registeredCredentials.set(studentId, entry);
+    return {
+      success: true,
+      message: "Mobile biometric credential registered successfully.",
+      credential: entry
+    };
+  }
+  /**
+   * Retrieves registered credential for a student
+   */
+  getRegisteredCredential(studentId) {
+    return this.registeredCredentials.get(studentId) || null;
+  }
+  /**
+   * Removes registered credential for a student (e.g. upon unlinking/device reset)
+   */
+  removeCredential(studentId) {
+    return this.registeredCredentials.delete(studentId);
   }
   /**
    * Verifies the cryptographic assertion returned by the phone's biometric sensor.
@@ -36611,6 +36644,49 @@ apiRouter.get(
       return res.json({ challenge });
     } catch (err) {
       return res.status(500).json({ error: "Failed to generate biometric challenge." });
+    }
+  }
+);
+apiRouter.post(
+  "/attendance/mobile/register-biometric",
+  requireAuth(["STUDENT"]),
+  async (req, res) => {
+    try {
+      const studentId = req.user.studentId || req.user.id;
+      const { credentialId, rawId } = req.body;
+      if (!credentialId || typeof credentialId !== "string") {
+        return res.status(400).json({ error: "credentialId is required." });
+      }
+      const result = mobileBiometricEngine.registerCredential(studentId, credentialId, rawId);
+      return res.json(result);
+    } catch (err) {
+      return res.status(500).json({ error: "Failed to register biometric credential." });
+    }
+  }
+);
+apiRouter.get(
+  "/attendance/mobile/credential",
+  requireAuth(["STUDENT"]),
+  async (req, res) => {
+    try {
+      const studentId = req.user.studentId || req.user.id;
+      const credential = mobileBiometricEngine.getRegisteredCredential(studentId);
+      return res.json({ credential });
+    } catch (err) {
+      return res.status(500).json({ error: "Failed to retrieve biometric credential." });
+    }
+  }
+);
+apiRouter.post(
+  "/attendance/mobile/unregister-biometric",
+  requireAuth(["STUDENT"]),
+  async (req, res) => {
+    try {
+      const studentId = req.user.studentId || req.user.id;
+      mobileBiometricEngine.removeCredential(studentId);
+      return res.json({ success: true, message: "Mobile biometric credential unlinked successfully." });
+    } catch (err) {
+      return res.status(500).json({ error: "Failed to unregister biometric credential." });
     }
   }
 );
