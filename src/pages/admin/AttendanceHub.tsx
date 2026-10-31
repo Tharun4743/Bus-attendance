@@ -5,7 +5,6 @@ import { Bus, Student, SessionInfo, FinalReport, ActiveSession } from '../../typ
 import { formatISTTime, formatISTTime24, getISTDateString } from '../../utils/time';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
-import { Modal } from '../../components/common/Modal';
 import { StatCard } from '../../components/ui/StatCard';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -23,10 +22,6 @@ import {
   Percent,
   AlertCircle,
   MapPin,
-  Square,
-  Play,
-  Sun,
-  Moon,
 } from 'lucide-react';
 
 export type AttendanceTab = 'today' | 'reports' | 'history';
@@ -168,29 +163,14 @@ export const TodayLiveSessionView: React.FC = () => {
   const [busFilter, setBusFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Quick Launcher State
-  const [selectedBusId, setSelectedBusId] = useState<string>('ALL');
-  const [sessionType, setSessionType] = useState<'MORNING' | 'EVENING'>('MORNING');
-  const [attendanceMode, setAttendanceMode] = useState<'GROUND' | 'TRAVELLING'>('GROUND');
-  const [isStarting, setIsStarting] = useState<boolean>(false);
-  const [isEnding, setIsEnding] = useState<boolean>(false);
+  // Session Feedback State
   const [sessionFeedback, setSessionFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Override Modal State
-  const [isOverrideOpen, setIsOverrideOpen] = useState<boolean>(false);
-  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
-  const [overrideStatus, setOverrideStatus] = useState<string>('PRESENT');
-  const [overrideReason, setOverrideReason] = useState<string>('');
-  const [overrideError, setOverrideError] = useState<string | null>(null);
-  const [isSubmittingOverride, setIsSubmittingOverride] = useState<boolean>(false);
 
   const fetchAttendance = async () => {
     try {
       const res = await api.getTodayAttendance();
       setData(res);
-      if (res.buses && res.buses.length > 0 && selectedBusId === 'ALL') {
-        setSelectedBusId(res.buses[0].id);
-      }
     } catch (err) {
       console.error('Failed to load today attendance:', err);
     }
@@ -233,126 +213,6 @@ export const TodayLiveSessionView: React.FC = () => {
     };
   }, []);
 
-  // Start Session
-  const handleStartSession = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsStarting(true);
-    setSessionFeedback(null);
-
-    try {
-      let lat = undefined;
-      let lon = undefined;
-      if (typeof navigator !== 'undefined' && navigator.geolocation) {
-        try {
-          const pos = await new Promise<any>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 6000 });
-          });
-          lat = Math.round(pos.coords.latitude * 1000000) / 1000000;
-          lon = Math.round(pos.coords.longitude * 1000000) / 1000000;
-        } catch {
-          // Continue if permission denied
-        }
-      }
-
-      const res = await fetch('/api/admin/attendance/start', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('bus_token')}`,
-        },
-        body: JSON.stringify({
-          sessionType,
-          attendanceMode,
-          verificationMethod: 'CODE_GPS',
-          busId: selectedBusId,
-          latitude: lat,
-          longitude: lon,
-          radiusMeters: attendanceMode === 'TRAVELLING' ? 1000 : 35,
-        }),
-      });
-
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to start session');
-
-      setActiveSession(json.session);
-      setSessionFeedback({
-        type: 'success',
-        message: `Attendance session active for ${selectedBusId === 'ALL' ? 'All Buses' : selectedBusId}.`,
-      });
-      await refreshAll();
-    } catch (err: any) {
-      setSessionFeedback({ type: 'error', message: err.message || 'Failed to start attendance.' });
-    } finally {
-      setIsStarting(false);
-    }
-  };
-
-  // End Session
-  const handleEndSession = async () => {
-    if (!activeSession) return;
-    setIsEnding(true);
-    setSessionFeedback(null);
-
-    try {
-      const res = await fetch('/api/admin/attendance/end', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('bus_token')}`,
-        },
-        body: JSON.stringify({ sessionId: activeSession.id }),
-      });
-
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to end session');
-
-      setActiveSession(null);
-      setSessionFeedback({
-        type: 'success',
-        message: 'Attendance session successfully closed.',
-      });
-      await refreshAll();
-    } catch (err: any) {
-      setSessionFeedback({ type: 'error', message: err.message || 'Failed to end session.' });
-    } finally {
-      setIsEnding(false);
-    }
-  };
-
-  // Override Handlers
-  const handleOpenOverride = (stu: any) => {
-    setSelectedStudent(stu);
-    setOverrideStatus(stu.status === 'PRESENT' ? 'NOT_PRESENT' : 'PRESENT');
-    setOverrideReason('');
-    setOverrideError(null);
-    setIsOverrideOpen(true);
-  };
-
-  const handleSaveOverride = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!overrideReason.trim()) {
-      setOverrideError('Please provide an administrative reason for the override.');
-      return;
-    }
-
-    setOverrideError(null);
-    setIsSubmittingOverride(true);
-
-    try {
-      await api.adminOverride({
-        studentId: selectedStudent.studentId,
-        date: data?.date,
-        newStatus: overrideStatus,
-        reason: overrideReason.trim(),
-      });
-      setIsOverrideOpen(false);
-      await fetchAttendance();
-    } catch (err: any) {
-      setOverrideError(err.message || 'Failed to submit override.');
-    } finally {
-      setIsSubmittingOverride(false);
-    }
-  };
 
   // CSV Export
   const handleExportCSV = () => {
@@ -462,7 +322,7 @@ export const TodayLiveSessionView: React.FC = () => {
         </div>
       )}
 
-      {/* Live Session Controller Card */}
+      {/* Live Session Telemetry Card (Read-Only) */}
       <div className="bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] shadow-xs overflow-hidden transition-all">
         {activeSession && activeSession.status === 'ACTIVE' ? (
           <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-50/70 via-teal-50/30 to-emerald-50/50 dark:from-emerald-950/20 dark:via-[#141418] dark:to-emerald-950/10 border-b border-emerald-200 dark:border-emerald-500/20">
@@ -471,10 +331,10 @@ export const TodayLiveSessionView: React.FC = () => {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black tracking-wider uppercase bg-emerald-600 text-white shadow-xs">
                     <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                    LIVE SESSION BROADCASTING
+                    LIVE SESSION BROADCASTING (READ-ONLY)
                   </span>
                   <span className="text-[11px] font-bold text-zinc-700 dark:text-zinc-300 uppercase bg-white dark:bg-[#1a1a20] px-2.5 py-0.5 rounded-md border border-zinc-200 dark:border-[#26262e]">
-                    {activeSession.sessionType}
+                    {activeSession.sessionType} • {activeSession.attendanceMode} MODE
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-zinc-900 dark:text-white">
@@ -484,124 +344,45 @@ export const TodayLiveSessionView: React.FC = () => {
                     <strong className="text-emerald-700 dark:text-[#4ade80]">
                       {activeSession.busId === 'ALL' ? 'All Transit Buses' : activeSession.busId}
                     </strong>{' '}
-                    ({data?.sessionInfo.radiusMeters || 50}m geofence radius)
+                    • In-Charge: <strong>{activeSession.startedBy || 'Assigned In-Charge'}</strong>
                   </span>
                 </div>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {data?.date} • Window: {data?.sessionInfo.startTime} – {data?.sessionInfo.endTime} IST
+                  {data?.date} • Geofence Radius: {activeSession.radiusMeters || 10}m
                 </p>
               </div>
 
               <div className="flex items-center gap-2.5">
                 <Button onClick={refreshAll} disabled={isRefreshing} variant="secondary" size="sm">
                   <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  <span>Refresh</span>
-                </Button>
-                <Button onClick={handleEndSession} disabled={isEnding} variant="danger" size="md">
-                  {isEnding ? (
-                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <Square className="w-3.5 h-3.5 fill-white" />
-                  )}
-                  <span>END SESSION</span>
+                  <span>Refresh Telemetry</span>
                 </Button>
               </div>
             </div>
           </div>
         ) : (
-          <form onSubmit={handleStartSession} className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-[#1a1a20] text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-[#26262e]">
-                <Radio className="w-5 h-5 text-emerald-600 dark:text-[#4ade80]" />
+                <Radio className="w-5 h-5 text-zinc-500 dark:text-zinc-400" />
               </div>
               <div>
                 <h2 className="text-sm sm:text-base font-black text-zinc-900 dark:text-white tracking-tight">
-                  Launch Attendance Session
+                  Attendance Monitoring (Read-Only)
                 </h2>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Enable verified smartphone GPS & selfie check for students
+                  Daily attendance sessions are initiated and operated by designated Bus In-Charges. Admin views remain read-only.
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <select
-                value={selectedBusId}
-                onChange={(e) => setSelectedBusId(e.target.value)}
-                className="h-10 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#26262e] bg-zinc-50 dark:bg-[#1a1a20] text-zinc-900 dark:text-white outline-none"
-              >
-                <option value="ALL">All Transit Buses ({data?.buses?.length || 0})</option>
-                {(data?.buses || []).map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.busNumber} — {b.routeName}
-                  </option>
-                ))}
-              </select>
-
-              <div className="flex items-center gap-1 bg-zinc-100 dark:bg-[#1a1a20] p-1 rounded-xl border border-zinc-200 dark:border-[#26262e]">
-                <button
-                  type="button"
-                  onClick={() => setAttendanceMode('GROUND')}
-                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    attendanceMode === 'GROUND'
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                  }`}
-                  title="Stationary Bay (~35m radius)"
-                >
-                  <span>🛑 Bay (~35m)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAttendanceMode('TRAVELLING')}
-                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    attendanceMode === 'TRAVELLING'
-                      ? 'bg-amber-500 text-white shadow-xs'
-                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                  }`}
-                  title="Highway Transit (~1000m radius)"
-                >
-                  <span>🚌 Transit (~1000m)</span>
-                </button>
-              </div>
-
-              <div className="flex items-center gap-1 bg-zinc-100 dark:bg-[#1a1a20] p-1 rounded-xl border border-zinc-200 dark:border-[#26262e]">
-                <button
-                  type="button"
-                  onClick={() => setSessionType('MORNING')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    sessionType === 'MORNING'
-                      ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-xs'
-                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Sun className="w-3.5 h-3.5" />
-                  <span>Morning</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSessionType('EVENING')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    sessionType === 'EVENING'
-                      ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-xs'
-                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Moon className="w-3.5 h-3.5" />
-                  <span>Evening</span>
-                </button>
-              </div>
-
-              <Button type="submit" disabled={isStarting} variant="emerald" size="md">
-                {isStarting ? (
-                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <Play className="w-3.5 h-3.5 fill-white" />
-                )}
-                <span>START ATTENDANCE</span>
+            <div className="flex items-center gap-2.5">
+              <Button onClick={refreshAll} disabled={isRefreshing} variant="secondary" size="sm">
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span>Refresh Status</span>
               </Button>
             </div>
-          </form>
+          </div>
         )}
       </div>
 
@@ -715,7 +496,7 @@ export const TodayLiveSessionView: React.FC = () => {
                 <th className="px-5 py-3.5">Distance</th>
                 <th className="px-5 py-3.5">Accuracy</th>
                 <th className="px-5 py-3.5">Verified Time</th>
-                <th className="px-5 py-3.5 text-right">Admin Action</th>
+                <th className="px-5 py-3.5 text-right">Verification Detail</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-[#26262e]">
@@ -756,12 +537,9 @@ export const TodayLiveSessionView: React.FC = () => {
                       {stu.verifiedAt ? formatISTTime(stu.verifiedAt, { second: '2-digit' }) : '—'}
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <button
-                        onClick={() => handleOpenOverride(stu)}
-                        className="px-3 py-1 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-zinc-100 hover:bg-purple-50 hover:text-purple-700 dark:bg-zinc-800 dark:hover:bg-purple-950/40 dark:hover:text-[#c084fc] rounded-xl transition border border-zinc-200 dark:border-zinc-700 cursor-pointer active:scale-95"
-                      >
-                        Override
-                      </button>
+                      <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
+                        {stu.verificationMethod || '—'}
+                      </span>
                     </td>
                   </tr>
                 ))
@@ -795,76 +573,16 @@ export const TodayLiveSessionView: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <div className="pt-1">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenOverride(stu)}
-                    className="w-full py-1.5 px-3 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 rounded-xl transition border border-zinc-200 dark:border-zinc-700 cursor-pointer"
-                  >
-                    Admin Override Status
-                  </button>
-                </div>
+                {stu.verificationMethod && (
+                  <p className="text-[10px] text-zinc-400 font-mono">
+                    Method: {stu.verificationMethod}
+                  </p>
+                )}
               </div>
             ))
           )}
         </div>
       </div>
-
-      {/* Manual Override Modal */}
-      <Modal isOpen={isOverrideOpen} onClose={() => setIsOverrideOpen(false)} title="Admin Attendance Override">
-        <form onSubmit={handleSaveOverride} className="space-y-4">
-          <div className="p-3.5 bg-purple-50/80 dark:bg-purple-950/20 rounded-2xl border border-purple-200 dark:border-purple-500/30 text-xs text-purple-900 dark:text-purple-300">
-            <p className="font-bold">Student: {selectedStudent?.name} ({selectedStudent?.registerNumber})</p>
-            <p className="mt-0.5 text-purple-700 dark:text-purple-400">Assigned Bus: {selectedStudent?.busNumber}</p>
-          </div>
-
-          {overrideError && (
-            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-500/15 border border-rose-200 dark:border-rose-500/30 flex items-center gap-2 text-rose-700 dark:text-[#fb7185] text-xs font-semibold">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{overrideError}</span>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
-              New Attendance Status *
-            </label>
-            <select
-              value={overrideStatus}
-              onChange={(e) => setOverrideStatus(e.target.value)}
-              className="w-full h-11 px-3.5 text-xs rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none font-bold"
-            >
-              <option value="PRESENT">PRESENT (Verified Present)</option>
-              <option value="NOT_PRESENT">NOT_PRESENT (Mark Absent)</option>
-              <option value="LOCATION_UNAVAILABLE">LOCATION_UNAVAILABLE (GPS Issue)</option>
-              <option value="INVALID_LOCATION">INVALID_LOCATION (Outside Boundary)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
-              Reason for Administrative Override *
-            </label>
-            <textarea
-              required
-              rows={3}
-              placeholder="e.g. Student verified physically on transit bus."
-              value={overrideReason}
-              onChange={(e) => setOverrideReason(e.target.value)}
-              className="w-full p-3 text-xs rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none font-medium leading-relaxed"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-zinc-100 dark:border-[#26262e]">
-            <Button type="button" variant="secondary" size="sm" onClick={() => setIsOverrideOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmittingOverride} variant="primary" size="sm">
-              {isSubmittingOverride ? 'Applying...' : 'Apply Override'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 };
@@ -905,7 +623,8 @@ export const DailyReportsView: React.FC<{ preselectedDate?: string }> = ({ prese
   const handleGenerateToday = async () => {
     setIsGenerating(true);
     try {
-      await api.triggerCron('generate-report');
+      const today = new Date().toISOString().slice(0, 10);
+      await api.getReportByDate(today);
       const data = await api.getReports();
       setReports(data);
       if (data.length > 0) {

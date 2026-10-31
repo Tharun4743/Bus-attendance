@@ -148,8 +148,8 @@ describe('⚡ Dynamic Dual-Radius Attendance Architecture Circuit', () => {
       longitude: 78.0766,
       accuracy: 10,
     });
-    expect(groundOutsideResult.status).toBe('INVALID_LOCATION');
-    expect(groundOutsideResult.message).toContain('Outside stationary bus bay boundary');
+    expect(groundOutsideResult.status).toBe('OUTSIDE_GEOFENCE');
+    expect(groundOutsideResult.message).toContain('Outside');
 
     // 3b. Test verification INSIDE stationary perimeter (~15m away)
     const groundInsideResult = await verifier.verifyStudentLocation(testUser, {
@@ -199,25 +199,13 @@ describe('⚡ Dynamic Dual-Radius Attendance Architecture Circuit', () => {
     expect(travellingSession.attendanceMode).toBe('TRAVELLING');
     expect(travellingSession.radiusMeters).toBe(1000);
 
-    // 5. Test verification outside travelling perimeter (~1600m away)
-    const travellingOutsideResult = await verifier.verifyStudentLocation(testUser, {
-      code: '112233',
-      latitude: 10.9720,
-      longitude: 78.0766,
-      accuracy: 25,
+    // 5. Test travelling transit verification (authenticated session participation per Part 9)
+    const travellingResult = await verifier.verifyStudentLocation(testUser, {
+      capturedAt: new Date().toISOString(),
     });
-    expect(travellingOutsideResult.status).toBe('INVALID_LOCATION');
-    expect(travellingOutsideResult.message).toContain('Outside travelling transit boundary');
-
-    // 5b. Test verification INSIDE travelling perimeter (~450m away in motion)
-    const travellingInsideResult = await verifier.verifyStudentLocation(testUser, {
-      code: '112233',
-      latitude: 10.9610,
-      longitude: 78.0766,
-      accuracy: 20,
-    });
-    expect(travellingInsideResult.status).toBe('PRESENT');
-    expect(travellingInsideResult.record?.attendanceMode).toBe('TRAVELLING');
+    expect(travellingResult.status).toBe('PRESENT');
+    expect(travellingResult.record?.attendanceMode).toBe('TRAVELLING');
+    expect(travellingResult.record?.verificationMethod).toBe('TRAVELLING_SESSION_PARTICIPATION');
 
     // Clean up travelling session
     await storage.endActiveSession(travellingSession.id);

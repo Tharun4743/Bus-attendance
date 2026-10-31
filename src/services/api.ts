@@ -197,8 +197,9 @@ class ApiClient {
   }
 
   // Attendance & Session
-  async getSessionInfo(): Promise<SessionInfo> {
-    return this.request<SessionInfo>('/attendance/session');
+  async getSessionInfo(busId?: string): Promise<SessionInfo> {
+    const qs = busId ? `?busId=${encodeURIComponent(busId)}` : '';
+    return this.request<SessionInfo>(`/attendance/session${qs}`);
   }
 
   async verifyLocation(req: LocationVerificationRequest): Promise<LocationVerificationResponse> {
@@ -326,6 +327,14 @@ class ApiClient {
     });
   }
 
+  async getStudentAttendanceHistoryForAdmin(studentId: string): Promise<{
+    student: Student;
+    bus: Bus | null;
+    records: AttendanceRecord[];
+  }> {
+    return this.request(`/admin/students/${studentId}/attendance`);
+  }
+
   // Admin: Buses
   async getBuses(): Promise<(Bus & { studentsCount: number; inchargeName: string })[]> {
     return this.request('/admin/buses');
@@ -333,6 +342,19 @@ class ApiClient {
 
   async getIncharges(): Promise<User[]> {
     return this.request<User[]>('/admin/incharges');
+  }
+
+  async createIncharge(data: {
+    name: string;
+    email: string;
+    phone?: string;
+    password: string;
+    assignedBusId?: string;
+  }): Promise<{ success: boolean; user: User; message: string }> {
+    return this.request('/admin/incharges', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   async createBus(data: Omit<Bus, 'id'>): Promise<Bus> {
@@ -379,6 +401,7 @@ class ApiClient {
     busId?: string;
     studentId?: string;
     status?: string;
+    sessionType?: string;
   }): Promise<
     Array<
       AttendanceRecord & {
@@ -394,6 +417,7 @@ class ApiClient {
     if (filters?.busId) params.append('busId', filters.busId);
     if (filters?.studentId) params.append('studentId', filters.studentId);
     if (filters?.status) params.append('status', filters.status);
+    if (filters?.sessionType) params.append('sessionType', filters.sessionType);
     const qs = params.toString() ? `?${params.toString()}` : '';
     return this.request(`/admin/attendance/history${qs}`);
   }
@@ -445,8 +469,9 @@ class ApiClient {
     return this.request<FinalReport[]>('/admin/reports');
   }
 
-  async getReportByDate(date: string): Promise<FinalReport> {
-    return this.request<FinalReport>(`/admin/reports/${date}`);
+  async getReportByDate(date: string, sessionType?: string): Promise<FinalReport> {
+    const qs = sessionType ? `?sessionType=${encodeURIComponent(sessionType)}` : '';
+    return this.request<FinalReport>(`/admin/reports/${date}${qs}`);
   }
 
   async getNotifications(): Promise<{ notifications: Notification[]; unreadCount: number }> {
@@ -500,11 +525,104 @@ class ApiClient {
     return this.request('/incharge/attendance');
   }
 
-  // Cron triggering helper
-  async triggerCron(endpoint: 'open-session' | 'close-session' | 'generate-report'): Promise<any> {
-    return this.request(`/cron/${endpoint}`, {
+  async startAttendanceSession(data: {
+    sessionType: 'MORNING' | 'EVENING';
+    attendanceMode: 'GROUND' | 'TRAVELLING';
+    busId: string;
+    radiusMeters?: number;
+    maxGpsAccuracyMeters?: number;
+    latitude?: number;
+    longitude?: number;
+    accuracy?: number;
+    locationName?: string;
+  }): Promise<{ message: string; session: any }> {
+    return this.request('/attendance/session/start', {
       method: 'POST',
+      body: JSON.stringify(data),
     });
+  }
+
+  async endAttendanceSession(sessionId: string): Promise<{ message: string; report: any }> {
+    return this.request('/attendance/session/end', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId }),
+    });
+  }
+
+  async getInchargeMyBus(): Promise<{
+    bus: Bus;
+    totalStudents: number;
+    capacity: number;
+    activeStudents: Student[];
+  }> {
+    return this.request('/incharge/my-bus');
+  }
+
+  async getInchargeStudents(): Promise<Student[]> {
+    return this.request('/incharge/students');
+  }
+
+  async getInchargeHistory(params?: { date?: string; sessionType?: string }): Promise<AttendanceRecord[]> {
+    const q = new URLSearchParams();
+    if (params?.date) q.append('date', params.date);
+    if (params?.sessionType) q.append('sessionType', params.sessionType);
+    const queryString = q.toString() ? `?${q.toString()}` : '';
+    return this.request(`/incharge/history${queryString}`);
+  }
+
+  async getInchargeReports(): Promise<FinalReport[]> {
+    return this.request('/incharge/reports');
+  }
+
+  // Admin Fleet Assignments
+  async getAssignments(): Promise<{
+    buses: Array<Bus & { assignedCount: number; incharge: { id: string; name: string; email: string; phone?: string } | null }>;
+    incharges: User[];
+    unassignedStudentsCount: number;
+    unassignedStudents: Student[];
+    allStudents: Student[];
+    totalStudents: number;
+  }> {
+    return this.request('/admin/assignments');
+  }
+
+  async assignStudent(studentId: string, busId: string): Promise<{ success: boolean; message: string; student: Student }> {
+    return this.request('/admin/assignments/student', {
+      method: 'POST',
+      body: JSON.stringify({ studentId, busId }),
+    });
+  }
+
+  async assignIncharge(inchargeId: string, busId: string): Promise<{ success: boolean; message: string }> {
+    return this.request('/admin/assignments/incharge', {
+      method: 'POST',
+      body: JSON.stringify({ inchargeId, busId }),
+    });
+  }
+
+  async updateIncharge(id: string, updates: Partial<User>): Promise<{ success: boolean; user: User }> {
+    return this.request(`/admin/incharges/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async deactivateIncharge(id: string): Promise<{ success: boolean; message: string }> {
+    return this.request(`/admin/incharges/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Student Endpoints
+  async getStudentMyBus(): Promise<{
+    bus: Bus;
+    incharge: { name: string; email: string; phone?: string } | null;
+  }> {
+    return this.request('/student/my-bus');
+  }
+
+  async getStudentAttendanceHistory(): Promise<AttendanceRecord[]> {
+    return this.request('/student/attendance-history');
   }
 }
 

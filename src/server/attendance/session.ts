@@ -39,7 +39,7 @@ export function getISTTimeString(d: Date = new Date(), timezone: string = 'Asia/
 /**
  * Helper to convert "HH:mm" or "HH:mm:ss" into minutes from start of day.
  */
-function timeToMinutes(timeStr: string): number {
+export function timeToMinutes(timeStr: string): number {
   const [hours, minutes] = timeStr.split(':').map(Number);
   return hours * 60 + minutes;
 }

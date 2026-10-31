@@ -109,30 +109,15 @@ export class MobileBiometricEngine {
    * Verifies the cryptographic assertion returned by the phone's biometric sensor.
    */
   public verifyAssertion(
-    studentId: string,
-    payload: { challenge?: string; credentialId?: string; signature?: string; rawId?: string; transports?: string[] }
+    _studentId: string,
+    _payload: { challenge?: string; credentialId?: string; signature?: string; rawId?: string; transports?: string[] }
   ): { verified: boolean; message: string } {
-    const stored = this.activeChallenges.get(studentId);
-
-    // If client provided a direct assertion challenge
-    if (stored && stored.expiresAt < Date.now()) {
-      this.activeChallenges.delete(studentId);
-      return { verified: false, message: 'Biometric authentication challenge expired. Please retry.' };
-    }
-
-    if (payload.credentialId || payload.rawId || payload.signature) {
-      if (stored) {
-        this.activeChallenges.delete(studentId);
-      }
-      return {
-        verified: true,
-        message: 'Mobile phone fingerprint sensor assertion verified successfully.',
-      };
-    }
-
+    // In accordance with security directives: incomplete WebAuthn implementations must NOT
+    // return fake successful verifications. Safely disabled until public key cryptography
+    // attestation validation is implemented.
     return {
       verified: false,
-      message: 'Invalid biometric authentication response from mobile device.',
+      message: 'Mobile biometric WebAuthn verification is disabled pending server-side cryptographic public-key validation.',
     };
   }
 }

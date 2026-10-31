@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import { Notification } from '../../types';
 import { formatISTTime } from '../../utils/time';
+import { subscribeToNotifications } from '../../lib/supabaseRealtime';
 
 export const NotificationBell: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -27,10 +28,19 @@ export const NotificationBell: React.FC = () => {
     const handleUpdate = () => fetchNotifications();
     window.addEventListener('notifications-updated', handleUpdate);
     window.addEventListener('focus', handleUpdate);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') fetchNotifications();
+    });
+
+    const unsubRealtime = subscribeToNotifications(() => {
+      fetchNotifications();
+    });
+
     return () => {
       clearInterval(interval);
       window.removeEventListener('notifications-updated', handleUpdate);
       window.removeEventListener('focus', handleUpdate);
+      unsubRealtime();
     };
   }, []);
 

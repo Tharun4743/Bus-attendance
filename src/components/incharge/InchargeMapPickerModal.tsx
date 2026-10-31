@@ -280,7 +280,7 @@ export const InchargeMapPickerModal: React.FC<InchargeMapPickerModalProps> = ({
     setErrorMsg(null);
 
     try {
-      const res = await fetch('/api/admin/attendance/start', {
+      const res = await fetch('/api/attendance/session/start', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
