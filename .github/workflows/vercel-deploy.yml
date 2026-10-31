@@ -39,14 +39,16 @@ jobs:
         run: npm run build
 
       - name: 🚀 Auto Deploy via Vercel Deploy Hook (If Configured)
-        if: secrets.VERCEL_DEPLOY_HOOK != ''
+        if: env.VERCEL_DEPLOY_HOOK != ''
+        env:
+          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
         run: |
           echo "Triggering Vercel Deploy Hook..."
-          curl -s -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
+          curl -s -X POST "$VERCEL_DEPLOY_HOOK"
           echo "Deploy hook triggered successfully."
 
       - name: 🚀 Auto Deploy via Vercel CLI (If Vercel Token Configured)
-        if: secrets.VERCEL_TOKEN != ''
+        if: env.VERCEL_TOKEN != ''
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
