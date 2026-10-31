@@ -10,6 +10,8 @@ import {
   ActiveSession,
   SessionType,
   CampusCheckpoint,
+  OtpRecord,
+  PasswordResetRecord,
 } from '../../types';
 
 export class MemoryStorageAdapter implements StorageAdapter {
@@ -18,9 +20,12 @@ export class MemoryStorageAdapter implements StorageAdapter {
   private buses: Bus[] = [];
   private attendance: AttendanceRecord[] = [];
   private activeSession: ActiveSession | null = null;
+  private activeSessions: Map<string, ActiveSession> = new Map();
   private notifications: Notification[] = [];
   private reports: FinalReport[] = [];
   private checkpoints: CampusCheckpoint[] = [];
+  private otps: OtpRecord[] = [];
+  private passwordResets: PasswordResetRecord[] = [];
   private settings: AttendanceSettings = {
     sessionType: 'EVENING',
     startTime: '16:50',
@@ -433,6 +438,10 @@ export class MemoryStorageAdapter implements StorageAdapter {
         a.sessionType === record.sessionType
     );
     if (idx !== -1) {
+      if (this.attendance[idx].status === 'PRESENT') {
+        // Never replace an existing verified PRESENT record
+        return this.attendance[idx];
+      }
       this.attendance[idx] = record;
     } else {
       this.attendance.push(record);
@@ -449,25 +458,68 @@ export class MemoryStorageAdapter implements StorageAdapter {
 
   // Active Session
   async getActiveSession(busId?: string): Promise<ActiveSession | null> {
-    if (!this.activeSession || this.activeSession.status !== 'ACTIVE') return null;
-    if (busId && busId !== 'ALL' && this.activeSession.busId !== busId && this.activeSession.busId !== 'ALL') {
-      const normBus = (b?: string) => (b || '').trim().toUpperCase().replace(/^BUS-/i, '');
-      if (normBus(this.activeSession.busId) !== normBus(busId)) {
-        return null;
+    const normBus = (b?: string) => (b || '').trim().toUpperCase().replace(/^BUS-/i, '');
+    if (busId && busId !== 'ALL') {
+      for (const s of Array.from(this.activeSessions.values()).reverse()) {
+        if (s.status === 'ACTIVE' && (s.busId === 'ALL' || normBus(s.busId) === normBus(busId))) {
+          return s;
+        }
       }
+      if (this.activeSession && this.activeSession.status === 'ACTIVE') {
+        if (this.activeSession.busId === 'ALL' || normBus(this.activeSession.busId) === normBus(busId)) {
+          return this.activeSession;
+        }
+      }
+      return null;
     }
-    return this.activeSession;
+
+    for (const s of Array.from(this.activeSessions.values()).reverse()) {
+      if (s.status === 'ACTIVE') return s;
+    }
+    if (this.activeSession && this.activeSession.status === 'ACTIVE') {
+      return this.activeSession;
+    }
+    return null;
+  }
+
+  async getSessionById(sessionId: string): Promise<ActiveSession | null> {
+    const s = this.activeSessions.get(sessionId);
+    if (s) return s;
+    if (this.activeSession && this.activeSession.id === sessionId) {
+      return this.activeSession;
+    }
+    return null;
   }
 
   async saveActiveSession(session: ActiveSession): Promise<ActiveSession> {
-    this.activeSession = session;
+    this.activeSessions.set(session.id, { ...session });
+    this.activeSession = { ...session };
     return session;
   }
 
-  async endActiveSession(_sessionId?: string): Promise<boolean> {
-    if (this.activeSession) {
-      this.activeSession.status = 'CLOSED';
-      this.activeSession.endedAt = new Date().toISOString();
+  async endActiveSession(sessionId?: string): Promise<boolean> {
+    const now = new Date().toISOString();
+    if (sessionId) {
+      const s = this.activeSessions.get(sessionId);
+      if (s) {
+        s.status = 'CLOSED';
+        s.endedAt = now;
+      }
+      if (this.activeSession && this.activeSession.id === sessionId) {
+        this.activeSession.status = 'CLOSED';
+        this.activeSession.endedAt = now;
+      }
+    } else {
+      for (const s of this.activeSessions.values()) {
+        if (s.status === 'ACTIVE') {
+          s.status = 'CLOSED';
+          s.endedAt = now;
+        }
+      }
+      if (this.activeSession) {
+        this.activeSession.status = 'CLOSED';
+        this.activeSession.endedAt = now;
+      }
     }
     return true;
   }
@@ -585,5 +637,64 @@ export class MemoryStorageAdapter implements StorageAdapter {
       this.reports.push(report);
     }
     return report;
+  }
+
+  // Persistent OTP Storage
+  async saveOtp(record: OtpRecord): Promise<void> {
+    const idx = this.otps.findIndex((o) => o.id === record.id || o.email.toLowerCase() === record.email.toLowerCase());
+    if (idx !== -1) {
+      this.otps[idx] = record;
+    } else {
+      this.otps.push(record);
+    }
+  }
+
+  async getOtp(email: string): Promise<OtpRecord | null> {
+    const clean = email.trim().toLowerCase();
+    const now = new Date().toISOString();
+    return this.otps
+      .filter((o) => o.email.toLowerCase() === clean && !o.verified && o.expiresAt > now)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] || null;
+  }
+
+  async incrementOtpAttempts(idOrEmail: string): Promise<number> {
+    const clean = idOrEmail.trim().toLowerCase();
+    const otp = this.otps.find((o) => o.id === idOrEmail || o.email.toLowerCase() === clean);
+    if (!otp) return 0;
+    otp.attempts = (otp.attempts || 0) + 1;
+    return otp.attempts;
+  }
+
+  async markOtpVerified(idOrEmail: string): Promise<void> {
+    const clean = idOrEmail.trim().toLowerCase();
+    const otp = this.otps.find((o) => o.id === idOrEmail || o.email.toLowerCase() === clean);
+    if (otp) otp.verified = true;
+  }
+
+  async deleteExpiredOtps(): Promise<number> {
+    const now = new Date().toISOString();
+    const initialCount = this.otps.length;
+    this.otps = this.otps.filter((o) => o.expiresAt >= now);
+    return initialCount - this.otps.length;
+  }
+
+  // Persistent Password Reset Storage
+  async savePasswordReset(record: PasswordResetRecord): Promise<void> {
+    const idx = this.passwordResets.findIndex((p) => p.id === record.id || p.tokenHash === record.tokenHash);
+    if (idx !== -1) {
+      this.passwordResets[idx] = record;
+    } else {
+      this.passwordResets.push(record);
+    }
+  }
+
+  async getPasswordReset(tokenHash: string): Promise<PasswordResetRecord | null> {
+    const now = new Date().toISOString();
+    return this.passwordResets.find((p) => p.tokenHash === tokenHash && !p.used && p.expiresAt > now) || null;
+  }
+
+  async markPasswordResetUsed(id: string): Promise<void> {
+    const p = this.passwordResets.find((pr) => pr.id === id || pr.tokenHash === id);
+    if (p) p.used = true;
   }
 }

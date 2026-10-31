@@ -47,6 +47,11 @@ export const AdminDashboard: React.FC = () => {
     buses: Bus[];
   } | null>(null);
 
+  // Fleet & Directory Counts
+  const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const [allBuses, setAllBuses] = useState<(Bus & { studentsCount: number; inchargeName: string })[]>([]);
+  const [allIncharges, setAllIncharges] = useState<User[]>([]);
+
   // Active Session Telemetry
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
 
@@ -97,10 +102,31 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  // Fetch Complete Fleet Roster for Counts & Bus-Wise Overview
+  const fetchFleetStats = async () => {
+    try {
+      const [students, buses, incharges] = await Promise.all([
+        api.getStudents(),
+        api.getBuses(),
+        api.getIncharges().catch(() => []),
+      ]);
+      setAllStudents(students || []);
+      setAllBuses(buses || []);
+      setAllIncharges(incharges || []);
+    } catch (err) {
+      console.error('Failed to load fleet stats:', err);
+    }
+  };
+
   // Combined Refresh
   const refreshAll = async () => {
     setIsRefreshing(true);
-    await Promise.all([fetchDashboardData(), fetchSessionData(), fetchPendingApprovals()]);
+    await Promise.all([
+      fetchDashboardData(),
+      fetchSessionData(),
+      fetchPendingApprovals(),
+      fetchFleetStats(),
+    ]);
     setIsLoading(false);
     setIsRefreshing(false);
   };
@@ -111,11 +137,13 @@ export const AdminDashboard: React.FC = () => {
       fetchDashboardData();
       fetchSessionData();
       fetchPendingApprovals();
+      fetchFleetStats();
     }, 25000);
     const onFocus = () => {
       fetchDashboardData();
       fetchSessionData();
       fetchPendingApprovals();
+      fetchFleetStats();
     };
     window.addEventListener('focus', onFocus);
     return () => {
@@ -253,7 +281,7 @@ export const AdminDashboard: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Live smartphone geofence & biometric telemetry is active. Full live roster and session controls are in Attendance Hub.
+              Live smartphone geofence & biometric telemetry is active. Full live roster and read-only telemetry are in Attendance Hub.
             </p>
           </div>
 
@@ -263,7 +291,7 @@ export const AdminDashboard: React.FC = () => {
               className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-600 dark:hover:bg-emerald-500 rounded-xl transition shadow-xs active:scale-95"
             >
               <Radio className="w-3.5 h-3.5 animate-pulse" />
-              <span>Open Live Session Controls →</span>
+              <span>Monitor Live Telemetry →</span>
             </Link>
           </div>
         </div>
@@ -278,7 +306,7 @@ export const AdminDashboard: React.FC = () => {
                 Transit Fleet Idle • No Active Attendance Broadcast
               </p>
               <p className="text-zinc-500 dark:text-zinc-400 text-[11px]">
-                Attendance sessions are initiated per scheduled route in Attendance Hub or directly by route in-charges.
+                Attendance sessions are initiated by route in-charges. Admin views provide read-only monitoring.
               </p>
             </div>
           </div>
@@ -286,46 +314,186 @@ export const AdminDashboard: React.FC = () => {
             to="/admin/attendance?tab=today"
             className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-[#4ade80] hover:underline self-start sm:self-auto"
           >
-            <span>Launch Attendance in Hub →</span>
+            <span>View Attendance Hub →</span>
           </Link>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* 3. OPERATIONAL METRICS (4 KPI Cards)                                      */}
+      {/* 3. OPERATIONAL METRICS (Exhaustive Admin KPI Matrix)                       */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard
-          title="Total Students"
-          value={data?.stats.total ?? 0}
-          icon={<Users className="w-5 h-5" />}
-          color="indigo"
-          subtitle="Enrolled Commuters"
-        />
+      {(() => {
+        const totalStudentsCount = allStudents.length > 0 ? allStudents.length : (data?.stats.total ?? 0);
+        const approvedStudentsCount = allStudents.filter((s) => s.status === 'APPROVED' || s.approved).length;
+        const pendingRegistrationsCount = pendingStudents.length + pendingIncharges.length;
+        const rejectedStudentsCount = allStudents.filter((s) => s.status === 'REJECTED').length;
+        const totalBusesCount = allBuses.length > 0 ? allBuses.length : (data?.buses.length ?? 0);
+        const totalInchargesCount = allIncharges.length;
+        const activeSessionsCount = activeSession ? 1 : 0;
 
-        <StatCard
-          title="Present Today"
-          value={data?.stats.present ?? 0}
-          icon={<CheckCircle2 className="w-5 h-5" />}
-          color="emerald"
-          subtitle="Location Verified"
-        />
+        return (
+          <div className="space-y-3.5">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+              <StatCard
+                title="Total Students"
+                value={totalStudentsCount}
+                icon={<Users className="w-5 h-5" />}
+                color="indigo"
+                subtitle="Enrolled Commuters"
+              />
+              <StatCard
+                title="Approved Students"
+                value={approvedStudentsCount}
+                icon={<CheckCircle2 className="w-5 h-5" />}
+                color="emerald"
+                subtitle="Active Transport Access"
+              />
+              <StatCard
+                title="Pending Registrations"
+                value={pendingRegistrationsCount}
+                icon={<Clock className="w-5 h-5" />}
+                color="amber"
+                subtitle="Awaiting Verification"
+              />
+              <StatCard
+                title="Rejected Students"
+                value={rejectedStudentsCount}
+                icon={<XCircle className="w-5 h-5" />}
+                color="rose"
+                subtitle="Declined Requests"
+              />
+            </div>
 
-        <StatCard
-          title="Not Present"
-          value={data?.stats.notPresent ?? 0}
-          icon={<XCircle className="w-5 h-5" />}
-          color="rose"
-          subtitle="Unverified / Absent"
-        />
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+              <StatCard
+                title="Total Buses"
+                value={totalBusesCount}
+                icon={<BusIcon className="w-5 h-5" />}
+                color="blue"
+                subtitle="Transit Fleet Vehicles"
+              />
+              <StatCard
+                title="Total In-Charges"
+                value={totalInchargesCount}
+                icon={<UserCheck className="w-5 h-5" />}
+                color="indigo"
+                subtitle="Assigned Bus Operators"
+              />
+              <StatCard
+                title="Active Sessions"
+                value={activeSessionsCount}
+                icon={<Radio className="w-5 h-5" />}
+                color={activeSessionsCount > 0 ? 'emerald' : 'amber'}
+                subtitle={activeSessionsCount > 0 ? 'Broadcasting Now' : 'Fleet Standby'}
+              />
+              <StatCard
+                title="Overall Turnout"
+                value={`${data?.stats.percentage ?? 0}%`}
+                icon={<Percent className="w-5 h-5" />}
+                color="emerald"
+                subtitle={`${data?.stats.present ?? 0} Present Today`}
+              />
+            </div>
+          </div>
+        );
+      })()}
 
-        <StatCard
-          title="Turnout Rate"
-          value={`${data?.stats.percentage ?? 0}%`}
-          icon={<Percent className="w-5 h-5" />}
-          color="blue"
-          subtitle="Today's Attendance Rate"
-        />
+      {/* ========================================================================= */}
+      {/* 3.5 BUS-WISE ATTENDANCE OVERVIEW                                          */}
+      {/* ========================================================================= */}
+      <div className="bg-white dark:bg-[#141418] rounded-2xl shadow-xs border border-zinc-200/90 dark:border-[#26262e] overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-zinc-200 dark:border-[#26262e] bg-zinc-50/70 dark:bg-[#101014] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <BusIcon className="w-4 h-4 text-emerald-600 dark:text-[#4ade80]" />
+            <h3 className="text-sm font-black text-zinc-900 dark:text-white">
+              Bus-Wise Attendance Overview
+            </h3>
+          </div>
+          <span className="text-xs font-mono font-bold text-zinc-400">
+            {allBuses.length || data?.buses.length || 0} Routes Tracked
+          </span>
+        </div>
+
+        {(!allBuses || allBuses.length === 0) && (!data?.buses || data.buses.length === 0) ? (
+          <div className="p-8 text-center text-xs font-bold text-zinc-400">
+            No transit buses configured yet. Add buses in Bus Management.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs min-w-[640px]">
+              <thead className="bg-zinc-50/80 dark:bg-[#101014] text-zinc-500 dark:text-zinc-400 font-black uppercase tracking-wider text-[10px] border-b border-zinc-200 dark:border-[#26262e]">
+                <tr>
+                  <th className="px-5 py-3.5">Bus & Route</th>
+                  <th className="px-5 py-3.5">Assigned In-Charge</th>
+                  <th className="px-5 py-3.5">Assigned Students</th>
+                  <th className="px-5 py-3.5">Present Today</th>
+                  <th className="px-5 py-3.5">Absent / Remaining</th>
+                  <th className="px-5 py-3.5">Turnout %</th>
+                  <th className="px-5 py-3.5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-[#26262e]">
+                {(allBuses.length > 0 ? allBuses : data?.buses || []).map((bus) => {
+                  const busRoster = (data?.roster || []).filter((r) => r.busId === bus.id);
+                  const busStudentsCount =
+                    (bus as any).studentsCount ??
+                    allStudents.filter((s) => s.busId === bus.id && s.active).length;
+                  const busPresentCount = busRoster.filter((r) => r.status === 'PRESENT').length;
+                  const busAbsentCount = Math.max(0, busStudentsCount - busPresentCount);
+                  const busPercentage =
+                    busStudentsCount > 0
+                      ? Math.round((busPresentCount / busStudentsCount) * 10000) / 100
+                      : 0;
+                  const inchargeName = (bus as any).inchargeName || 'Unassigned';
+
+                  return (
+                    <tr key={bus.id} className="hover:bg-zinc-50/60 dark:hover:bg-[#181820] transition">
+                      <td className="px-5 py-3.5">
+                        <span className="font-black text-zinc-900 dark:text-white font-mono">
+                          {bus.busNumber}
+                        </span>
+                        <p className="text-[11px] text-zinc-500">{bus.routeName}</p>
+                      </td>
+                      <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-300 font-medium">
+                        {inchargeName}
+                      </td>
+                      <td className="px-5 py-3.5 font-bold font-mono text-zinc-700 dark:text-zinc-300">
+                        {busStudentsCount} Commuters
+                      </td>
+                      <td className="px-5 py-3.5 font-bold font-mono text-emerald-600 dark:text-[#4ade80]">
+                        {busPresentCount} Present
+                      </td>
+                      <td className="px-5 py-3.5 font-bold font-mono text-rose-500">
+                        {busAbsentCount} Absent
+                      </td>
+                      <td className="px-5 py-3.5 font-black font-mono">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded-full text-[11px] ${
+                            busPercentage >= 75
+                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-[#4ade80]'
+                              : busPercentage >= 50
+                              ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
+                              : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+                          }`}
+                        >
+                          {busPercentage}%
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <Link
+                          to={`/admin/live-monitoring`}
+                          className="px-2.5 py-1 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-lg transition"
+                        >
+                          Telemetry →
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}

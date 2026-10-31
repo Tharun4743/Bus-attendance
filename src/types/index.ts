@@ -1,7 +1,7 @@
 export type Role = 'ADMIN' | 'INCHARGE' | 'STUDENT';
 export type SessionType = 'MORNING' | 'EVENING';
 export type AttendanceMode = 'GROUND' | 'TRAVELLING';
-export type VerificationMethod = 'CODE_ONLY' | 'CODE_GPS' | 'FACE_GPS' | 'PHONE_BIOMETRIC_GPS' | 'ADMIN_OVERRIDE';
+export type VerificationMethod = 'GROUND_GEOFENCE' | 'TRAVELLING_SESSION_PARTICIPATION' | 'ADMIN_OVERRIDE' | 'CODE_ONLY' | 'CODE_GPS' | 'FACE_GPS' | 'PHONE_BIOMETRIC_GPS';
 export type StudentApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface User {
@@ -65,6 +65,11 @@ export type AttendanceStatus =
   | 'NOT_PRESENT'
   | 'PENDING'
   | 'SESSION_CLOSED'
+  | 'SESSION_NOT_FOUND'
+  | 'OUTSIDE_GEOFENCE'
+  | 'LOW_GPS_ACCURACY'
+  | 'LOCATION_PERMISSION_DENIED'
+  | 'ALREADY_SUBMITTED'
   | 'BUS_MISMATCH'
   | 'FACE_MISMATCH'
   | 'BIOMETRIC_FAILED'
@@ -94,7 +99,7 @@ export interface AttendanceRecord {
   deviceBiometricPassed?: boolean;
   capturedAt: string;
   verifiedAt: string;
-  verificationMethod: 'FACE_GPS' | 'PHONE_BIOMETRIC_GPS' | 'DYNAMIC_CODE' | 'DYNAMIC_CODE_GPS' | 'GPS_GEOFENCE' | 'ADMIN_OVERRIDE' | 'TRAVELLING_BUS_GPS';
+  verificationMethod: 'GROUND_GEOFENCE' | 'TRAVELLING_SESSION_PARTICIPATION' | 'FACE_GPS' | 'PHONE_BIOMETRIC_GPS' | 'DYNAMIC_CODE' | 'DYNAMIC_CODE_GPS' | 'GPS_GEOFENCE' | 'ADMIN_OVERRIDE' | 'TRAVELLING_BUS_GPS';
   overrideReason?: string;
   overrideBy?: string;
 }
@@ -103,13 +108,13 @@ export interface ActiveSession {
   id: string;
   sessionType: SessionType;
   attendanceMode: AttendanceMode;
-  verificationMethod: VerificationMethod;
+  verificationMethod?: VerificationMethod;
   busId: string; // "BUS01", "BUS02" or "ALL"
   status: SessionStatus;
   startedBy: string;
-  currentCode: string; // Dynamic 6-digit code (e.g. "583214")
-  codeIssuedAt: string;
-  codeExpiresAt: string; // Code rotates every 60 seconds
+  currentCode?: string; // Obsolete, optional for backward compatibility
+  codeIssuedAt?: string;
+  codeExpiresAt?: string;
   radiusMeters: number;
   maxGpsAccuracyMeters: number;
   location?: {
@@ -130,6 +135,7 @@ export interface AttendanceSettings {
   endTime: string; // "16:55"
   reportTime: string; // "16:57"
   timezone: string; // "Asia/Kolkata"
+  autoScheduleEnabled?: boolean;
   location: {
     name: string;
     latitude: number;
@@ -179,6 +185,8 @@ export interface BusReportSummary {
   present: number;
   notPresent: number;
   percentage: number;
+  groundCount?: number;
+  travellingCount?: number;
 }
 
 export interface StudentReportSummary {
@@ -191,6 +199,7 @@ export interface StudentReportSummary {
   verifiedAt?: string;
   distanceMeters?: number | null;
   accuracyMeters?: number | null;
+  verificationMethod?: string;
   codeUsed?: string;
 }
 
@@ -265,4 +274,51 @@ export interface CampusCheckpoint {
   radiusMeters: number;
   description?: string;
   createdAt?: string;
+}
+
+export interface PushSubscriptionKeys {
+  p256dh: string;
+  auth: string;
+}
+
+export interface PushSubscriptionRecord {
+  id: string;
+  userId: string;
+  role: Role;
+  endpoint: string;
+  keys: PushSubscriptionKeys;
+  busId?: string;
+  createdAt: string;
+}
+
+export interface StoredOtpData {
+  role: 'STUDENT' | 'INCHARGE';
+  name: string;
+  email: string;
+  phone?: string;
+  passwordHash: string;
+  registerNumber?: string;
+  preferredBusId?: string;
+  busNumber?: string;
+  routeName?: string;
+}
+
+export interface OtpRecord {
+  id: string;
+  email: string;
+  otpHash: string;
+  expiresAt: string;
+  attempts: number;
+  verified: boolean;
+  signupData?: StoredOtpData;
+  createdAt: string;
+}
+
+export interface PasswordResetRecord {
+  id: string;
+  email: string;
+  tokenHash: string;
+  expiresAt: string;
+  used: boolean;
+  createdAt: string;
 }

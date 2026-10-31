@@ -31,23 +31,23 @@ export class AttendanceVerifier {
     if (!student) {
       return {
         status: 'LOCATION_UNAVAILABLE',
-        message: 'Student record not found.',
+        message: 'Student record not found in registered commuter roster.',
       };
     }
 
-    // 2. Check student active
-    if (!student.active) {
+    // 2. Check student active and approved
+    if (!student.active || !student.approved || student.status !== 'APPROVED') {
       return {
         status: 'NOT_PRESENT',
-        message: 'Student account is inactive. Please contact your administrator.',
+        message: 'Student account is pending approval or inactive. Please contact your administrator.',
       };
     }
 
     // 3. Check assigned bus
     if (!student.busId) {
       return {
-        status: 'LOCATION_UNAVAILABLE',
-        message: 'No bus assigned to this student.',
+        status: 'BUS_MISMATCH',
+        message: 'No bus assigned to this student. Please wait for administrator bus assignment.',
       };
     }
 
@@ -62,32 +62,29 @@ export class AttendanceVerifier {
     const settings = await this.storage.getSettings();
     const todayDate = getISTDateString();
 
-    // 4. Resolve Active Session
-    const activeDynamicSession = await this.storage.getActiveSession();
+    // 4. Resolve Active Session for student's bus
+    const activeDynamicSession = await this.storage.getActiveSession(student.busId);
     let sessionType: SessionType = 'EVENING';
     let targetLat: number = settings.location.latitude;
     let targetLon: number = settings.location.longitude;
     let targetRadius: number = settings.location.radiusMeters || 10;
     let maxAccuracy: number = settings.location.maxGpsAccuracyMeters || 20;
-    let targetName: string = settings.location.name;
+    let targetName: string = settings.location.name || 'College Ground';
     let isGroundMode = true;
-    let requiresGps = true;
     let sessionId: string | undefined = undefined;
 
     if (activeDynamicSession && activeDynamicSession.status === 'ACTIVE') {
       sessionId = activeDynamicSession.id;
       sessionType = activeDynamicSession.sessionType;
       isGroundMode = activeDynamicSession.attendanceMode === 'GROUND';
-      requiresGps = activeDynamicSession.verificationMethod !== 'CODE_ONLY';
-      targetRadius = activeDynamicSession.radiusMeters || (isGroundMode ? (settings.location.radiusMeters || 35) : 1000);
-      maxAccuracy = activeDynamicSession.maxGpsAccuracyMeters || (isGroundMode ? (settings.location.maxGpsAccuracyMeters || 60) : 1500);
+      targetRadius = activeDynamicSession.radiusMeters || (isGroundMode ? (settings.location.radiusMeters || 10) : 1000);
+      maxAccuracy = activeDynamicSession.maxGpsAccuracyMeters || (isGroundMode ? (settings.location.maxGpsAccuracyMeters || 20) : 1500);
 
-
-      // 4c. Bus Isolation Security check: Student must belong to the active session bus
+      // Bus Isolation Security check: Student must belong to the active session bus
       if (activeDynamicSession.busId !== 'ALL' && activeDynamicSession.busId !== student.busId) {
         return {
           status: 'BUS_MISMATCH',
-          message: 'You are not assigned to this bus.',
+          message: `Active session is for Bus ${activeDynamicSession.busId}. You are assigned to Bus ${student.busId}.`,
         };
       }
 
@@ -97,21 +94,22 @@ export class AttendanceVerifier {
         targetName = activeDynamicSession.location.name || targetName;
       }
     } else {
-      // Default Ground Evening Scheduled window
+      // Check scheduled evening session if automatic scheduling is active
       const sessionInfo = evaluateSessionStatus(settings);
-      if (sessionInfo.status !== 'ACTIVE') {
-        if (sessionInfo.status === 'UPCOMING') {
-          return {
-            status: 'NOT_PRESENT',
-            message: `Attendance is currently inactive. Scheduled evening window opens at ${settings.startTime} IST.`,
-          };
-        }
+      if (sessionInfo.status === 'ACTIVE') {
+        sessionType = 'EVENING';
+        isGroundMode = true;
+      } else if (sessionInfo.status === 'UPCOMING') {
         return {
-          status: 'NOT_PRESENT',
-          message: `Attendance session is no longer active.`,
+          status: 'SESSION_NOT_FOUND',
+          message: `No active attendance session found. Scheduled evening window opens at ${settings.startTime} IST.`,
+        };
+      } else {
+        return {
+          status: 'SESSION_CLOSED',
+          message: 'The attendance session is currently closed or not started by the bus in-charge.',
         };
       }
-      sessionType = 'EVENING';
     }
 
     // 5. Check duplicate attendance for today + sessionType
@@ -124,7 +122,7 @@ export class AttendanceVerifier {
     if (existingRecord && existingRecord.status === 'PRESENT') {
       return {
         status: 'PRESENT',
-        message: 'Attendance already recorded for this session.',
+        message: 'Attendance already recorded and verified for this session.',
         distanceMeters: existingRecord.distanceMeters ?? undefined,
         accuracyMeters: existingRecord.accuracyMeters ?? undefined,
         verifiedAt: existingRecord.verifiedAt,
@@ -137,61 +135,61 @@ export class AttendanceVerifier {
 
     const nowIso = new Date().toISOString();
 
-    // 6. Handle Verification Method: Code Only or Travelling Bus Mode
-    if (!requiresGps) {
-      const presentRecord: AttendanceRecord = {
+    // 6. TRAVELLING BUS ATTENDANCE MODE (Part 9)
+    // Non-code, non-mock session participation for en-route transit
+    if (!isGroundMode) {
+      const travellingRecord: AttendanceRecord = {
         id: `ATT-${todayDate.replace(/-/g, '')}-${sessionType}-${student.id}`,
         studentId: student.id,
         busId: student.busId,
         attendanceDate: todayDate,
         sessionType,
-        attendanceMode: activeDynamicSession?.attendanceMode || 'TRAVELLING',
+        attendanceMode: 'TRAVELLING',
         sessionId,
         status: 'PRESENT',
-        codeUsed: req.code?.trim(),
         latitude: typeof req.latitude === 'number' ? req.latitude : null,
         longitude: typeof req.longitude === 'number' ? req.longitude : null,
         accuracyMeters: typeof req.accuracy === 'number' ? req.accuracy : null,
         distanceMeters: null,
         capturedAt: req.capturedAt || nowIso,
         verifiedAt: nowIso,
-        verificationMethod: 'DYNAMIC_CODE',
+        verificationMethod: 'TRAVELLING_SESSION_PARTICIPATION',
       };
 
-      await this.storage.createAttendance(presentRecord);
+      const saved = await this.storage.createAttendance(travellingRecord);
 
       return {
         status: 'PRESENT',
-        message: 'Attendance verified successfully.',
+        message: `Travelling bus participation verified for Bus ${bus.busNumber}.`,
         verifiedAt: nowIso,
-        record: presentRecord,
+        record: saved,
         studentName: student.name,
         registerNumber: student.registerNumber,
         busId: student.busId,
       };
     }
 
-    // 7. Ground Mode with GPS Geofencing Validation
+    // 7. GROUND ATTENDANCE GEOFENCE VERIFICATION (Part 8)
+    // Browser Geolocation coordinates independently evaluated using Haversine against College Ground
     let readings: GpsReading[] = [];
     if (req.readings && Array.isArray(req.readings) && req.readings.length > 0) {
       readings = req.readings;
     } else if (
       typeof req.latitude === 'number' &&
-      typeof req.longitude === 'number' &&
-      typeof req.accuracy === 'number'
+      typeof req.longitude === 'number'
     ) {
       readings = [
         {
           latitude: req.latitude,
           longitude: req.longitude,
-          accuracy: req.accuracy,
+          accuracy: typeof req.accuracy === 'number' ? req.accuracy : 5,
           timestamp: req.capturedAt || nowIso,
         },
       ];
     } else {
       return {
-        status: 'LOCATION_UNAVAILABLE',
-        message: 'Location access required. Enable location in Chrome and try again.',
+        status: 'LOCATION_PERMISSION_DENIED',
+        message: 'Location access is required for ground verification. Please allow GPS permissions in your browser and retry.',
       };
     }
 
@@ -212,28 +210,23 @@ export class AttendanceVerifier {
       ) {
         return {
           status: 'INVALID_LOCATION',
-          message: 'Invalid GPS coordinates detected.',
+          message: 'Invalid GPS coordinates detected from mobile device.',
         };
       }
 
-      if (typeof r.accuracy !== 'number' || isNaN(r.accuracy) || r.accuracy < 0) {
-        return {
-          status: 'LOCATION_UNAVAILABLE',
-          message: 'Invalid GPS accuracy received.',
-        };
-      }
+      const acc = typeof r.accuracy === 'number' && !isNaN(r.accuracy) ? r.accuracy : 10;
 
-      if (r.accuracy > maxAccuracy) {
+      if (acc > maxAccuracy) {
         return {
-          status: 'LOCATION_UNAVAILABLE',
-          message: `Location accuracy (${Math.round(r.accuracy)}m) is insufficient. Move to an open area and try again.`,
-          accuracyMeters: r.accuracy,
+          status: 'LOW_GPS_ACCURACY',
+          message: `Location accuracy (${Math.round(acc)}m) is insufficient. Acceptable tolerance is within ${maxAccuracy}m. Move to an open area away from tall obstacles and retry.`,
+          accuracyMeters: acc,
         };
       }
 
       const dist = calculateDistance(r.latitude, r.longitude, targetLat, targetLon);
       calculatedDistances.push(dist);
-      accuracies.push(r.accuracy);
+      accuracies.push(acc);
     }
 
     const avgDistance =
@@ -248,14 +241,14 @@ export class AttendanceVerifier {
 
     if (readings.length >= 2 && jitterSpread > 25) {
       return {
-        status: 'LOCATION_UNAVAILABLE',
-        message: 'Your current location cannot be verified accurately. Move to an open area and try again.',
+        status: 'LOW_GPS_ACCURACY',
+        message: 'High GPS jitter detected. Move to an open area with clear sky view and retry.',
         distanceMeters: avgDistance,
         accuracyMeters: avgAccuracy,
       };
     }
 
-    // Geofence check
+    // Geofence enforcement: Must be within target radius (default 10 metres)
     if (avgDistance <= targetRadius || (maxDist <= targetRadius + 0.5 && avgDistance <= targetRadius)) {
       const presentRecord: AttendanceRecord = {
         id: `ATT-${todayDate.replace(/-/g, '')}-${sessionType}-${student.id}`,
@@ -263,38 +256,35 @@ export class AttendanceVerifier {
         busId: student.busId,
         attendanceDate: todayDate,
         sessionType,
-        attendanceMode: activeDynamicSession?.attendanceMode || 'GROUND',
+        attendanceMode: 'GROUND',
         sessionId,
         status: 'PRESENT',
-        codeUsed: req.code?.trim(),
         latitude: readings[0].latitude,
         longitude: readings[0].longitude,
         accuracyMeters: avgAccuracy,
         distanceMeters: avgDistance,
         capturedAt: req.capturedAt || nowIso,
         verifiedAt: nowIso,
-        verificationMethod: 'DYNAMIC_CODE_GPS',
+        verificationMethod: 'GROUND_GEOFENCE',
       };
 
-      await this.storage.createAttendance(presentRecord);
+      const saved = await this.storage.createAttendance(presentRecord);
 
       return {
         status: 'PRESENT',
-        message: `Verified at ${targetName} (${avgDistance}m).`,
+        message: `Verified at ${targetName} (${avgDistance}m from bay, geofence radius: ${targetRadius}m).`,
         distanceMeters: avgDistance,
         accuracyMeters: avgAccuracy,
         verifiedAt: nowIso,
-        record: presentRecord,
+        record: saved,
         studentName: student.name,
         registerNumber: student.registerNumber,
         busId: student.busId,
       };
     } else {
       return {
-        status: 'INVALID_LOCATION',
-        message: isGroundMode
-          ? `Outside stationary bus bay boundary (${avgDistance}m away). Stay within ${targetRadius}m of ${targetName}.`
-          : `Outside travelling transit boundary (${avgDistance}m away). Allowable transit motion radius is ${targetRadius}m.`,
+        status: 'OUTSIDE_GEOFENCE',
+        message: `Outside College Ground geofence (${avgDistance}m away). You must be within ${targetRadius}m of ${targetName}.`,
         distanceMeters: avgDistance,
         accuracyMeters: avgAccuracy,
       };

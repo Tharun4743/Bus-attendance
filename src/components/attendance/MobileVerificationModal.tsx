@@ -554,8 +554,8 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-md bg-white dark:bg-[#141418] border border-zinc-200 dark:border-[#2e2e38] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
+      <div className="relative w-full max-w-md bg-white dark:bg-[#141418] border border-zinc-200 dark:border-[#2e2e38] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] my-auto">
         {/* Top Header */}
         <div className="flex items-center justify-between p-4 border-b border-zinc-100 dark:border-[#23232a]">
           <div className="flex items-center gap-3">
@@ -632,7 +632,7 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
         </div>
 
         {/* Body Content */}
-        <div className="p-4 flex-1 flex flex-col items-center justify-center">
+        <div className="p-4 flex-1 overflow-y-auto flex flex-col items-center justify-start">
           {successResult ? (
             <div className="flex flex-col items-center text-center py-6 animate-scale-in">
               <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 mb-3">
