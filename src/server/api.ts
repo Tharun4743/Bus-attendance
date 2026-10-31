@@ -4,7 +4,7 @@ import { generateToken, verifyToken, TokenPayload, hashPassword, comparePassword
 import { evaluateSessionStatus, getISTDateString, getISTTimeString } from './attendance/session';
 import { AttendanceVerifier } from './attendance/verifier';
 import { ReportGenerator } from './reports/generator';
-import { Role, User, SessionType, VerificationMethod } from '../types';
+import { Role, User, Bus, SessionType, VerificationMethod } from '../types';
 import crypto from 'crypto';
 import { brevoMailer } from '../lib/brevo';
 import { cloudinaryPipeline } from '../lib/cloudinary';
@@ -732,6 +732,82 @@ apiRouter.get('/attendance/session', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * Strict database-backed bus authorization check for In-Charge operations.
+ * Validates against live database storage; never relies on stale JWT claims alone.
+ */
+async function verifyInchargeBusAuthorization(
+  reqUser: TokenPayload,
+  targetBusId?: string
+): Promise<{ authorized: boolean; bus?: Bus; user?: User; error?: string; status?: number }> {
+  if (reqUser.role !== 'INCHARGE') {
+    return { authorized: false, status: 403, error: 'Only authorized Bus In-Charges can perform this operation.' };
+  }
+
+  // 1. Fetch live user record from database storage
+  let user = await storage.getUserById(reqUser.id);
+  if (!user && reqUser.email) {
+    user = await storage.getUserByEmail(reqUser.email);
+  }
+
+  if (user) {
+    if (user.role !== 'INCHARGE') {
+      return { authorized: false, status: 403, error: 'User is not an authorized Bus In-Charge.' };
+    }
+    if (user.active === false || (user.status && user.status !== 'APPROVED')) {
+      return { authorized: false, status: 403, error: 'In-Charge account is inactive or pending approval.' };
+    }
+  }
+
+  // 2. If a specific targetBusId is requested, verify bidirectional link against database storage
+  if (targetBusId) {
+    const bus = await storage.getBusById(targetBusId);
+    if (!bus) {
+      return { authorized: false, status: 404, error: `Bus "${targetBusId}" does not exist in fleet registry.` };
+    }
+
+    const userId = user?.id || reqUser.id;
+    const userEmail = user?.email || reqUser.email;
+    const userAssignedBusId = user?.assignedBusId || reqUser.assignedBusId;
+
+    const isDirectlyAssigned =
+      bus.inchargeId === userId ||
+      (userEmail ? bus.inchargeId === userEmail : false);
+
+    const isUserAssigned =
+      userAssignedBusId === bus.id ||
+      userAssignedBusId === bus.busNumber;
+
+    if (!isDirectlyAssigned && !isUserAssigned) {
+      return {
+        authorized: false,
+        status: 403,
+        error: `Access Denied: You are not authorized for Bus ${bus.busNumber}. Operations on unassigned vehicles are strictly prohibited.`,
+      };
+    }
+
+    return { authorized: true, bus, user: (user || reqUser) as User };
+  }
+
+  // 3. Otherwise, resolve the in-charge's assigned bus from database storage
+  const userId = user?.id || reqUser.id;
+  const userEmail = user?.email || reqUser.email;
+  const userAssignedBusId = user?.assignedBusId || reqUser.assignedBusId;
+
+  let bus = await storage.getBusByInchargeId(userId);
+  if (!bus && userAssignedBusId) {
+    bus = await storage.getBusById(userAssignedBusId);
+  }
+  if (!bus && userEmail) {
+    bus = await storage.getBusByInchargeId(userEmail);
+  }
+  if (!bus) {
+    return { authorized: false, status: 404, error: 'No bus assigned to your in-charge account.' };
+  }
+
+  return { authorized: true, bus, user: (user || reqUser) as User };
+}
+
 // In-Charge: Start Attendance Session (Strictly role: INCHARGE for assigned bus only)
 const handleStartSession = async (req: AuthRequest, res: Response) => {
   try {
@@ -749,22 +825,15 @@ const handleStartSession = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Backend bus assignment authorization check
-    const bus = await storage.getBusById(busId);
-    if (!bus) {
-      return res.status(404).json({ error: `Bus ${busId} not found.` });
-    }
-
-    const isAuthorized =
-      bus.inchargeId === req.user!.id ||
-      req.user!.assignedBusId === bus.id ||
-      req.user!.assignedBusId === bus.busNumber;
-
-    if (!isAuthorized) {
-      return res.status(403).json({
-        error: `You are not authorized to start attendance for Bus ${bus.busNumber}. Access is restricted to assigned bus in-charges only.`,
+    // Backend bus assignment authorization check against live database storage
+    const authCheck = await verifyInchargeBusAuthorization(req.user!, busId);
+    if (!authCheck.authorized || !authCheck.bus) {
+      return res.status(authCheck.status || 403).json({
+        error: authCheck.error || `You are not authorized to start attendance for Bus ${busId}. Access is restricted to assigned bus in-charges only.`,
       });
     }
+
+    const bus = authCheck.bus;
 
     // Check for duplicate active sessions on this bus
     const existingSession = await storage.getActiveSession(busId);
@@ -876,26 +945,24 @@ const handleEndSession = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'sessionId is required to end attendance.' });
     }
 
-    const session =
-      (await storage.getSessionById(sessionId)) ||
-      (await storage.getActiveSession(req.user!.assignedBusId)) ||
-      (await storage.getActiveSession());
+    const session = await storage.getSessionById(sessionId);
 
     if (!session) {
       return res.status(404).json({ error: 'Attendance session not found or already concluded.' });
     }
 
     if (session.busId && session.busId !== 'ALL') {
-      const bus = await storage.getBusById(session.busId);
-      const isAuthorized =
-        !bus ||
-        bus.inchargeId === req.user!.id ||
-        req.user!.assignedBusId === bus.id ||
-        req.user!.assignedBusId === bus.busNumber;
-
-      if (!isAuthorized) {
-        return res.status(403).json({
-          error: 'You are not authorized to close another in-charge’s attendance session.',
+      const authCheck = await verifyInchargeBusAuthorization(req.user!, session.busId);
+      if (!authCheck.authorized) {
+        return res.status(authCheck.status || 403).json({
+          error: authCheck.error || 'You are not authorized to close another in-charge’s attendance session.',
+        });
+      }
+    } else {
+      const authCheck = await verifyInchargeBusAuthorization(req.user!);
+      if (!authCheck.authorized) {
+        return res.status(authCheck.status || 403).json({
+          error: 'You are not authorized to close attendance sessions.',
         });
       }
     }
@@ -2066,18 +2133,11 @@ apiRouter.get(
   requireAuth(['INCHARGE']),
   async (req: AuthRequest, res: Response) => {
     try {
-      const inchargeId = req.user!.id;
-      let bus = await storage.getBusByInchargeId(inchargeId);
-      if (!bus && req.user!.assignedBusId) {
-        bus = await storage.getBusById(req.user!.assignedBusId);
+      const authCheck = await verifyInchargeBusAuthorization(req.user!);
+      if (!authCheck.authorized || !authCheck.bus) {
+        return res.status(authCheck.status || 404).json({ error: authCheck.error || 'No bus assigned to your incharge account.' });
       }
-      if (!bus && req.user!.email) {
-        bus = await storage.getBusByInchargeId(req.user!.email);
-      }
-
-      if (!bus) {
-        return res.status(404).json({ error: 'No bus assigned to your incharge account.' });
-      }
+      const bus = authCheck.bus;
 
       const settings = await storage.getSettings();
       const sessionInfo = evaluateSessionStatus(settings);
@@ -2137,16 +2197,11 @@ apiRouter.get(
 // ----------------------------------------------------------------------
 apiRouter.get('/incharge/my-bus', requireAuth(['INCHARGE']), async (req: AuthRequest, res: Response) => {
   try {
-    let bus = await storage.getBusByInchargeId(req.user!.id);
-    if (!bus && req.user!.assignedBusId) {
-      bus = await storage.getBusById(req.user!.assignedBusId);
+    const authCheck = await verifyInchargeBusAuthorization(req.user!);
+    if (!authCheck.authorized || !authCheck.bus) {
+      return res.status(authCheck.status || 404).json({ error: authCheck.error || 'No bus assigned to your in-charge account.' });
     }
-    if (!bus && req.user!.email) {
-      bus = await storage.getBusByInchargeId(req.user!.email);
-    }
-    if (!bus) {
-      return res.status(404).json({ error: 'No bus assigned to your in-charge account.' });
-    }
+    const bus = authCheck.bus;
     const students = await storage.getStudentsByBusId(bus.id);
     const activeStudents = students.filter((s) => s.active);
     return res.json({
@@ -2165,16 +2220,11 @@ apiRouter.get('/incharge/my-bus', requireAuth(['INCHARGE']), async (req: AuthReq
 // ----------------------------------------------------------------------
 apiRouter.get('/incharge/students', requireAuth(['INCHARGE']), async (req: AuthRequest, res: Response) => {
   try {
-    let bus = await storage.getBusByInchargeId(req.user!.id);
-    if (!bus && req.user!.assignedBusId) {
-      bus = await storage.getBusById(req.user!.assignedBusId);
+    const authCheck = await verifyInchargeBusAuthorization(req.user!);
+    if (!authCheck.authorized || !authCheck.bus) {
+      return res.status(authCheck.status || 404).json({ error: authCheck.error || 'No bus assigned to your in-charge account.' });
     }
-    if (!bus && req.user!.email) {
-      bus = await storage.getBusByInchargeId(req.user!.email);
-    }
-    if (!bus) {
-      return res.status(404).json({ error: 'No bus assigned to your in-charge account.' });
-    }
+    const bus = authCheck.bus;
     const students = await storage.getStudentsByBusId(bus.id);
     return res.json(students);
   } catch (err: any) {
@@ -2187,16 +2237,11 @@ apiRouter.get('/incharge/students', requireAuth(['INCHARGE']), async (req: AuthR
 // ----------------------------------------------------------------------
 apiRouter.get('/incharge/history', requireAuth(['INCHARGE']), async (req: AuthRequest, res: Response) => {
   try {
-    let bus = await storage.getBusByInchargeId(req.user!.id);
-    if (!bus && req.user!.assignedBusId) {
-      bus = await storage.getBusById(req.user!.assignedBusId);
+    const authCheck = await verifyInchargeBusAuthorization(req.user!);
+    if (!authCheck.authorized || !authCheck.bus) {
+      return res.status(authCheck.status || 404).json({ error: authCheck.error || 'No bus assigned to your in-charge account.' });
     }
-    if (!bus && req.user!.email) {
-      bus = await storage.getBusByInchargeId(req.user!.email);
-    }
-    if (!bus) {
-      return res.status(404).json({ error: 'No bus assigned to your in-charge account.' });
-    }
+    const bus = authCheck.bus;
     const { date, sessionType } = req.query;
     const records = await storage.getAttendance({
       busId: bus.id,
@@ -2231,16 +2276,11 @@ apiRouter.get('/incharge/history', requireAuth(['INCHARGE']), async (req: AuthRe
 // ----------------------------------------------------------------------
 apiRouter.get('/incharge/reports', requireAuth(['INCHARGE']), async (req: AuthRequest, res: Response) => {
   try {
-    let bus = await storage.getBusByInchargeId(req.user!.id);
-    if (!bus && req.user!.assignedBusId) {
-      bus = await storage.getBusById(req.user!.assignedBusId);
+    const authCheck = await verifyInchargeBusAuthorization(req.user!);
+    if (!authCheck.authorized || !authCheck.bus) {
+      return res.status(authCheck.status || 404).json({ error: authCheck.error || 'No bus assigned to your in-charge account.' });
     }
-    if (!bus && req.user!.email) {
-      bus = await storage.getBusByInchargeId(req.user!.email);
-    }
-    if (!bus) {
-      return res.status(404).json({ error: 'No bus assigned to your in-charge account.' });
-    }
+    const bus = authCheck.bus;
     const reports = await storage.getReports();
     const filteredReports = reports
       .map((r) => {
