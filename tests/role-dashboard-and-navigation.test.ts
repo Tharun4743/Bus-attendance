@@ -16,12 +16,13 @@ describe('⚡ Role Navigation, Dashboard Layout & Bus Authorization Test Suite',
   const rootDir = path.resolve(__dirname, '..');
 
   // --------------------------------------------------------------------------
-  // 1. ADMIN SIDEBAR (8 ITEMS IN EXACT ORDER)
+  // 1. ADMIN SIDEBAR (CORE MODULES WITH ACCOUNT CENTRALIZED IN HEADER)
   // --------------------------------------------------------------------------
-  it('R1: AdminSidebar renders exactly 8 items in the required canonical order', () => {
+  it('R1: AdminSidebar renders core administrative modules in order and header provides account menu', () => {
     const adminSidebar = fs.readFileSync(path.join(rootDir, 'src/components/common/AdminSidebar.tsx'), 'utf-8');
+    const navbar = fs.readFileSync(path.join(rootDir, 'src/components/common/Navbar.tsx'), 'utf-8');
 
-    // Expected 8 items in order
+    // Expected core navigation items in order
     const expected = [
       { to: '/admin', label: 'Dashboard' },
       { to: '/admin/students', label: 'Students' },
@@ -29,14 +30,10 @@ describe('⚡ Role Navigation, Dashboard Layout & Bus Authorization Test Suite',
       { to: '/admin/incharges', label: 'In-Charges' },
       { to: '/admin/reports', label: 'Attendance Reports' },
       { to: '/admin/settings', label: 'Settings' },
-      { to: '/admin/profile', label: 'Profile' },
-      { label: 'Logout' },
     ];
 
     for (const item of expected) {
-      if (item.to) {
-        expect(adminSidebar).toContain(item.to);
-      }
+      expect(adminSidebar).toContain(item.to);
       expect(adminSidebar).toContain(item.label);
     }
 
@@ -47,8 +44,6 @@ describe('⚡ Role Navigation, Dashboard Layout & Bus Authorization Test Suite',
     const idxIncharges = adminSidebar.indexOf("to: '/admin/incharges'");
     const idxReports = adminSidebar.indexOf("to: '/admin/reports'");
     const idxSettings = adminSidebar.indexOf("to: '/admin/settings'");
-    const idxProfile = adminSidebar.indexOf("to: '/admin/profile'");
-    const idxLogout = adminSidebar.indexOf('>Logout<');
 
     expect(idxDashboard).toBeGreaterThan(0);
     expect(idxStudents).toBeGreaterThan(idxDashboard);
@@ -56,8 +51,10 @@ describe('⚡ Role Navigation, Dashboard Layout & Bus Authorization Test Suite',
     expect(idxIncharges).toBeGreaterThan(idxBuses);
     expect(idxReports).toBeGreaterThan(idxIncharges);
     expect(idxSettings).toBeGreaterThan(idxReports);
-    expect(idxProfile).toBeGreaterThan(idxSettings);
-    expect(idxLogout).toBeGreaterThan(idxProfile);
+
+    // Navbar provides the unified Account Menu with Profile and Logout
+    expect(navbar).toContain('Account Profile');
+    expect(navbar).toContain('Logout');
   });
 
   // --------------------------------------------------------------------------
