@@ -1,3 +1,4 @@
+import { StudentMyBusSkeleton } from '../../components/skeleton/StudentSkeletons';
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Bus } from '../../types';
@@ -39,6 +40,10 @@ export const StudentMyBus: React.FC = () => {
   useEffect(() => {
     fetchBus();
   }, []);
+
+  if (isLoading && !data) {
+    return <StudentMyBusSkeleton />;
+  }
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">

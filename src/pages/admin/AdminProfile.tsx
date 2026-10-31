@@ -1,3 +1,4 @@
+import { AdminProfileSkeleton } from '../../components/skeleton/AdminSkeletons';
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/ui/Badge';
@@ -6,7 +7,11 @@ import { Shield, Mail, User, Key, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const AdminProfile: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
+
+  if (isLoading || !user) {
+    return <AdminProfileSkeleton />;
+  }
   const navigate = useNavigate();
 
   const handleLogout = () => {

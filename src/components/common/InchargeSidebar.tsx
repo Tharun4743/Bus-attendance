@@ -146,13 +146,13 @@ export const InchargeSidebar: React.FC = () => {
   return (
     <>
       {/* Desktop Persistent Sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 bg-white dark:bg-[#0c0c0e] border-r border-zinc-200 dark:border-[#26262e] p-4 shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] overflow-hidden">
+      <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-[#0c0c0e] border-r border-zinc-200 dark:border-[#26262e] p-4 shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] overflow-hidden">
         {renderNavContent()}
       </aside>
 
       {/* Mobile Drawer Overlay */}
       {isMobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex animate-in fade-in">
+        <div className="md:hidden fixed inset-0 z-50 flex animate-in fade-in">
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-xs"
             onClick={() => setIsMobileOpen(false)}

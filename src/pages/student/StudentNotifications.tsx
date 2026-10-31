@@ -1,3 +1,4 @@
+﻿import { StudentNotificationsSkeleton } from '../../components/skeleton/StudentSkeletons';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
@@ -69,6 +70,10 @@ export const StudentNotifications: React.FC = () => {
   };
 
   const filtered = notifications.filter((n) => (filter === 'UNREAD' ? !n.read : true));
+
+  if (isLoading && notifications.length === 0) {
+    return <StudentNotificationsSkeleton />;
+  }
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">

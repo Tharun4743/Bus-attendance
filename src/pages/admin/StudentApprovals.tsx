@@ -1,3 +1,4 @@
+import { StudentApprovalsSkeleton } from '../../components/skeleton/AdminSkeletons';
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Bus, Student, User } from '../../types';
@@ -187,15 +188,8 @@ export const StudentApprovals: React.FC = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 space-y-3">
-        <div className="w-9 h-9 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-          Loading pending approvals...
-        </p>
-      </div>
-    );
+  if (isLoading && pendingStudents.length === 0 && pendingIncharges.length === 0) {
+    return <StudentApprovalsSkeleton />;
   }
 
   return (

@@ -1,3 +1,4 @@
+import { InchargeDashboardSkeleton } from '../../components/skeleton/InchargeSkeletons';
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Bus, SessionInfo, ActiveSession } from '../../types';
@@ -181,13 +182,8 @@ export const InchargeDashboard: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  if (isLoading) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
-        <div className="w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-mono text-zinc-500 font-bold">Synchronizing Live Fleet Status...</p>
-      </div>
-    );
+  if (isLoading && !data) {
+    return <InchargeDashboardSkeleton />;
   }
 
   if (!data || !data.bus) {

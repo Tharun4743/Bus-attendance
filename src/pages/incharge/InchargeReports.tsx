@@ -1,3 +1,4 @@
+﻿import { InchargeReportsSkeleton } from '../../components/skeleton/InchargeSkeletons';
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../services/api';
 import { FinalReport } from '../../types';
@@ -115,6 +116,10 @@ export const InchargeReports: React.FC = () => {
     link.click();
     document.body.removeChild(link);
   };
+
+  if (isLoading && reports.length === 0) {
+    return <InchargeReportsSkeleton />;
+  }
 
   return (
     <div className="space-y-6">

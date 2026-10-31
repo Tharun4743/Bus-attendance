@@ -1,3 +1,4 @@
+import { AdminDashboardSkeleton } from '../../components/skeleton/AdminSkeletons';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
@@ -148,13 +149,8 @@ export const AdminDashboard: React.FC = () => {
     };
   }, []);
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 space-y-3">
-        <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Loading Dashboard...</p>
-      </div>
-    );
+  if (isLoading && !data) {
+    return <AdminDashboardSkeleton />;
   }
 
   // Attendance Lifecycle State

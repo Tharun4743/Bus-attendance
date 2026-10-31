@@ -1,3 +1,4 @@
+import { InchargeLiveAttendanceSkeleton } from '../../components/skeleton/InchargeSkeletons';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
@@ -170,13 +171,8 @@ export const InchargeLiveAttendance: React.FC = () => {
     });
   }, [data, searchQuery, statusFilter]);
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-        <RefreshCw className="w-8 h-8 animate-spin text-blue-600 dark:text-sky-400" />
-        <p className="text-sm font-semibold text-zinc-500">Connecting to live attendance telemetry...</p>
-      </div>
-    );
+  if (isLoading && !data) {
+    return <InchargeLiveAttendanceSkeleton />;
   }
 
   return (

@@ -1,3 +1,4 @@
+﻿import { StudentAttendanceHistorySkeleton } from '../../components/skeleton/StudentSkeletons';
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../services/api';
 import { AttendanceRecord } from '../../types';
@@ -96,6 +97,10 @@ export const StudentAttendanceHistory: React.FC = () => {
     link.click();
     document.body.removeChild(link);
   };
+
+  if (isLoading && records.length === 0) {
+    return <StudentAttendanceHistorySkeleton />;
+  }
 
   return (
     <div className="space-y-6">
