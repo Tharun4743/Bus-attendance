@@ -23,6 +23,7 @@ const BusAssignments = React.lazy(() => import('./pages/admin/BusAssignments').t
 const LiveMonitoring = React.lazy(() => import('./pages/admin/LiveMonitoring').then(m => ({ default: m.LiveMonitoring })));
 const TodayAttendance = React.lazy(() => import('./pages/admin/TodayAttendance').then(m => ({ default: m.TodayAttendance })));
 const AttendanceHistory = React.lazy(() => import('./pages/admin/AttendanceHistory').then(m => ({ default: m.AttendanceHistory })));
+const AttendanceHub = React.lazy(() => import('./pages/admin/AttendanceHub').then(m => ({ default: m.AttendanceHub })));
 const ReportsPage = React.lazy(() => import('./pages/admin/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const NotificationsPage = React.lazy(() => import('./pages/admin/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
 const GeofenceSettings = React.lazy(() => import('./pages/admin/GeofenceSettings').then(m => ({ default: m.GeofenceSettings })));
@@ -138,9 +139,10 @@ export const App: React.FC = () => {
               <Route path="attendance" element={<TodayAttendance />} />
               <Route path="attendance/history" element={<AttendanceHistory />} />
               <Route path="attendance-history" element={<AttendanceHistory />} />
+              <Route path="settings" element={<GeofenceSettings />} />
               <Route path="ground-settings" element={<GeofenceSettings />} />
               <Route path="settings/geofence" element={<GeofenceSettings />} />
-              <Route path="reports" element={<ReportsPage />} />
+              <Route path="reports" element={<AttendanceHub initialTab="reports" />} />
               <Route path="reports/:date" element={<ReportsPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
               <Route path="profile" element={<AdminProfile />} />
@@ -157,8 +159,10 @@ export const App: React.FC = () => {
             >
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<InchargeDashboard />} />
+              <Route path="bus" element={<InchargeMyBus />} />
               <Route path="my-bus" element={<InchargeMyBus />} />
               <Route path="students" element={<InchargeStudents />} />
+              <Route path="attendance" element={<InchargeLiveAttendance />} />
               <Route path="start-attendance" element={<InchargeStartAttendance />} />
               <Route path="live-attendance" element={<InchargeLiveAttendance />} />
               <Route path="history" element={<InchargeHistory />} />
@@ -178,8 +182,11 @@ export const App: React.FC = () => {
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<StudentDashboard />} />
               <Route path="profile" element={<StudentProfile />} />
+              <Route path="bus" element={<StudentMyBus />} />
               <Route path="my-bus" element={<StudentMyBus />} />
+              <Route path="verify" element={<StudentVerifyAttendance />} />
               <Route path="verify-attendance" element={<StudentVerifyAttendance />} />
+              <Route path="history" element={<StudentAttendanceHistory />} />
               <Route path="attendance-history" element={<StudentAttendanceHistory />} />
               <Route path="notifications" element={<StudentNotifications />} />
             </Route>

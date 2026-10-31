@@ -22,11 +22,6 @@ interface SidebarNavItem {
   badge?: number | null;
 }
 
-interface SidebarSection {
-  title: string;
-  items: SidebarNavItem[];
-}
-
 export const StudentSidebar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -71,58 +66,42 @@ export const StudentSidebar: React.FC = () => {
     navigate('/login');
   };
 
-  const sections: SidebarSection[] = [
+  const navItems: SidebarNavItem[] = [
     {
-      title: 'MAIN',
-      items: [
-        {
-          to: '/student/dashboard',
-          label: 'Dashboard',
-          icon: LayoutDashboard,
-          exact: true,
-        },
-      ],
+      to: '/student',
+      label: 'Dashboard',
+      icon: LayoutDashboard,
+      exact: true,
+      matchPrefixes: ['/student', '/student/dashboard'],
     },
     {
-      title: 'MY ACCOUNT',
-      items: [
-        {
-          to: '/student/profile',
-          label: 'My Profile',
-          icon: User,
-        },
-        {
-          to: '/student/my-bus',
-          label: 'My Bus',
-          icon: Bus,
-        },
-      ],
+      to: '/student/profile',
+      label: 'My Profile',
+      icon: User,
     },
     {
-      title: 'ATTENDANCE',
-      items: [
-        {
-          to: '/student/verify-attendance',
-          label: 'Verify Attendance',
-          icon: CheckCircle2,
-        },
-        {
-          to: '/student/attendance-history',
-          label: 'My Attendance History',
-          icon: History,
-        },
-      ],
+      to: '/student/bus',
+      label: 'My Bus',
+      icon: Bus,
+      matchPrefixes: ['/student/bus', '/student/my-bus'],
     },
     {
-      title: 'COMMUNICATION',
-      items: [
-        {
-          to: '/student/notifications',
-          label: 'Notifications',
-          icon: Bell,
-          badge: unreadNotifs > 0 ? unreadNotifs : null,
-        },
-      ],
+      to: '/student/verify',
+      label: 'Verify Attendance',
+      icon: CheckCircle2,
+      matchPrefixes: ['/student/verify', '/student/verify-attendance'],
+    },
+    {
+      to: '/student/history',
+      label: 'Attendance History',
+      icon: History,
+      matchPrefixes: ['/student/history', '/student/attendance-history'],
+    },
+    {
+      to: '/student/notifications',
+      label: 'Notifications',
+      icon: Bell,
+      badge: unreadNotifs > 0 ? unreadNotifs : null,
     },
   ];
 
@@ -136,62 +115,53 @@ export const StudentSidebar: React.FC = () => {
         <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Student Attendance Hub</p>
       </div>
 
-      {/* Navigation Sections */}
-      <div className="flex-1 space-y-4 overflow-y-auto pr-1">
-        {sections.map((sec) => (
-          <div key={sec.title} className="space-y-1">
-            <p className="px-3 text-[10px] font-black uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-              {sec.title}
-            </p>
-            <div className="space-y-0.5">
-              {sec.items.map((item) => {
-                const Icon = item.icon;
-                const isCustomActive = item.matchPrefixes
-                  ? item.matchPrefixes.some((prefix: string) => location.pathname.startsWith(prefix))
-                  : item.exact
-                  ? location.pathname === item.to
-                  : location.pathname.startsWith(item.to);
+      {/* Navigation Items (Exactly 7 in order: Dashboard, My Profile, My Bus, Verify Attendance, Attendance History, Notifications, Logout) */}
+      <div className="flex-1 space-y-1 overflow-y-auto pr-1">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isCustomActive = item.matchPrefixes
+            ? item.matchPrefixes.some((prefix: string) => location.pathname === prefix || location.pathname.startsWith(prefix))
+            : item.exact
+            ? location.pathname === item.to
+            : location.pathname.startsWith(item.to);
 
-                return (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.exact}
-                    className={({ isActive }) => {
-                      const active = isCustomActive || isActive;
-                      return `flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${
-                        active
-                          ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-xs'
-                          : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-[#1e1e24]'
-                      }`;
-                    }}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Icon className="w-4 h-4 shrink-0" />
-                      <span className="truncate">{item.label}</span>
-                    </div>
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.exact}
+              className={({ isActive }) => {
+                const active = isCustomActive || isActive;
+                return `flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${
+                  active
+                    ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-xs'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-[#1e1e24]'
+                }`;
+              }}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="truncate">{item.label}</span>
+              </div>
 
-                    {item.badge != null && (
-                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shrink-0">
-                        {item.badge}
-                      </span>
-                    )}
-                  </NavLink>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
+              {item.badge != null && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shrink-0">
+                  {item.badge}
+                </span>
+              )}
+            </NavLink>
+          );
+        })}
 
-      {/* Logout Action */}
-      <div className="pt-2 border-t border-zinc-200/80 dark:border-[#26262e]">
+        {/* 7. Logout Item */}
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+          className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all duration-200 cursor-pointer"
         >
-          <LogOut className="w-4 h-4" />
-          <span>Sign Out</span>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <LogOut className="w-4 h-4 shrink-0" />
+            <span className="truncate">Logout</span>
+          </div>
         </button>
       </div>
     </div>

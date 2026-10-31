@@ -6,24 +6,18 @@ import { AttendanceRecord, Bus, SessionInfo, Student } from '../../types';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { StatCard } from '../../components/ui/StatCard';
 import {
   CheckCircle2,
   Lock,
   MapPin,
   Camera,
-  Fingerprint,
-  Calendar,
   Radio,
   RefreshCw,
   ShieldCheck,
-  Clock,
   AlertCircle,
   Navigation,
   Compass,
   Bell,
-  Percent,
-  XCircle,
   ArrowRight,
 } from 'lucide-react';
 import { MobileVerificationModal } from '../../components/attendance/MobileVerificationModal';
@@ -39,14 +33,7 @@ export const StudentDashboard: React.FC = () => {
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
   const [morningRecord, setMorningRecord] = useState<AttendanceRecord | null>(null);
   const [eveningRecord, setEveningRecord] = useState<AttendanceRecord | null>(null);
-  const [attendanceStats, setAttendanceStats] = useState<{
-    totalRecords: number;
-    presentCount: number;
-    absentCount: number;
-    percentage: number;
-  } | null>(null);
   const [recentNotifs, setRecentNotifs] = useState<any[]>([]);
-  const [history, setHistory] = useState<AttendanceRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
@@ -74,8 +61,6 @@ export const StudentDashboard: React.FC = () => {
       setTodayRecord(res.todayRecord);
       setMorningRecord((res as any).morningRecord || null);
       setEveningRecord((res as any).eveningRecord || null);
-      setAttendanceStats((res as any).stats || null);
-      setHistory(res.history || []);
       setRecentNotifs((notifsRes as any)?.notifications?.slice(0, 3) || []);
       setErrorMessage(null);
     } catch (err: any) {
@@ -404,7 +389,7 @@ export const StudentDashboard: React.FC = () => {
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
-            {student?.name || user?.name}
+            Welcome, {student?.name || user?.name || 'Student'}
           </h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-1 flex items-center gap-2 flex-wrap">
             <span>
@@ -722,39 +707,6 @@ export const StudentDashboard: React.FC = () => {
         )}
       </div>
 
-      {/* ========================================================================= */}
-      {/* 2.5 ATTENDANCE SUMMARY & METRICS                                          */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard
-          title="Total Recorded"
-          value={attendanceStats?.totalRecords ?? history.length}
-          icon={<Calendar className="w-5 h-5" />}
-          color="indigo"
-          subtitle="Attendance Logs"
-        />
-        <StatCard
-          title="Days Present"
-          value={attendanceStats?.presentCount ?? history.filter(h => h.status === 'PRESENT').length}
-          icon={<CheckCircle2 className="w-5 h-5" />}
-          color="emerald"
-          subtitle="Verified On-Board"
-        />
-        <StatCard
-          title="Days Absent"
-          value={attendanceStats?.absentCount ?? history.filter(h => h.status !== 'PRESENT').length}
-          icon={<XCircle className="w-5 h-5" />}
-          color="rose"
-          subtitle="Missed Sessions"
-        />
-        <StatCard
-          title="Turnout Rate"
-          value={`${attendanceStats?.percentage ?? 0}%`}
-          icon={<Percent className="w-5 h-5" />}
-          color="blue"
-          subtitle="Overall Attendance"
-        />
-      </div>
 
       {/* ========================================================================= */}
       {/* 2.8 RECENT IN-APP NOTIFICATIONS                                           */}
@@ -798,117 +750,23 @@ export const StudentDashboard: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. COMMUTER ATTENDANCE HISTORY (Responsive Table + Mobile Cards)           */}
+      {/* 3. ATTENDANCE HISTORY NAVIGATION CARD                                      */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-[#141418] rounded-2xl shadow-xs border border-zinc-200/90 dark:border-[#26262e] overflow-hidden transition-all">
-        <div className="p-3.5 sm:p-4 border-b border-zinc-200/90 dark:border-[#26262e] bg-zinc-50/70 dark:bg-[#101014] flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-zinc-400" />
-            <h3 className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white">
-              My Transit History
-            </h3>
-          </div>
-          <span className="text-xs text-zinc-400 font-mono font-bold">
-            {history.length} Records
-          </span>
+      <div className="bg-white dark:bg-[#141418] rounded-2xl shadow-xs border border-zinc-200/90 dark:border-[#26262e] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h3 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-white">
+            Looking for detailed past attendance logs?
+          </h3>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+            View complete date-wise logs, GPS verification proof, and export your attendance records.
+          </p>
         </div>
-
-        {history.length === 0 ? (
-          <div className="p-8 sm:p-10 text-center text-xs text-zinc-400 font-bold">
-            No past attendance records found.
-          </div>
-        ) : (
-          <>
-            {/* Desktop Table (>= 640px) */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-left text-xs min-w-[640px]">
-                <thead className="bg-zinc-50/80 dark:bg-[#101014] text-zinc-500 dark:text-zinc-400 font-black uppercase tracking-wider text-[10px] border-b border-zinc-200 dark:border-[#26262e]">
-                  <tr>
-                    <th className="px-5 py-3.5">Date</th>
-                    <th className="px-5 py-3.5">Session</th>
-                    <th className="px-5 py-3.5">Status</th>
-                    <th className="px-5 py-3.5">Verification Mode</th>
-                    <th className="px-5 py-3.5">Verified Time</th>
-                    <th className="px-5 py-3.5">Distance</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100 dark:divide-[#26262e]">
-                  {history.map((rec) => (
-                    <tr key={rec.id} className="hover:bg-zinc-50/70 dark:hover:bg-[#1a1a20]/60 transition">
-                      <td className="px-5 py-3.5 font-bold font-mono text-zinc-900 dark:text-white">
-                        {rec.attendanceDate}
-                      </td>
-                      <td className="px-5 py-3.5 text-zinc-500 font-bold">
-                        {rec.sessionType}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <StatusBadge status={rec.status} size="sm" />
-                      </td>
-                      <td className="px-5 py-3.5">
-                        {rec.verificationMethod === 'GROUND_GEOFENCE' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
-                            <MapPin className="w-3 h-3" />
-                            Ground Geofence (10m)
-                          </span>
-                        ) : rec.verificationMethod === 'TRAVELLING_SESSION_PARTICIPATION' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800">
-                            <Compass className="w-3 h-3" />
-                            Travelling Bus Boarding
-                          </span>
-                        ) : rec.verificationMethod === 'FACE_GPS' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800">
-                            <Camera className="w-3 h-3" />
-                            Face + GPS
-                          </span>
-                        ) : rec.verificationMethod === 'PHONE_BIOMETRIC_GPS' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800">
-                            <Fingerprint className="w-3 h-3" />
-                            Phone Biometric
-                          </span>
-                        ) : (
-                          <span className="text-zinc-500 font-mono text-[11px]">
-                            {rec.verificationMethod || 'Standard'}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5 text-zinc-500 dark:text-zinc-400 font-mono">
-                        {rec.verifiedAt ? formatISTTime(rec.verifiedAt) : '—'}
-                      </td>
-                      <td className="px-5 py-3.5 text-zinc-500 dark:text-zinc-400 font-mono">
-                        {rec.distanceMeters != null ? `${Math.round(rec.distanceMeters)}m` : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile Cards (< 640px) */}
-            <div className="block sm:hidden divide-y divide-zinc-100 dark:divide-[#24242e]">
-              {history.map((rec) => (
-                <div key={rec.id} className="p-3.5 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-black text-zinc-900 dark:text-white">
-                      {rec.attendanceDate} • {rec.sessionType}
-                    </span>
-                    <StatusBadge status={rec.status} size="sm" />
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] text-zinc-500 font-mono">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-zinc-400" />
-                      {rec.verifiedAt ? formatISTTime(rec.verifiedAt) : '—'}
-                    </span>
-                    {rec.distanceMeters != null && (
-                      <span className="text-emerald-600 dark:text-emerald-400">
-                        {Math.round(rec.distanceMeters)}m
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+        <Link
+          to="/student/history"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-xs hover:opacity-90 transition active:scale-95 shrink-0 self-start sm:self-auto"
+        >
+          <span>Attendance History →</span>
+        </Link>
       </div>
 
       {/* ========================================================================= */}

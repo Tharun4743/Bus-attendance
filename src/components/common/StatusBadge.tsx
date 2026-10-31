@@ -19,15 +19,50 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     lg: 'px-3 py-1 text-xs font-bold',
   }[size];
 
-  switch (status) {
-    // Attendance Statuses
+  const normalized = (status || '').toUpperCase().trim();
+
+  switch (normalized) {
+    // Canonical: Pending
+    case 'PENDING':
+      return (
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-[#fde047] dark:border-amber-500/40 ${sizeClasses}`}
+        >
+          {showIcon && <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-[#fde047]" />}
+          Pending
+        </span>
+      );
+
+    // Canonical: Approved
+    case 'APPROVED':
+      return (
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-[#4ade80] dark:border-emerald-500/40 ${sizeClasses}`}
+        >
+          {showIcon && <CheckCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-[#4ade80]" />}
+          Approved
+        </span>
+      );
+
+    // Canonical: Present
     case 'PRESENT':
       return (
         <span
           className={`inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-[#4ade80] dark:border-emerald-500/40 ${sizeClasses}`}
         >
           {showIcon && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-[#4ade80]" />}
-          Attendance Present
+          Present
+        </span>
+      );
+
+    // Canonical: Absent / Not Present
+    case 'ABSENT':
+      return (
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/15 dark:text-[#fb7185] dark:border-rose-500/40 ${sizeClasses}`}
+        >
+          {showIcon && <XCircle className="w-3.5 h-3.5 text-rose-600 dark:text-[#fb7185]" />}
+          Absent
         </span>
       );
 
@@ -41,28 +76,9 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
         </span>
       );
 
-    case 'LOCATION_UNAVAILABLE':
-      return (
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-[#fde047] dark:border-amber-500/40 ${sizeClasses}`}
-        >
-          {showIcon && <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-[#fde047]" />}
-          Location Unavailable
-        </span>
-      );
-
-    case 'INVALID_LOCATION':
-      return (
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/15 dark:text-[#fb7185] dark:border-rose-500/40 ${sizeClasses}`}
-        >
-          {showIcon && <MapPinOff className="w-3.5 h-3.5 text-rose-600 dark:text-[#fb7185]" />}
-          Outside Boundary
-        </span>
-      );
-
-    // Session Statuses
+    // Canonical: Active
     case 'ACTIVE':
+    case 'SESSION ACTIVE':
       return (
         <span
           className={`inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300 dark:bg-emerald-500/15 dark:text-[#4ade80] dark:border-emerald-500/40 font-bold ${sizeClasses}`}
@@ -73,17 +89,18 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
           )}
-          SESSION ACTIVE
+          {normalized === 'SESSION ACTIVE' ? 'SESSION ACTIVE' : 'Active'}
         </span>
       );
 
-    case 'UPCOMING':
+    // Canonical: Completed
+    case 'COMPLETED':
       return (
         <span
-          className={`inline-flex items-center gap-1.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 dark:bg-sky-500/15 dark:text-[#38bdf8] dark:border-sky-500/35 ${sizeClasses}`}
+          className={`inline-flex items-center gap-1.5 rounded-full bg-zinc-100 text-zinc-700 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700 ${sizeClasses}`}
         >
-          {showIcon && <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-[#38bdf8]" />}
-          UPCOMING
+          {showIcon && <CheckCheck className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />}
+          Completed
         </span>
       );
 
@@ -104,6 +121,37 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
         >
           {showIcon && <CheckCheck className="w-3.5 h-3.5 text-indigo-600 dark:text-[#c084fc]" />}
           FINALIZED
+        </span>
+      );
+
+    case 'UPCOMING':
+      return (
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 dark:bg-sky-500/15 dark:text-[#38bdf8] dark:border-sky-500/35 ${sizeClasses}`}
+        >
+          {showIcon && <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-[#38bdf8]" />}
+          UPCOMING
+        </span>
+      );
+
+    case 'LOCATION_UNAVAILABLE':
+      return (
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-[#fde047] dark:border-amber-500/40 ${sizeClasses}`}
+        >
+          {showIcon && <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-[#fde047]" />}
+          Location Unavailable
+        </span>
+      );
+
+    case 'INVALID_LOCATION':
+    case 'OUTSIDE_GEOFENCE':
+      return (
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/15 dark:text-[#fb7185] dark:border-rose-500/40 ${sizeClasses}`}
+        >
+          {showIcon && <MapPinOff className="w-3.5 h-3.5 text-rose-600 dark:text-[#fb7185]" />}
+          Outside Boundary
         </span>
       );
 
