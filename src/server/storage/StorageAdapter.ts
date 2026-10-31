@@ -78,6 +78,7 @@ export interface StorageAdapter {
 
   // Active Dynamic Session (Morning / Travelling Bus)
   getActiveSession(busId?: string): Promise<ActiveSession | null>;
+  getSessionById(sessionId: string): Promise<ActiveSession | null>;
   saveActiveSession(session: ActiveSession): Promise<ActiveSession>;
   endActiveSession(sessionId?: string): Promise<boolean>;
   updateSessionLocation(
@@ -106,4 +107,16 @@ export interface StorageAdapter {
   getReports(): Promise<FinalReport[]>;
   getReportByDate(date: string, sessionType: SessionType | string): Promise<FinalReport | null>;
   saveReport(report: FinalReport): Promise<FinalReport>;
+
+  // Persistent OTP Storage
+  saveOtp(record: import('../../types').OtpRecord): Promise<void>;
+  getOtp(email: string): Promise<import('../../types').OtpRecord | null>;
+  incrementOtpAttempts(id: string): Promise<number>;
+  markOtpVerified(id: string): Promise<void>;
+  deleteExpiredOtps(): Promise<number>;
+
+  // Persistent Password Reset Storage
+  savePasswordReset(record: import('../../types').PasswordResetRecord): Promise<void>;
+  getPasswordReset(tokenHash: string): Promise<import('../../types').PasswordResetRecord | null>;
+  markPasswordResetUsed(id: string): Promise<void>;
 }

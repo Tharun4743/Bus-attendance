@@ -4,6 +4,7 @@ import { Bus, SessionInfo, ActiveSession } from '../../types';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Button } from '../../components/ui/Button';
 import { StatCard } from '../../components/ui/StatCard';
+import { Badge } from '../../components/ui/Badge';
 import {
   Users,
   CheckCircle,
@@ -74,6 +75,8 @@ export const InchargeDashboard: React.FC = () => {
   };
 
   // Fetch Active Dynamic Attendance Session
+  const [todayHistory, setTodayHistory] = useState<any[]>([]);
+
   const fetchSession = async () => {
     try {
       const sess = await api.getSessionInfo();
@@ -90,9 +93,18 @@ export const InchargeDashboard: React.FC = () => {
     }
   };
 
+  const fetchHistory = async () => {
+    try {
+      const history = await api.getInchargeHistory();
+      setTodayHistory(history || []);
+    } catch (err) {
+      console.error('Failed to load incharge history:', err);
+    }
+  };
+
   const refreshAll = async () => {
     setIsRefreshing(true);
-    await Promise.all([fetchData(), fetchSession()]);
+    await Promise.all([fetchData(), fetchSession(), fetchHistory()]);
     setIsLoading(false);
     setIsRefreshing(false);
   };
@@ -103,11 +115,13 @@ export const InchargeDashboard: React.FC = () => {
     const interval = setInterval(() => {
       fetchData();
       fetchSession();
+      fetchHistory();
     }, 25000);
 
     const onFocus = () => {
       fetchData();
       fetchSession();
+      fetchHistory();
     };
 
     window.addEventListener('focus', onFocus);
@@ -120,9 +134,12 @@ export const InchargeDashboard: React.FC = () => {
   // End Live Session
   const handleEndSession = async () => {
     if (!activeSession) return;
+    if (!window.confirm(`Are you sure you want to end the ${activeSession.sessionType} attendance session for Bus ${data?.bus.busNumber}? This will finalize the session report.`)) {
+      return;
+    }
     setIsEnding(true);
     try {
-      const res = await fetch('/api/admin/attendance/end', {
+      const res = await fetch('/api/attendance/session/end', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -374,6 +391,80 @@ export const InchargeDashboard: React.FC = () => {
           subtitle="Live Bus Capacity"
         />
       </div>
+
+      {/* ========================================================================= */}
+      {/* 3.5 MORNING & EVENING ATTENDANCE OVERVIEW CARDS                           */}
+      {/* ========================================================================= */}
+      {(() => {
+        const currentDate = data.date;
+        const morningRecords = todayHistory.filter((r) => r.attendanceDate === currentDate && r.sessionType === 'MORNING');
+        const morningPresent = morningRecords.filter((r) => r.status === 'PRESENT').length;
+        const morningTotal = data.stats.total;
+        const morningPct = morningTotal > 0 ? Math.round((morningPresent / morningTotal) * 10000) / 100 : 0;
+
+        const eveningRecords = todayHistory.filter((r) => r.attendanceDate === currentDate && r.sessionType === 'EVENING');
+        const eveningPresent = eveningRecords.filter((r) => r.status === 'PRESENT').length;
+        const eveningTotal = data.stats.total;
+        const eveningPct = eveningTotal > 0 ? Math.round((eveningPresent / eveningTotal) * 10000) / 100 : 0;
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            {/* Morning Attendance Overview Card */}
+            <div className="p-4 sm:p-5 bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🌅</span>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-zinc-900 dark:text-white">
+                    Morning Attendance Overview
+                  </h4>
+                </div>
+                <Badge variant="blue">{morningPct}% Turnout</Badge>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-[#1a1a20]">
+                  <span className="text-[10px] text-zinc-400 font-bold uppercase block">Commuters</span>
+                  <span className="text-sm font-black font-mono text-zinc-900 dark:text-white">{morningTotal}</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30">
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase block">Present</span>
+                  <span className="text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">{morningPresent}</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30">
+                  <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold uppercase block">Absent</span>
+                  <span className="text-sm font-black font-mono text-rose-600 dark:text-rose-400">{Math.max(0, morningTotal - morningPresent)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Evening Attendance Overview Card */}
+            <div className="p-4 sm:p-5 bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🌆</span>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-zinc-900 dark:text-white">
+                    Evening Attendance Overview
+                  </h4>
+                </div>
+                <Badge variant="indigo">{eveningPct}% Turnout</Badge>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-[#1a1a20]">
+                  <span className="text-[10px] text-zinc-400 font-bold uppercase block">Commuters</span>
+                  <span className="text-sm font-black font-mono text-zinc-900 dark:text-white">{eveningTotal}</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30">
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase block">Present</span>
+                  <span className="text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">{eveningPresent}</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30">
+                  <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold uppercase block">Absent</span>
+                  <span className="text-sm font-black font-mono text-rose-600 dark:text-rose-400">{Math.max(0, eveningTotal - eveningPresent)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* 4. STUDENT ATTENDANCE ROSTER (Responsive Table + Mobile Cards)            */}

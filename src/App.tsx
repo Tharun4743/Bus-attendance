@@ -18,14 +18,33 @@ const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard').t
 const StudentsManagement = React.lazy(() => import('./pages/admin/StudentsManagement').then(m => ({ default: m.StudentsManagement })));
 const StudentApprovals = React.lazy(() => import('./pages/admin/StudentApprovals').then(m => ({ default: m.StudentApprovals })));
 const BusesManagement = React.lazy(() => import('./pages/admin/BusesManagement').then(m => ({ default: m.BusesManagement })));
+const InchargesManagement = React.lazy(() => import('./pages/admin/InchargesManagement').then(m => ({ default: m.InchargesManagement })));
+const BusAssignments = React.lazy(() => import('./pages/admin/BusAssignments').then(m => ({ default: m.BusAssignments })));
+const LiveMonitoring = React.lazy(() => import('./pages/admin/LiveMonitoring').then(m => ({ default: m.LiveMonitoring })));
 const TodayAttendance = React.lazy(() => import('./pages/admin/TodayAttendance').then(m => ({ default: m.TodayAttendance })));
 const AttendanceHistory = React.lazy(() => import('./pages/admin/AttendanceHistory').then(m => ({ default: m.AttendanceHistory })));
 const ReportsPage = React.lazy(() => import('./pages/admin/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const NotificationsPage = React.lazy(() => import('./pages/admin/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
+const GeofenceSettings = React.lazy(() => import('./pages/admin/GeofenceSettings').then(m => ({ default: m.GeofenceSettings })));
+const AdminProfile = React.lazy(() => import('./pages/admin/AdminProfile').then(m => ({ default: m.AdminProfile })));
 
-// Student & Incharge Pages
-const StudentDashboard = React.lazy(() => import('./pages/student/StudentDashboard').then(m => ({ default: m.StudentDashboard })));
+// Incharge Pages
 const InchargeDashboard = React.lazy(() => import('./pages/incharge/InchargeDashboard').then(m => ({ default: m.InchargeDashboard })));
+const InchargeMyBus = React.lazy(() => import('./pages/incharge/InchargeMyBus').then(m => ({ default: m.InchargeMyBus })));
+const InchargeStudents = React.lazy(() => import('./pages/incharge/InchargeStudents').then(m => ({ default: m.InchargeStudents })));
+const InchargeStartAttendance = React.lazy(() => import('./pages/incharge/InchargeStartAttendance').then(m => ({ default: m.InchargeStartAttendance })));
+const InchargeLiveAttendance = React.lazy(() => import('./pages/incharge/InchargeLiveAttendance').then(m => ({ default: m.InchargeLiveAttendance })));
+const InchargeHistory = React.lazy(() => import('./pages/incharge/InchargeHistory').then(m => ({ default: m.InchargeHistory })));
+const InchargeReports = React.lazy(() => import('./pages/incharge/InchargeReports').then(m => ({ default: m.InchargeReports })));
+const InchargeProfile = React.lazy(() => import('./pages/incharge/InchargeProfile').then(m => ({ default: m.InchargeProfile })));
+
+// Student Pages
+const StudentDashboard = React.lazy(() => import('./pages/student/StudentDashboard').then(m => ({ default: m.StudentDashboard })));
+const StudentProfile = React.lazy(() => import('./pages/student/StudentProfile').then(m => ({ default: m.StudentProfile })));
+const StudentMyBus = React.lazy(() => import('./pages/student/StudentMyBus').then(m => ({ default: m.StudentMyBus })));
+const StudentVerifyAttendance = React.lazy(() => import('./pages/student/StudentVerifyAttendance').then(m => ({ default: m.StudentVerifyAttendance })));
+const StudentAttendanceHistory = React.lazy(() => import('./pages/student/StudentAttendanceHistory').then(m => ({ default: m.StudentAttendanceHistory })));
+const StudentNotifications = React.lazy(() => import('./pages/student/StudentNotifications').then(m => ({ default: m.StudentNotifications })));
 
 // Fast minimalist loader for subroutes
 const PageFallback: React.FC = () => (
@@ -113,12 +132,18 @@ export const App: React.FC = () => {
               <Route path="approvals" element={<StudentApprovals />} />
               <Route path="students" element={<StudentsManagement />} />
               <Route path="buses" element={<BusesManagement />} />
+              <Route path="incharges" element={<InchargesManagement />} />
+              <Route path="assignments" element={<BusAssignments />} />
+              <Route path="live-monitoring" element={<LiveMonitoring />} />
               <Route path="attendance" element={<TodayAttendance />} />
               <Route path="attendance/history" element={<AttendanceHistory />} />
-              <Route path="settings/geofence" element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="attendance-history" element={<AttendanceHistory />} />
+              <Route path="ground-settings" element={<GeofenceSettings />} />
+              <Route path="settings/geofence" element={<GeofenceSettings />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="reports/:date" element={<ReportsPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="profile" element={<AdminProfile />} />
             </Route>
 
             {/* Incharge Routes */}
@@ -132,6 +157,13 @@ export const App: React.FC = () => {
             >
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<InchargeDashboard />} />
+              <Route path="my-bus" element={<InchargeMyBus />} />
+              <Route path="students" element={<InchargeStudents />} />
+              <Route path="start-attendance" element={<InchargeStartAttendance />} />
+              <Route path="live-attendance" element={<InchargeLiveAttendance />} />
+              <Route path="history" element={<InchargeHistory />} />
+              <Route path="reports" element={<InchargeReports />} />
+              <Route path="profile" element={<InchargeProfile />} />
             </Route>
 
             {/* Student Routes */}
@@ -145,6 +177,11 @@ export const App: React.FC = () => {
             >
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<StudentDashboard />} />
+              <Route path="profile" element={<StudentProfile />} />
+              <Route path="my-bus" element={<StudentMyBus />} />
+              <Route path="verify-attendance" element={<StudentVerifyAttendance />} />
+              <Route path="attendance-history" element={<StudentAttendanceHistory />} />
+              <Route path="notifications" element={<StudentNotifications />} />
             </Route>
 
             {/* Root Fallback */}

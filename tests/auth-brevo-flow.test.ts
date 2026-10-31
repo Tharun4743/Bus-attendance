@@ -4,7 +4,6 @@ import crypto from 'crypto';
 import { brevoMailer } from '../src/lib/brevo';
 import { cloudinaryPipeline } from '../src/lib/cloudinary';
 import { calculateDistance } from '../src/server/attendance/haversine';
-import { generateDynamic6DigitCode } from '../src/server/attendance/codeGenerator';
 
 describe('⚡ Claude-Pro Architectural Verification Circuits', () => {
   describe('Circuit 1: Brevo Transactional Mailer & OTP Protocol', () => {
@@ -33,14 +32,7 @@ describe('⚡ Claude-Pro Architectural Verification Circuits', () => {
     });
   });
 
-  describe('Circuit 2: Dynamic Transit Verification Code & Geofencing', () => {
-    it('generates a valid 6-digit dynamic attendance verification code', () => {
-      const code = generateDynamic6DigitCode();
-      expect(code).toBeDefined();
-      expect(code).toHaveLength(6);
-      expect(/^\d{6}$/.test(code)).toBe(true);
-    });
-
+  describe('Circuit 2: Ground Geofence Proximity & Haversine Distance', () => {
     it('calculates Haversine distance accurately between campus coordinates', () => {
       // Campus center (12.9716, 77.5946) to identical point is 0 meters
       const distanceSame = calculateDistance(12.9716, 77.5946, 12.9716, 77.5946);

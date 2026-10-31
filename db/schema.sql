@@ -205,10 +205,12 @@ CREATE TABLE IF NOT EXISTS public.attendance_records (
 CREATE TABLE IF NOT EXISTS public.otp_verifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT NOT NULL,
-    otp_code VARCHAR(6) NOT NULL,
+    otp_code VARCHAR(6),
+    otp_hash TEXT NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
     attempts INTEGER NOT NULL DEFAULT 0,
     verified BOOLEAN NOT NULL DEFAULT false,
+    signup_data JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
@@ -218,7 +220,8 @@ CREATE TABLE IF NOT EXISTS public.otp_verifications (
 CREATE TABLE IF NOT EXISTS public.password_resets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT NOT NULL,
-    token TEXT UNIQUE NOT NULL,
+    token TEXT,
+    token_hash TEXT NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
     used BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
@@ -266,7 +269,7 @@ CREATE INDEX IF NOT EXISTS idx_attendance_date_bus ON public.attendance_records(
 CREATE INDEX IF NOT EXISTS idx_attendance_student ON public.attendance_records(student_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_status_bus ON public.active_sessions(status, bus_id);
 CREATE INDEX IF NOT EXISTS idx_otp_email ON public.otp_verifications(email, expires_at);
-CREATE INDEX IF NOT EXISTS idx_password_resets_token ON public.password_resets(token);
+CREATE INDEX IF NOT EXISTS idx_password_resets_token ON public.password_resets(token_hash);
 
 -- ============================================================================
 -- 14. ROW-LEVEL SECURITY (RLS) POLICIES

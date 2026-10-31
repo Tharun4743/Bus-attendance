@@ -1,51 +1,30 @@
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { getStorage } from './storage';
-import { generateToken, verifyToken, TokenPayload } from './auth';
+import { getStorage, StorageAdapter } from './storage';
+import { generateToken, verifyToken, TokenPayload, hashPassword, comparePassword } from './auth';
 import { evaluateSessionStatus, getISTDateString, getISTTimeString } from './attendance/session';
 import { AttendanceVerifier } from './attendance/verifier';
 import { ReportGenerator } from './reports/generator';
 import { Role, User, SessionType, VerificationMethod } from '../types';
-import { generateDynamic6DigitCode } from './attendance/codeGenerator';
 import crypto from 'crypto';
 import { brevoMailer } from '../lib/brevo';
 import { cloudinaryPipeline } from '../lib/cloudinary';
 import { faceVerificationEngine } from '../lib/faceVerification';
 import { mobileBiometricEngine } from '../lib/webauthn';
 import { calculateDistance } from './attendance/haversine';
+import { reconcileEveningSchedule } from './attendance/scheduleEngine';
 
 export const apiRouter = Router();
 apiRouter.use(express.json({ limit: '50mb' }));
 apiRouter.use(express.urlencoded({ limit: '50mb', extended: true }));
-const storage = getStorage();
+const storage = new Proxy({} as StorageAdapter, {
+  get(_target, prop) {
+    const inst = getStorage();
+    const val = (inst as any)[prop];
+    return typeof val === 'function' ? val.bind(inst) : val;
+  },
+});
 const verifier = new AttendanceVerifier(storage);
 const reportGen = new ReportGenerator(storage);
-
-// In-Memory store for live OTPs (10-minute expiry)
-interface StoredOtp {
-  otp: string;
-  expiresAt: number;
-  attempts: number;
-  signupData: {
-    role: 'STUDENT' | 'INCHARGE';
-    name: string;
-    email: string;
-    phone?: string;
-    password: string;
-    registerNumber?: string;
-    preferredBusId?: string;
-    busNumber?: string;
-    routeName?: string;
-  };
-}
-const otpStore = new Map<string, StoredOtp>();
-
-// In-Memory store for cryptographic password reset tokens (15-minute expiry)
-interface StoredResetToken {
-  email: string;
-  expiresAt: number;
-  used: boolean;
-}
-const resetTokenStore = new Map<string, StoredResetToken>();
 
 // Helper for extracting authenticated user
 export interface AuthRequest extends Request {
@@ -99,11 +78,13 @@ apiRouter.post('/auth/setup', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Name, email, and password are required for initial setup.' });
     }
 
+    const passwordHash = await hashPassword(password);
+
     const adminUser: User = {
       id: `ADMIN-${Date.now()}`,
       name: name.trim(),
       email: email.trim().toLowerCase(),
-      password,
+      password: passwordHash,
       role: 'ADMIN',
       active: true,
       approved: true,
@@ -190,32 +171,29 @@ apiRouter.post('/auth/signup/request-otp', async (req: Request, res: Response) =
       }
 
       // Generate cryptographic 6-digit OTP
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+      const otp = crypto.randomInt(100000, 1000000).toString();
+      const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+      const passwordHash = await hashPassword(password);
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-      otpStore.set(cleanEmail, {
-        otp,
+      await storage.saveOtp({
+        id: crypto.randomUUID(),
+        email: cleanEmail,
+        otpHash,
         expiresAt,
         attempts: 0,
+        verified: false,
         signupData: {
           role: 'INCHARGE',
           name: name.trim(),
           email: cleanEmail,
           phone: phone?.trim(),
-          password,
+          passwordHash,
           busNumber: cleanBusNumber,
           routeName: routeName?.trim() || `${cleanBusNumber} Route`,
         },
+        createdAt: new Date().toISOString(),
       });
-
-      // Also persist in PostgreSQL otp_verifications table if available
-      try {
-        if ('saveOtp' in storage && typeof (storage as any).saveOtp === 'function') {
-          await (storage as any).saveOtp(cleanEmail, otp, new Date(expiresAt));
-        }
-      } catch (dbErr) {
-        console.warn('⚠️ Could not write OTP to PostgreSQL, proceeding with active memory store:', dbErr);
-      }
 
       // Dispatch via Brevo API
       const dispatchResult = await brevoMailer.sendOtpEmail(cleanEmail, name.trim(), otp);
@@ -228,7 +206,7 @@ apiRouter.post('/auth/signup/request-otp', async (req: Request, res: Response) =
       });
     }
 
-    // Student Registration
+    // Student Registration (Part 3: registration does not require a final bus assignment)
     const cleanRegNo = registerNumber?.trim().toUpperCase();
     if (!cleanRegNo) {
       return res.status(400).json({ error: 'Register Number is required for Student registration.' });
@@ -240,66 +218,45 @@ apiRouter.post('/auth/signup/request-otp', async (req: Request, res: Response) =
       return res.status(400).json({ error: `Register number ${cleanRegNo} is already registered.` });
     }
 
-    // Validate preferredBusId corresponds to an existing Bus In-Charge bus
+    // Optional preferred bus
+    let preferredBus: string | undefined = undefined;
     const cleanBusInput = (preferredBusId || busNumber || '').trim();
-    if (!cleanBusInput) {
-      return res.status(400).json({
-        error: 'Bus selection is mandatory. Students can only register for an assigned Bus In-Charge bus.',
-      });
-    }
-
-    const buses = await storage.getBuses();
-    const matchedBus = buses.find(
-      (b) =>
-        b.id.toLowerCase() === cleanBusInput.toLowerCase() ||
-        b.busNumber.toLowerCase() === cleanBusInput.toLowerCase()
-    );
-
-    if (!matchedBus) {
-      return res.status(400).json({
-        error: `Bus '${cleanBusInput}' is not recognized. Students must register for an operational Bus In-Charge bus.`,
-      });
-    }
-
-    // Verify the bus has an In-Charge associated
-    const users = await storage.getUsers();
-    const hasAssignedIncharge =
-      Boolean(matchedBus.inchargeId && matchedBus.inchargeId.length > 0) ||
-      users.some((u) => u.role === 'INCHARGE' && u.assignedBusId === matchedBus.id);
-
-    if (!hasAssignedIncharge) {
-      return res.status(400).json({
-        error: `Bus '${matchedBus.busNumber}' does not have an approved Bus In-Charge assigned yet. Please select an operational In-Charge bus.`,
-      });
+    if (cleanBusInput) {
+      const buses = await storage.getBuses();
+      const matched = buses.find(
+        (b) =>
+          b.id.toLowerCase() === cleanBusInput.toLowerCase() ||
+          b.busNumber.toLowerCase() === cleanBusInput.toLowerCase()
+      );
+      if (matched) {
+        preferredBus = matched.id;
+      }
     }
 
     // Generate cryptographic 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+    const otp = crypto.randomInt(100000, 1000000).toString();
+    const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+    const passwordHash = await hashPassword(password);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-    otpStore.set(cleanEmail, {
-      otp,
+    await storage.saveOtp({
+      id: crypto.randomUUID(),
+      email: cleanEmail,
+      otpHash,
       expiresAt,
       attempts: 0,
+      verified: false,
       signupData: {
         role: 'STUDENT',
         name: name.trim(),
         registerNumber: cleanRegNo,
         email: cleanEmail,
         phone: phone?.trim(),
-        password,
-        preferredBusId: matchedBus.id,
+        passwordHash,
+        preferredBusId: preferredBus,
       },
+      createdAt: new Date().toISOString(),
     });
-
-    // Also persist in PostgreSQL otp_verifications table if available
-    try {
-      if ('saveOtp' in storage && typeof (storage as any).saveOtp === 'function') {
-        await (storage as any).saveOtp(cleanEmail, otp, new Date(expiresAt));
-      }
-    } catch (dbErr) {
-      console.warn('⚠️ Could not write OTP to PostgreSQL, proceeding with active memory store:', dbErr);
-    }
 
     // Dispatch via Brevo API
     const dispatchResult = await brevoMailer.sendOtpEmail(cleanEmail, name.trim(), otp);
@@ -324,41 +281,46 @@ apiRouter.post('/auth/signup/verify-otp', async (req: Request, res: Response) =>
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const record = otpStore.get(cleanEmail);
+    const record = await storage.getOtp(cleanEmail);
 
-    if (!record) {
+    if (!record || record.verified) {
       return res.status(400).json({ error: 'No pending OTP verification found for this email. Please request a new code.' });
     }
 
-    if (Date.now() > record.expiresAt) {
-      otpStore.delete(cleanEmail);
+    if (new Date(record.expiresAt).getTime() < Date.now()) {
       return res.status(400).json({ error: 'Verification code has expired. Please request a new code.' });
     }
 
-    record.attempts += 1;
-    if (record.attempts > 5) {
-      otpStore.delete(cleanEmail);
+    const attempts = await storage.incrementOtpAttempts(record.id);
+    if (attempts > 5) {
       return res.status(429).json({ error: 'Too many incorrect attempts. Please request a new code.' });
     }
 
-    if (record.otp !== otp.trim()) {
+    const inputHash = crypto.createHash('sha256').update(String(otp).trim()).digest('hex');
+    if (record.otpHash !== inputHash) {
       return res.status(400).json({ error: 'Invalid verification code. Please check and try again.' });
     }
 
-    if (record.signupData.role === 'INCHARGE') {
+    await storage.markOtpVerified(record.id);
+    const signupData = record.signupData;
+
+    if (!signupData) {
+      return res.status(400).json({ error: 'Registration payload expired. Please register again.' });
+    }
+
+    if (signupData.role === 'INCHARGE') {
       const incharge = await storage.signupIncharge({
-        name: record.signupData.name,
-        email: record.signupData.email,
-        phone: record.signupData.phone,
-        password: record.signupData.password,
-        busNumber: record.signupData.busNumber || '',
-        routeName: record.signupData.routeName,
+        name: signupData.name,
+        email: signupData.email,
+        phone: signupData.phone,
+        password: signupData.passwordHash,
+        busNumber: signupData.busNumber || '',
+        routeName: signupData.routeName,
       });
-      otpStore.delete(cleanEmail);
 
       return res.status(201).json({
         success: true,
-        message: `Email verified successfully! Your Bus In-Charge registration for Bus ${record.signupData.busNumber} has been submitted for Admin approval.`,
+        message: `Email verified successfully! Your Bus In-Charge registration for Bus ${signupData.busNumber} has been submitted for Admin approval.`,
         role: 'INCHARGE',
         user: {
           id: incharge.id,
@@ -374,14 +336,13 @@ apiRouter.post('/auth/signup/verify-otp', async (req: Request, res: Response) =>
 
     // Create student in storage
     const student = await storage.signupStudent({
-      name: record.signupData.name,
-      registerNumber: record.signupData.registerNumber!,
-      email: record.signupData.email,
-      phone: record.signupData.phone,
-      password: record.signupData.password,
-      preferredBusId: record.signupData.preferredBusId,
+      name: signupData.name,
+      registerNumber: signupData.registerNumber!,
+      email: signupData.email,
+      phone: signupData.phone,
+      password: signupData.passwordHash,
+      preferredBusId: signupData.preferredBusId,
     });
-    otpStore.delete(cleanEmail);
 
     return res.status(201).json({
       success: true,
@@ -419,14 +380,18 @@ apiRouter.post('/auth/forgot-password', async (req: Request, res: Response) => {
       });
     }
 
-    // Generate cryptographic 32-byte hex token
+    // Generate cryptographic 32-byte hex token and store SHA-256 hash in PostgreSQL
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-    resetTokenStore.set(token, {
+    await storage.savePasswordReset({
+      id: crypto.randomUUID(),
       email: cleanEmail,
+      tokenHash,
       expiresAt,
       used: false,
+      createdAt: new Date().toISOString(),
     });
 
     const host = req.get('host') || 'localhost:3000';
@@ -452,17 +417,17 @@ apiRouter.post('/auth/reset-password', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Reset token and new password are required.' });
     }
 
-    if (newPassword.length < 4) {
-      return res.status(400).json({ error: 'Password must be at least 4 characters long.' });
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
     }
 
-    const record = resetTokenStore.get(token);
+    const tokenHash = crypto.createHash('sha256').update(String(token).trim()).digest('hex');
+    const record = await storage.getPasswordReset(tokenHash);
     if (!record || record.used) {
       return res.status(400).json({ error: 'Invalid or already used reset token. Please request a new link.' });
     }
 
-    if (Date.now() > record.expiresAt) {
-      resetTokenStore.delete(token);
+    if (new Date(record.expiresAt).getTime() < Date.now()) {
       return res.status(400).json({ error: 'Reset token has expired. Please request a new link.' });
     }
 
@@ -471,9 +436,9 @@ apiRouter.post('/auth/reset-password', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'User account not found.' });
     }
 
-    await storage.updateUser(user.id, { password: newPassword });
-    record.used = true;
-    resetTokenStore.delete(token);
+    const passwordHash = await hashPassword(newPassword);
+    await storage.updateUser(user.id, { password: passwordHash });
+    await storage.markPasswordResetUsed(record.id);
 
     return res.json({
       success: true,
@@ -534,7 +499,7 @@ apiRouter.post('/auth/login', async (req: Request, res: Response) => {
       }
     }
 
-    const isPasswordValid = Boolean(user && user.password && user.password === password);
+    const isPasswordValid = Boolean(user && user.password && (await comparePassword(password, user.password)));
 
     if (!user || !isPasswordValid) {
       return res.status(401).json({ error: 'Invalid email/register number or password.' });
@@ -722,6 +687,9 @@ apiRouter.post('/admin/incharges/:id/reject', requireAuth(['ADMIN']), async (req
 // ----------------------------------------------------------------------
 apiRouter.get('/attendance/session', async (req: Request, res: Response) => {
   try {
+    // Application-level evening schedule passive reconciliation
+    await reconcileEveningSchedule(storage, reportGen).catch(() => {});
+
     const { busId } = req.query;
     const activeDynamic = await storage.getActiveSession(
       typeof busId === 'string' ? busId : undefined
@@ -764,10 +732,16 @@ apiRouter.get('/attendance/session', async (req: Request, res: Response) => {
   }
 });
 
-// Admin / Incharge: Start Dynamic Attendance Session (Morning / Evening, Ground / Travelling Bus with 6-digit code)
+// In-Charge: Start Attendance Session (Strictly role: INCHARGE for assigned bus only)
 const handleStartSession = async (req: AuthRequest, res: Response) => {
   try {
-    const { sessionType, attendanceMode, verificationMethod, busId, radiusMeters, maxGpsAccuracyMeters, latitude, longitude, accuracy } = req.body;
+    if (req.user!.role !== 'INCHARGE') {
+      return res.status(403).json({
+        error: 'Only authorized Bus In-Charges can start attendance sessions. Admin accounts have read-only access.',
+      });
+    }
+
+    const { sessionType, attendanceMode, busId, radiusMeters, maxGpsAccuracyMeters, latitude, longitude, accuracy } = req.body;
 
     if (!sessionType || !attendanceMode || !busId) {
       return res.status(400).json({
@@ -775,57 +749,68 @@ const handleStartSession = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Role check: If INCHARGE, must match assigned bus
-    if (req.user!.role === 'INCHARGE' && req.user!.assignedBusId && req.user!.assignedBusId !== busId) {
-      return res.status(403).json({ error: `You are authorized to manage ${req.user!.assignedBusId} only.` });
+    // Backend bus assignment authorization check
+    const bus = await storage.getBusById(busId);
+    if (!bus) {
+      return res.status(404).json({ error: `Bus ${busId} not found.` });
+    }
+
+    const isAuthorized =
+      bus.inchargeId === req.user!.id ||
+      req.user!.assignedBusId === bus.id ||
+      req.user!.assignedBusId === bus.busNumber;
+
+    if (!isAuthorized) {
+      return res.status(403).json({
+        error: `You are not authorized to start attendance for Bus ${bus.busNumber}. Access is restricted to assigned bus in-charges only.`,
+      });
+    }
+
+    // Check for duplicate active sessions on this bus
+    const existingSession = await storage.getActiveSession(busId);
+    if (existingSession && existingSession.status === 'ACTIVE') {
+      return res.status(400).json({
+        error: `An active attendance session is already in progress for Bus ${bus.busNumber}.`,
+        session: existingSession,
+      });
     }
 
     const settings = await storage.getSettings();
     const now = Date.now();
     const nowIso = new Date(now).toISOString();
     const sessionId = `SESSION-${now}-${busId}`;
-    const chosenVerification: VerificationMethod = (verificationMethod === 'FACE_GPS' || verificationMethod === 'PHONE_BIOMETRIC_GPS' || verificationMethod === 'CODE_ONLY') ? verificationMethod : 'CODE_GPS';
+    const isTravelling = attendanceMode === 'TRAVELLING';
+    const chosenVerification: VerificationMethod = isTravelling
+      ? 'TRAVELLING_SESSION_PARTICIPATION'
+      : 'GROUND_GEOFENCE';
 
     let locationLat = Number(latitude);
     let locationLon = Number(longitude);
     let locAccuracy = Number(accuracy) || 10;
-    let locName = req.body.locationName ? String(req.body.locationName).trim() : (attendanceMode === 'TRAVELLING' ? `Travelling Bus (${busId})` : settings.location.name);
+    let locName = req.body.locationName ? String(req.body.locationName).trim() : (isTravelling ? `Travelling Bus (${bus.busNumber})` : (settings.location.name || 'College Ground'));
 
-    if (attendanceMode === 'GROUND') {
+    if (!isTravelling) {
       locationLat = isNaN(locationLat) || !latitude ? settings.location.latitude : locationLat;
       locationLon = isNaN(locationLon) || !longitude ? settings.location.longitude : locationLon;
-      locName = req.body.locationName ? String(req.body.locationName).trim() : settings.location.name;
+      locName = req.body.locationName ? String(req.body.locationName).trim() : (settings.location.name || 'College Ground');
     }
 
-    const dynamicCode = generateDynamic6DigitCode();
-    const codeExpiresAt = new Date(now + 60 * 1000).toISOString();
+    const finalRadius = isTravelling
+      ? (Number(radiusMeters) > 0 ? Number(radiusMeters) : 1000)
+      : (Number(radiusMeters) > 0 ? Number(radiusMeters) : (settings.location.radiusMeters || 10));
 
-    const isTravelling = attendanceMode === 'TRAVELLING';
-    // Dual Attendance Mode Radius Architecture:
-    // Mode 1 (Travelling / En Route): Large radius (default 1000m, acceptable 100m - 3000m)
-    // Mode 2 (Stationary / Non-Travelling): Very small radius (default 35m, acceptable 10m - 100m)
-    let finalRadius: number;
-    let finalMaxGpsAccuracy: number;
-
-    if (isTravelling) {
-      finalRadius = Number(radiusMeters) > 0 ? Number(radiusMeters) : 1000;
-      finalMaxGpsAccuracy = Number(maxGpsAccuracyMeters) > 0 ? Number(maxGpsAccuracyMeters) : 1500;
-    } else {
-      finalRadius = Number(radiusMeters) > 0 ? Math.min(Number(radiusMeters), 100) : (settings.location.radiusMeters || 35);
-      finalMaxGpsAccuracy = Number(maxGpsAccuracyMeters) > 0 ? Math.min(Number(maxGpsAccuracyMeters), 100) : (settings.location.maxGpsAccuracyMeters || 60);
-    }
+    const finalMaxGpsAccuracy = isTravelling
+      ? (Number(maxGpsAccuracyMeters) > 0 ? Number(maxGpsAccuracyMeters) : 1500)
+      : (Number(maxGpsAccuracyMeters) > 0 ? Number(maxGpsAccuracyMeters) : (settings.location.maxGpsAccuracyMeters || 20));
 
     const activeSession = await storage.saveActiveSession({
       id: sessionId,
-      sessionType: sessionType as any,
+      sessionType: sessionType as SessionType,
       attendanceMode: attendanceMode as any,
       verificationMethod: chosenVerification,
       busId,
       status: 'ACTIVE',
       startedBy: req.user!.name,
-      currentCode: dynamicCode,
-      codeIssuedAt: nowIso,
-      codeExpiresAt,
       radiusMeters: finalRadius,
       maxGpsAccuracyMeters: finalMaxGpsAccuracy,
       location: {
@@ -840,13 +825,10 @@ const handleStartSession = async (req: AuthRequest, res: Response) => {
       endedAt: null,
     });
 
-    // Targeted Notification for students assigned to that bus
-    const bus = await storage.getBusById(busId);
-    const busLabel = bus ? bus.busNumber : busId;
-
+    // Targeted in-app notification for students assigned to that bus
     await storage.createNotification({
       title: `🚌 ${sessionType === 'MORNING' ? 'Morning' : 'Evening'} Bus Attendance Started`,
-      message: `Bus: ${busLabel} • Attendance is active. Enter the current attendance code to verify.`,
+      message: `Bus: ${bus.busNumber} • Attendance session is now active (${attendanceMode} mode). Open your attendance portal to verify presence.`,
       type: 'SESSION_START',
       date: getISTDateString(),
       read: false,
@@ -863,44 +845,103 @@ const handleStartSession = async (req: AuthRequest, res: Response) => {
     });
 
     return res.status(201).json({
-      message: `${sessionType} attendance session started for ${busId} (${attendanceMode} mode).`,
+      message: `${sessionType} attendance session started for Bus ${bus.busNumber} (${attendanceMode} mode).`,
       session: activeSession,
     });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message || 'Failed to start session.' });
   }
 };
 
-apiRouter.post('/attendance/session/start', requireAuth(['ADMIN', 'INCHARGE']), handleStartSession);
-apiRouter.post('/admin/attendance/start', requireAuth(['ADMIN', 'INCHARGE']), handleStartSession);
+apiRouter.post('/attendance/session/start', requireAuth(['INCHARGE']), handleStartSession);
 
-// Admin / Incharge: End Active Session
-const handleEndSession = async (req: Request, res: Response) => {
+// Admin restriction: Admin cannot start attendance sessions
+apiRouter.post('/admin/attendance/start', requireAuth(['ADMIN']), (_req: Request, res: Response) => {
+  return res.status(403).json({
+    error: 'Admins have read-only access to attendance and cannot start sessions. Only assigned Bus In-Charges can operate daily attendance.',
+  });
+});
+
+// In-Charge: End Active Attendance Session & Finalize Report
+const handleEndSession = async (req: AuthRequest, res: Response) => {
   try {
+    if (req.user!.role !== 'INCHARGE') {
+      return res.status(403).json({
+        error: 'Only authorized Bus In-Charges can end attendance sessions. Admin accounts have read-only access.',
+      });
+    }
+
     const { sessionId } = req.body;
+    if (!sessionId) {
+      return res.status(400).json({ error: 'sessionId is required to end attendance.' });
+    }
+
+    const session =
+      (await storage.getSessionById(sessionId)) ||
+      (await storage.getActiveSession(req.user!.assignedBusId)) ||
+      (await storage.getActiveSession());
+
+    if (!session) {
+      return res.status(404).json({ error: 'Attendance session not found or already concluded.' });
+    }
+
+    if (session.busId && session.busId !== 'ALL') {
+      const bus = await storage.getBusById(session.busId);
+      const isAuthorized =
+        !bus ||
+        bus.inchargeId === req.user!.id ||
+        req.user!.assignedBusId === bus.id ||
+        req.user!.assignedBusId === bus.busNumber;
+
+      if (!isAuthorized) {
+        return res.status(403).json({
+          error: 'You are not authorized to close another in-charge’s attendance session.',
+        });
+      }
+    }
+
     await storage.endActiveSession(sessionId);
 
+    const sessionType: SessionType = session.sessionType || 'EVENING';
+    const todayDate = getISTDateString();
+
+    // Finalize attendance summary report
+    const finalReport = await reportGen.generateDailyReport(todayDate, sessionType);
+
+    // In-app notification for closure
     await storage.createNotification({
       title: '🚌 Attendance Session Closed',
-      message: 'Attendance session has been ended. Submissions are now closed.',
+      message: `Attendance session for ${sessionType} has been finalized. Submissions are now closed.`,
       type: 'SYSTEM',
-      date: getISTDateString(),
+      date: todayDate,
       read: false,
+      link: '/student/dashboard',
+      busId: session.busId,
+      targetRole: 'STUDENT',
     });
 
-    return res.json({ message: 'Attendance session ended successfully.' });
+    return res.json({
+      message: 'Attendance session ended and daily report finalized successfully.',
+      report: finalReport,
+    });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message || 'Failed to end session.' });
   }
 };
 
-apiRouter.post('/attendance/session/end', requireAuth(['ADMIN', 'INCHARGE']), handleEndSession);
-apiRouter.post('/admin/attendance/end', requireAuth(['ADMIN', 'INCHARGE']), handleEndSession);
+apiRouter.post('/attendance/session/end', requireAuth(['INCHARGE']), handleEndSession);
 
-// Student: Verify Attendance (Dynamic 6-Digit Code + GPS when required)
+// Admin restriction: Admin cannot end attendance sessions
+apiRouter.post('/admin/attendance/end', requireAuth(['ADMIN']), (_req: Request, res: Response) => {
+  return res.status(403).json({
+    error: 'Admins have read-only access to attendance and cannot end sessions. Attendance is operated by Bus In-Charges.',
+  });
+});
+
+// Student: Verify Attendance (Ground Geofence or Travelling Mode)
 const handleVerifyAttendance = async (req: AuthRequest, res: Response) => {
   try {
-    const { code, latitude, longitude, accuracy, capturedAt, readings } = req.body;
+    const { latitude, longitude, accuracy, capturedAt, readings } = req.body;
 
     const user: User = {
       id: req.user!.id,
@@ -912,7 +953,6 @@ const handleVerifyAttendance = async (req: AuthRequest, res: Response) => {
     };
 
     const result = await verifier.verifyStudentLocation(user, {
-      code: code ? String(code).trim() : '',
       latitude: latitude !== undefined ? Number(latitude) : undefined,
       longitude: longitude !== undefined ? Number(longitude) : undefined,
       accuracy: accuracy !== undefined ? Number(accuracy) : undefined,
@@ -1140,10 +1180,12 @@ apiRouter.post(
         });
       }
 
-      // Auto-assign bus to student if student bus is not set or matches active
-      if (!student.busId && targetBusId) {
-        await storage.updateStudent(student.id, { busId: targetBusId });
-        student.busId = targetBusId;
+      // Check bus assignment
+      if (!student.busId) {
+        return res.status(400).json({
+          status: 'BUS_MISMATCH',
+          message: 'No bus assigned to this student. Please wait for administrator bus assignment.',
+        });
       }
 
       // 2. Validate Smartphone GPS Coordinates
@@ -1335,20 +1377,17 @@ apiRouter.get(
         activeDynamic = await storage.getActiveSession();
       }
 
-      // If active session belongs to a bus and student has no bus assigned, auto-link
-      if (activeDynamic && activeDynamic.status === 'ACTIVE' && student && !student.busId && activeDynamic.busId !== 'ALL') {
-        await storage.updateStudent(student.id, { busId: activeDynamic.busId });
-        student.busId = activeDynamic.busId;
-        if (!bus) {
-          bus = await storage.getBusById(activeDynamic.busId);
-        }
-      }
-
       const currentSessionType: SessionType = activeDynamic ? activeDynamic.sessionType : 'EVENING';
       const effectiveStudentId = student ? student.id : (req.user!.studentId || req.user!.id);
 
       const todayRecord = await storage.getAttendanceRecord(effectiveStudentId, todayDate, currentSessionType);
+      const morningRecord = await storage.getAttendanceRecord(effectiveStudentId, todayDate, 'MORNING');
+      const eveningRecord = await storage.getAttendanceRecord(effectiveStudentId, todayDate, 'EVENING');
       const history = await storage.getAttendance({ studentId: effectiveStudentId });
+
+      const presentCount = history.filter((r) => r.status === 'PRESENT').length;
+      const totalRecords = history.length;
+      const percentage = totalRecords > 0 ? Math.round((presentCount / totalRecords) * 10000) / 100 : 0;
 
       let sessionInfo: any;
       if (activeDynamic && activeDynamic.status === 'ACTIVE') {
@@ -1389,13 +1428,22 @@ apiRouter.get(
 
       return res.json({
         todayRecord,
+        morningRecord,
+        eveningRecord,
         student,
         bus,
         sessionInfo,
         notifications: notifications.slice(0, 5),
         history: history.sort((a, b) =>
-          String(b.attendanceDate || '').localeCompare(String(a.attendanceDate || ''))
+          String(b.attendanceDate || '').localeCompare(String(a.attendanceDate || '')) ||
+          String(b.verifiedAt || '').localeCompare(String(a.verifiedAt || ''))
         ),
+        stats: {
+          totalRecords,
+          presentCount,
+          absentCount: totalRecords - presentCount,
+          percentage,
+        },
       });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -1534,6 +1582,33 @@ apiRouter.delete(
   }
 );
 
+apiRouter.get(
+  '/admin/students/:id/attendance',
+  requireAuth(['ADMIN']),
+  async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const student = await storage.getStudentById(id);
+      if (!student) {
+        return res.status(404).json({ error: 'Student not found.' });
+      }
+      const bus = student.busId ? await storage.getBusById(student.busId) : null;
+      const records = await storage.getAttendance({ studentId: id });
+      const sortedRecords = records.sort((a, b) =>
+        String(b.attendanceDate || '').localeCompare(String(a.attendanceDate || '')) ||
+        String(b.verifiedAt || '').localeCompare(String(a.verifiedAt || ''))
+      );
+      return res.json({
+        student,
+        bus,
+        records: sortedRecords,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+);
+
 // ----------------------------------------------------------------------
 // Admin: Buses Management
 // ----------------------------------------------------------------------
@@ -1567,6 +1642,41 @@ apiRouter.get('/admin/incharges', requireAuth(['ADMIN']), async (_req: Request, 
     const incharges = users.filter((u) => u.role === 'INCHARGE' && u.active);
     const safeIncharges = incharges.map(({ password: _, ...rest }) => rest);
     return res.json(safeIncharges);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.post('/admin/incharges', requireAuth(['ADMIN']), async (req: Request, res: Response) => {
+  try {
+    const { name, email, phone, password, assignedBusId } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Name, email, and password are required.' });
+    }
+    const cleanEmail = String(email).trim().toLowerCase();
+    const existing = await storage.getUserByEmail(cleanEmail);
+    if (existing) {
+      return res.status(400).json({ error: `User with email ${cleanEmail} already exists.` });
+    }
+    const hashedPassword = await hashPassword(String(password).trim());
+    const id = `incharge-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    const newIncharge = await storage.createUser({
+      id,
+      email: cleanEmail,
+      name: String(name).trim(),
+      phone: phone ? String(phone).trim() : undefined,
+      password: hashedPassword,
+      role: 'INCHARGE',
+      active: true,
+      approved: true,
+      status: 'APPROVED',
+      assignedBusId: assignedBusId || undefined,
+    });
+    if (assignedBusId) {
+      await storage.updateBus(assignedBusId, { inchargeId: newIncharge.id });
+    }
+    const { password: _, ...safeUser } = newIncharge;
+    return res.status(201).json({ success: true, user: safeUser, message: 'In-Charge registered successfully.' });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
@@ -1636,10 +1746,7 @@ apiRouter.get(
       const activeDynamic = await storage.getActiveSession();
       const currentSessionType: SessionType = activeDynamic ? activeDynamic.sessionType : (sessionInfo.sessionType || 'EVENING');
 
-      let records = await storage.getAttendance({ date, sessionType: currentSessionType });
-      if (records.length === 0) {
-        records = await storage.getAttendance({ date });
-      }
+      const records = await storage.getAttendance({ date, sessionType: currentSessionType });
       const recordMap = new Map(records.map((r) => [r.studentId, r]));
 
       const roster = activeStudents.map((s) => {
@@ -1690,12 +1797,13 @@ apiRouter.get(
   requireAuth(['ADMIN']),
   async (req: Request, res: Response) => {
     try {
-      const { date, busId, studentId, status } = req.query;
+      const { date, busId, studentId, status, sessionType } = req.query;
+      const validSessionType = sessionType === 'MORNING' || sessionType === 'EVENING' ? (sessionType as SessionType) : undefined;
       let records = await storage.getAttendance({
         date: typeof date === 'string' && date !== '' ? date : undefined,
         busId: typeof busId === 'string' && busId !== 'ALL' ? busId : undefined,
         studentId: typeof studentId === 'string' && studentId !== 'ALL' ? studentId : undefined,
-        sessionType: 'EVENING',
+        sessionType: validSessionType,
       });
 
       if (status && typeof status === 'string' && status !== 'ALL') {
@@ -1732,61 +1840,14 @@ apiRouter.get(
   }
 );
 
-// Admin Manual Override
+// Admin attendance views are strictly read-only: Admin cannot mark or override attendance records
 apiRouter.post(
   '/admin/override',
   requireAuth(['ADMIN']),
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const { studentId, date, newStatus, reason } = req.body;
-      if (!studentId || !newStatus || !reason) {
-        return res.status(400).json({
-          error: 'Student ID, new status, and override reason are required.',
-        });
-      }
-
-      const student = await storage.getStudentById(studentId);
-      if (!student) {
-        return res.status(404).json({ error: 'Student not found.' });
-      }
-
-      const targetDate = date || getISTDateString();
-      const nowIso = new Date().toISOString();
-
-      let record = await storage.getAttendanceRecord(studentId, targetDate, 'EVENING');
-
-      if (record) {
-        record = await storage.updateAttendance(record.id, {
-          status: newStatus,
-          verificationMethod: 'ADMIN_OVERRIDE',
-          overrideReason: reason,
-          overrideBy: req.user!.name,
-          verifiedAt: nowIso,
-        });
-      } else {
-        record = await storage.createAttendance({
-          id: `ATT-${targetDate.replace(/-/g, '')}-${student.id}`,
-          studentId: student.id,
-          busId: student.busId,
-          attendanceDate: targetDate,
-          sessionType: 'EVENING',
-          status: newStatus,
-          latitude: null,
-          longitude: null,
-          accuracyMeters: null,
-          distanceMeters: null,
-          capturedAt: nowIso,
-          verifiedAt: nowIso,
-          verificationMethod: 'ADMIN_OVERRIDE',
-          overrideReason: reason,
-          overrideBy: req.user!.name,
-        });
-      }
-
-      return res.json({ message: 'Override applied successfully.', record });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
+  async (_req: AuthRequest, res: Response) => {
+    return res.status(403).json({
+      error: 'Admins have read-only attendance access and cannot directly mark or modify attendance records.',
+    });
   }
 );
 
@@ -1867,10 +1928,11 @@ apiRouter.get('/admin/reports', requireAuth(['ADMIN']), async (_req: Request, re
 apiRouter.get('/admin/reports/:date', requireAuth(['ADMIN']), async (req: Request, res: Response) => {
   try {
     const { date } = req.params;
-    let report = await storage.getReportByDate(date, 'EVENING');
+    const sessionType = (req.query.sessionType === 'MORNING' ? 'MORNING' : 'EVENING') as SessionType;
+    let report = await storage.getReportByDate(date, sessionType);
     if (!report) {
       // Generate on the fly
-      report = await reportGen.generateDailyReport(date);
+      report = await reportGen.generateDailyReport(date, sessionType);
     }
     return res.json(report);
   } catch (err: any) {
@@ -1878,9 +1940,47 @@ apiRouter.get('/admin/reports/:date', requireAuth(['ADMIN']), async (req: Reques
   }
 });
 
-apiRouter.get('/admin/notifications', requireAuth(['ADMIN', 'INCHARGE', 'STUDENT']), async (_req: Request, res: Response) => {
+apiRouter.get('/admin/notifications', requireAuth(['ADMIN', 'INCHARGE', 'STUDENT']), async (req: AuthRequest, res: Response) => {
   try {
-    const notifs = await storage.getNotifications();
+    const user = req.user!;
+    let notifs = await storage.getNotifications();
+    if (user.role === 'STUDENT') {
+      const studentId = user.studentId || user.id;
+      const student = await storage.getStudentById(studentId);
+      const busId = student?.busId || user.assignedBusId;
+      notifs = notifs.filter((n) => (!n.targetRole || n.targetRole === 'STUDENT') && (!n.busId || n.busId === busId || n.busId === 'ALL'));
+    } else if (user.role === 'INCHARGE') {
+      let bus = await storage.getBusByInchargeId(user.id);
+      if (!bus && user.assignedBusId) {
+        bus = await storage.getBusById(user.assignedBusId);
+      }
+      const busId = bus?.id || user.assignedBusId;
+      notifs = notifs.filter((n) => (!n.targetRole || n.targetRole === 'INCHARGE') && (!n.busId || n.busId === busId || n.busId === 'ALL'));
+    }
+    const unreadCount = notifs.filter((n) => !n.read).length;
+    return res.json({ notifications: notifs, unreadCount });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.get('/notifications', requireAuth(['ADMIN', 'INCHARGE', 'STUDENT']), async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    let notifs = await storage.getNotifications();
+    if (user.role === 'STUDENT') {
+      const studentId = user.studentId || user.id;
+      const student = await storage.getStudentById(studentId);
+      const busId = student?.busId || user.assignedBusId;
+      notifs = notifs.filter((n) => (!n.targetRole || n.targetRole === 'STUDENT') && (!n.busId || n.busId === busId || n.busId === 'ALL'));
+    } else if (user.role === 'INCHARGE') {
+      let bus = await storage.getBusByInchargeId(user.id);
+      if (!bus && user.assignedBusId) {
+        bus = await storage.getBusById(user.assignedBusId);
+      }
+      const busId = bus?.id || user.assignedBusId;
+      notifs = notifs.filter((n) => (!n.targetRole || n.targetRole === 'INCHARGE') && (!n.busId || n.busId === busId || n.busId === 'ALL'));
+    }
     const unreadCount = notifs.filter((n) => !n.read).length;
     return res.json({ notifications: notifs, unreadCount });
   } catch (err: any) {
@@ -1973,10 +2073,7 @@ apiRouter.get(
       const activeDynamic = await storage.getActiveSession(bus.id);
       const currentSessionType: SessionType = activeDynamic ? activeDynamic.sessionType : (sessionInfo.sessionType || 'EVENING');
 
-      let records = await storage.getAttendance({ date, busId: bus.id, sessionType: currentSessionType });
-      if (records.length === 0) {
-        records = await storage.getAttendance({ date, busId: bus.id });
-      }
+      const records = await storage.getAttendance({ date, busId: bus.id, sessionType: currentSessionType });
       const recordMap = new Map(records.map((r) => [r.studentId, r]));
 
       const roster = activeStudents.map((s) => {
@@ -2020,86 +2117,323 @@ apiRouter.get(
 );
 
 // ----------------------------------------------------------------------
-// Cron Endpoints (Protected by CRON_SECRET or Admin Bearer)
+// Bus Incharge: My Bus Details & Route
 // ----------------------------------------------------------------------
-function requireCronSecret(req: Request, res: Response, next: NextFunction) {
-  const cronSecret = process.env.CRON_SECRET || 'bus-cron-secret-2026';
-  const authHeader = req.headers.authorization;
-  const cronHeader = req.headers['x-cron-secret'];
-
-  if (cronHeader === cronSecret) return next();
-
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.split(' ')[1];
-    const user = verifyToken(token);
-    if (user && user.role === 'ADMIN') return next();
-  }
-
-  return res.status(401).json({ error: 'Unauthorized cron request.' });
-}
-
-apiRouter.all('/cron/open-session', requireCronSecret, async (_req: Request, res: Response) => {
+apiRouter.get('/incharge/my-bus', requireAuth(['INCHARGE']), async (req: AuthRequest, res: Response) => {
   try {
-    const time = getISTTimeString();
-    const settings = await storage.getSettings();
-    const activeSession = await storage.getActiveSession();
+    let bus = await storage.getBusByInchargeId(req.user!.id);
+    if (!bus && req.user!.assignedBusId) {
+      bus = await storage.getBusById(req.user!.assignedBusId);
+    }
+    if (!bus && req.user!.email) {
+      bus = await storage.getBusByInchargeId(req.user!.email);
+    }
+    if (!bus) {
+      return res.status(404).json({ error: 'No bus assigned to your in-charge account.' });
+    }
+    const students = await storage.getStudentsByBusId(bus.id);
+    const activeStudents = students.filter((s) => s.active);
     return res.json({
-      message: 'Automated scheduled session window verified.',
-      timeIST: time,
-      sessionStatus: activeSession ? 'ACTIVE' : 'IDLE',
-      activeSessionId: activeSession ? activeSession.id : null,
-      scheduledWindow: {
-        startTimeIST: settings.startTime,
-        endTimeIST: settings.endTime,
-      },
+      bus,
+      totalStudents: activeStudents.length,
+      capacity: bus.capacity,
+      activeStudents,
     });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-apiRouter.all('/cron/close-session', requireCronSecret, async (_req: Request, res: Response) => {
+// ----------------------------------------------------------------------
+// Bus Incharge: Assigned Student Roster
+// ----------------------------------------------------------------------
+apiRouter.get('/incharge/students', requireAuth(['INCHARGE']), async (req: AuthRequest, res: Response) => {
   try {
-    const time = getISTTimeString();
-    const activeSession = await storage.getActiveSession();
-    if (activeSession) {
-      await storage.endActiveSession(activeSession.id);
-      await storage.createNotification({
-        title: '🚌 Automated Scheduled Close',
-        message: `Attendance session ${activeSession.id} closed automatically by scheduler at ${time} IST.`,
-        type: 'SYSTEM',
-        date: getISTDateString(),
-        read: false,
-      });
-      return res.json({
-        message: 'Active session closed by scheduler cron.',
-        sessionId: activeSession.id,
-        timeIST: time,
-        status: 'CLOSED',
-      });
+    let bus = await storage.getBusByInchargeId(req.user!.id);
+    if (!bus && req.user!.assignedBusId) {
+      bus = await storage.getBusById(req.user!.assignedBusId);
+    }
+    if (!bus && req.user!.email) {
+      bus = await storage.getBusByInchargeId(req.user!.email);
+    }
+    if (!bus) {
+      return res.status(404).json({ error: 'No bus assigned to your in-charge account.' });
+    }
+    const students = await storage.getStudentsByBusId(bus.id);
+    return res.json(students);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------
+// Bus Incharge: Attendance History for Assigned Bus Only
+// ----------------------------------------------------------------------
+apiRouter.get('/incharge/history', requireAuth(['INCHARGE']), async (req: AuthRequest, res: Response) => {
+  try {
+    let bus = await storage.getBusByInchargeId(req.user!.id);
+    if (!bus && req.user!.assignedBusId) {
+      bus = await storage.getBusById(req.user!.assignedBusId);
+    }
+    if (!bus && req.user!.email) {
+      bus = await storage.getBusByInchargeId(req.user!.email);
+    }
+    if (!bus) {
+      return res.status(404).json({ error: 'No bus assigned to your in-charge account.' });
+    }
+    const { date, sessionType } = req.query;
+    const records = await storage.getAttendance({
+      busId: bus.id,
+      date: typeof date === 'string' && date ? date : undefined,
+      sessionType: typeof sessionType === 'string' && sessionType ? (sessionType as SessionType) : undefined,
+    });
+    const students = await storage.getStudentsByBusId(bus.id);
+    const studentMap = new Map(students.map((s) => [s.id, s]));
+    const enriched = records.map((r) => {
+      const stu = studentMap.get(r.studentId);
+      return {
+        ...r,
+        studentName: stu ? stu.name : 'Unknown',
+        registerNumber: stu ? stu.registerNumber : 'Unknown',
+        busNumber: bus!.busNumber,
+        routeName: bus!.routeName,
+      };
+    });
+    return res.json(
+      enriched.sort((a, b) =>
+        String(b.attendanceDate || '').localeCompare(String(a.attendanceDate || '')) ||
+        String(b.verifiedAt || '').localeCompare(String(a.verifiedAt || ''))
+      )
+    );
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------
+// Bus Incharge: Reports for Assigned Bus Only
+// ----------------------------------------------------------------------
+apiRouter.get('/incharge/reports', requireAuth(['INCHARGE']), async (req: AuthRequest, res: Response) => {
+  try {
+    let bus = await storage.getBusByInchargeId(req.user!.id);
+    if (!bus && req.user!.assignedBusId) {
+      bus = await storage.getBusById(req.user!.assignedBusId);
+    }
+    if (!bus && req.user!.email) {
+      bus = await storage.getBusByInchargeId(req.user!.email);
+    }
+    if (!bus) {
+      return res.status(404).json({ error: 'No bus assigned to your in-charge account.' });
+    }
+    const reports = await storage.getReports();
+    const filteredReports = reports
+      .map((r) => {
+        const matchingBusSummary = r.busWise.filter((b) => b.busId === bus!.id);
+        const matchingStudentSummary = r.studentWise.filter((s) => s.busId === bus!.id);
+        const total = matchingBusSummary.reduce((sum, b) => sum + b.total, 0);
+        const present = matchingBusSummary.reduce((sum, b) => sum + b.present, 0);
+        const notPresent = matchingBusSummary.reduce((sum, b) => sum + b.notPresent, 0);
+        const percentage = total > 0 ? Math.round((present / total) * 10000) / 100 : 0;
+        return {
+          ...r,
+          totalStudents: total,
+          present,
+          notPresent,
+          percentage,
+          busWise: matchingBusSummary,
+          studentWise: matchingStudentSummary,
+        };
+      })
+      .filter((r) => r.busWise.length > 0);
+    return res.json(filteredReports);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------
+// Admin: Fleet Assignments Matrix (Students & In-Charges)
+// ----------------------------------------------------------------------
+apiRouter.get('/admin/assignments', requireAuth(['ADMIN']), async (_req: Request, res: Response) => {
+  try {
+    const [buses, students, users] = await Promise.all([
+      storage.getBuses(),
+      storage.getStudents(),
+      storage.getUsers(),
+    ]);
+    const incharges = users.filter((u) => u.role === 'INCHARGE' && u.active);
+    const inchargeMap = new Map(incharges.map((u) => [u.id, u]));
+
+    const busAssignments = buses.map((bus) => {
+      const assignedStudents = students.filter((s) => s.busId === bus.id && s.active);
+      const incharge = inchargeMap.get(bus.inchargeId);
+      return {
+        ...bus,
+        assignedCount: assignedStudents.length,
+        incharge: incharge
+          ? { id: incharge.id, name: incharge.name, email: incharge.email, phone: incharge.phone }
+          : null,
+      };
+    });
+
+    const unassignedStudents = students.filter((s) => !s.busId && s.active);
+
+    return res.json({
+      buses: busAssignments,
+      incharges: incharges.map(({ password: _, ...rest }) => rest),
+      unassignedStudentsCount: unassignedStudents.length,
+      unassignedStudents,
+      allStudents: students.filter((s) => s.active),
+      totalStudents: students.filter((s) => s.active).length,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.post('/admin/assignments/student', requireAuth(['ADMIN']), async (req: Request, res: Response) => {
+  try {
+    const { studentId, busId } = req.body;
+    if (!studentId || !busId) {
+      return res.status(400).json({ error: 'studentId and busId are required.' });
+    }
+    const bus = await storage.getBusById(busId);
+    if (!bus) {
+      return res.status(404).json({ error: `Bus ${busId} not found.` });
+    }
+    const student = await storage.getStudentById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: `Student ${studentId} not found.` });
+    }
+    const updatedStudent = await storage.updateStudent(studentId, { busId });
+    const users = await storage.getUsers();
+    const user = users.find(
+      (u) =>
+        u.id === studentId ||
+        u.studentId === studentId ||
+        u.email.toLowerCase() === student.email.toLowerCase()
+    );
+    if (user) {
+      await storage.updateUser(user.id, { assignedBusId: busId });
     }
     return res.json({
-      message: 'No active attendance session currently running.',
-      timeIST: time,
-      status: 'IDLE',
+      success: true,
+      student: updatedStudent,
+      message: `Student ${student.name} assigned to Bus ${bus.busNumber}.`,
     });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
 });
 
-apiRouter.all('/cron/generate-report', requireCronSecret, async (_req: Request, res: Response) => {
+apiRouter.post('/admin/assignments/incharge', requireAuth(['ADMIN']), async (req: Request, res: Response) => {
   try {
-    const report = await reportGen.generateDailyReport();
+    const { inchargeId, busId } = req.body;
+    if (!inchargeId || !busId) {
+      return res.status(400).json({ error: 'inchargeId and busId are required.' });
+    }
+    const bus = await storage.getBusById(busId);
+    if (!bus) {
+      return res.status(404).json({ error: `Bus ${busId} not found.` });
+    }
+    const incharge = await storage.getUserById(inchargeId);
+    if (!incharge || incharge.role !== 'INCHARGE') {
+      return res.status(404).json({ error: `In-charge ${inchargeId} not found.` });
+    }
+    await storage.updateBus(busId, { inchargeId });
+    await storage.updateUser(inchargeId, { assignedBusId: busId });
     return res.json({
-      message: 'Daily report and admin notification generated successfully.',
-      reportId: report.id,
-      date: report.date,
-      totalStudents: report.totalStudents,
-      present: report.present,
-      percentage: report.percentage,
+      success: true,
+      message: `${incharge.name} assigned to Bus ${bus.busNumber}.`,
     });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
 });
+
+apiRouter.put('/admin/incharges/:id', requireAuth(['ADMIN']), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { assignedBusId, active, name, phone } = req.body;
+    const user = await storage.getUserById(id);
+    if (!user || user.role !== 'INCHARGE') {
+      return res.status(404).json({ error: 'In-Charge not found.' });
+    }
+    const updates: Partial<User> = {};
+    if (assignedBusId !== undefined) updates.assignedBusId = assignedBusId;
+    if (active !== undefined) updates.active = Boolean(active);
+    if (name !== undefined) updates.name = String(name).trim();
+    if (phone !== undefined) updates.phone = String(phone).trim();
+
+    const updated = await storage.updateUser(id, updates);
+    if (assignedBusId) {
+      await storage.updateBus(assignedBusId, { inchargeId: id });
+    }
+    return res.json({ success: true, user: updated });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.delete('/admin/incharges/:id', requireAuth(['ADMIN']), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const user = await storage.getUserById(id);
+    if (!user || user.role !== 'INCHARGE') {
+      return res.status(404).json({ error: 'In-Charge not found.' });
+    }
+    await storage.updateUser(id, { active: false });
+    return res.json({ success: true, message: 'In-Charge deactivated successfully.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------
+// Student: My Bus Details & Route
+// ----------------------------------------------------------------------
+apiRouter.get('/student/my-bus', requireAuth(['STUDENT']), async (req: AuthRequest, res: Response) => {
+  try {
+    const studentId = req.user!.studentId || req.user!.id;
+    let student = await storage.getStudentById(studentId);
+    if (!student && req.user!.email) {
+      student = await storage.getStudentById(req.user!.email);
+    }
+    if (!student || !student.busId) {
+      return res.status(404).json({ error: 'No bus currently assigned to your account.' });
+    }
+    const bus = await storage.getBusById(student.busId);
+    if (!bus) {
+      return res.status(404).json({ error: 'Assigned bus details not found.' });
+    }
+    const users = await storage.getUsers();
+    const incharge = users.find(
+      (u) => u.id === bus.inchargeId || (u.role === 'INCHARGE' && u.assignedBusId === bus.id)
+    );
+    return res.json({
+      bus,
+      incharge: incharge ? { name: incharge.name, email: incharge.email, phone: incharge.phone } : null,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ----------------------------------------------------------------------
+// Student: Personal Attendance History
+// ----------------------------------------------------------------------
+apiRouter.get('/student/attendance-history', requireAuth(['STUDENT']), async (req: AuthRequest, res: Response) => {
+  try {
+    const studentId = req.user!.studentId || req.user!.id;
+    const records = await storage.getAttendance({ studentId });
+    return res.json(
+      records.sort((a, b) =>
+        String(b.attendanceDate || '').localeCompare(String(a.attendanceDate || '')) ||
+        String(b.verifiedAt || '').localeCompare(String(a.verifiedAt || ''))
+      )
+    );
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
