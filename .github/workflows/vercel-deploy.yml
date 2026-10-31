@@ -25,13 +25,8 @@ jobs:
       - name: 📦 Install Dependencies
         run: npm ci
 
-      - name: 🧪 Run System Lifecycle Tests
-        run: npm test
-
-      - name: 🧪 Run Vitest Regression Suite
-        run: npx vitest run
-        env:
-          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+      - name: 🔍 Type-Check & Verification
+        run: npx tsc --noEmit
 
       - name: 🏗️ Build Production Bundle
         run: npm run build

@@ -1,7 +1,7 @@
 import { StudentVerifyAttendanceSkeleton } from '../../components/skeleton/StudentSkeletons';
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
-import { Bus, AttendanceRecord, ActiveSession } from '../../types';
+import { Bus, AttendanceRecord, ActiveSession, Student } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { MobileVerificationModal } from '../../components/attendance/MobileVerificationModal';
@@ -18,6 +18,7 @@ import {
 import { formatISTTime } from '../../utils/time';
 
 export const StudentVerifyAttendance: React.FC = () => {
+  const [student, setStudent] = useState<Student | null>(null);
   const [bus, setBus] = useState<Bus | null>(null);
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
@@ -39,6 +40,7 @@ export const StudentVerifyAttendance: React.FC = () => {
         api.getMyStatus(),
         api.getSessionInfo(),
       ]);
+      setStudent(res.student);
       setBus(res.bus);
       setTodayRecord(res.todayRecord);
       if (sessRes.activeSession && sessRes.activeSession.status === 'ACTIVE') {
@@ -471,6 +473,9 @@ export const StudentVerifyAttendance: React.FC = () => {
       <MobileVerificationModal
         isOpen={isMobileModalOpen}
         onClose={() => setIsMobileModalOpen(false)}
+        busId={bus?.id || student?.busId || ''}
+        studentId={student?.id || ''}
+        studentName={student?.name || ''}
         initialTab={mobileModalTab}
         onSuccess={() => {
           setIsMobileModalOpen(false);

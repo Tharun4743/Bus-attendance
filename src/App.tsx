@@ -28,6 +28,7 @@ const ReportsPage = React.lazy(() => import('./pages/admin/ReportsPage').then(m 
 const NotificationsPage = React.lazy(() => import('./pages/admin/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
 const GeofenceSettings = React.lazy(() => import('./pages/admin/GeofenceSettings').then(m => ({ default: m.GeofenceSettings })));
 const AdminProfile = React.lazy(() => import('./pages/admin/AdminProfile').then(m => ({ default: m.AdminProfile })));
+const AdminMorePage = React.lazy(() => import('./pages/admin/AdminMorePage').then(m => ({ default: m.AdminMorePage })));
 
 // Incharge Pages
 const InchargeDashboard = React.lazy(() => import('./pages/incharge/InchargeDashboard').then(m => ({ default: m.InchargeDashboard })));
@@ -38,6 +39,7 @@ const InchargeLiveAttendance = React.lazy(() => import('./pages/incharge/Incharg
 const InchargeHistory = React.lazy(() => import('./pages/incharge/InchargeHistory').then(m => ({ default: m.InchargeHistory })));
 const InchargeReports = React.lazy(() => import('./pages/incharge/InchargeReports').then(m => ({ default: m.InchargeReports })));
 const InchargeProfile = React.lazy(() => import('./pages/incharge/InchargeProfile').then(m => ({ default: m.InchargeProfile })));
+const InchargeMorePage = React.lazy(() => import('./pages/incharge/InchargeMorePage').then(m => ({ default: m.InchargeMorePage })));
 
 // Student Pages
 const StudentDashboard = React.lazy(() => import('./pages/student/StudentDashboard').then(m => ({ default: m.StudentDashboard })));
@@ -46,6 +48,7 @@ const StudentMyBus = React.lazy(() => import('./pages/student/StudentMyBus').the
 const StudentVerifyAttendance = React.lazy(() => import('./pages/student/StudentVerifyAttendance').then(m => ({ default: m.StudentVerifyAttendance })));
 const StudentAttendanceHistory = React.lazy(() => import('./pages/student/StudentAttendanceHistory').then(m => ({ default: m.StudentAttendanceHistory })));
 const StudentNotifications = React.lazy(() => import('./pages/student/StudentNotifications').then(m => ({ default: m.StudentNotifications })));
+const StudentMorePage = React.lazy(() => import('./pages/student/StudentMorePage').then(m => ({ default: m.StudentMorePage })));
 
 // Fast layout-preserving skeleton fallback for lazy module loading
 const PageFallback: React.FC = () => (
@@ -155,6 +158,7 @@ export const App: React.FC = () => {
               <Route path="reports/:date" element={<ReportsPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
               <Route path="profile" element={<AdminProfile />} />
+              <Route path="more" element={<AdminMorePage />} />
             </Route>
 
             {/* Incharge Routes */}
@@ -177,6 +181,8 @@ export const App: React.FC = () => {
               <Route path="history" element={<InchargeHistory />} />
               <Route path="reports" element={<InchargeReports />} />
               <Route path="profile" element={<InchargeProfile />} />
+              <Route path="notifications" element={<NotificationsPage />} />
+              <Route path="more" element={<InchargeMorePage />} />
             </Route>
 
             {/* Student Routes */}
@@ -198,6 +204,7 @@ export const App: React.FC = () => {
               <Route path="history" element={<StudentAttendanceHistory />} />
               <Route path="attendance-history" element={<StudentAttendanceHistory />} />
               <Route path="notifications" element={<StudentNotifications />} />
+              <Route path="more" element={<StudentMorePage />} />
             </Route>
 
             {/* Root Fallback */}
