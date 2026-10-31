@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -7,12 +7,9 @@ import {
   UserCheck,
   FileSpreadsheet,
   MapPin,
-  User,
-  LogOut,
   X,
 } from 'lucide-react';
 import { api } from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
 
 interface SidebarNavItem {
   to: string;
@@ -25,8 +22,6 @@ interface SidebarNavItem {
 
 export const AdminSidebar: React.FC = () => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { logout } = useAuth();
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
 
@@ -67,11 +62,7 @@ export const AdminSidebar: React.FC = () => {
     return () => window.removeEventListener('toggle-mobile-sidebar', onToggle);
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
+  // Core administrative modules (Profile and Logout are centralized in the header Account Menu)
   const navItems: SidebarNavItem[] = [
     {
       to: '/admin',
@@ -108,11 +99,6 @@ export const AdminSidebar: React.FC = () => {
       icon: MapPin,
       matchPrefixes: ['/admin/settings', '/admin/ground-settings'],
     },
-    {
-      to: '/admin/profile',
-      label: 'Profile',
-      icon: User,
-    },
   ];
 
   const renderNavContent = () => (
@@ -125,7 +111,7 @@ export const AdminSidebar: React.FC = () => {
         <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Transport Systems</p>
       </div>
 
-      {/* Navigation Items (Exactly 8 in order: Dashboard, Students, Buses, In-Charges, Attendance Reports, Settings, Profile, Logout) */}
+      {/* Navigation Items: Core administrative modules */}
       <div className="flex-1 space-y-1 overflow-y-auto pr-1">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -162,17 +148,6 @@ export const AdminSidebar: React.FC = () => {
             </NavLink>
           );
         })}
-
-        {/* 8. Logout Item */}
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all duration-200 cursor-pointer"
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <LogOut className="w-4 h-4 shrink-0" />
-            <span className="truncate">Logout</span>
-          </div>
-        </button>
       </div>
     </div>
   );

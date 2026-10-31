@@ -47,13 +47,22 @@ const StudentVerifyAttendance = React.lazy(() => import('./pages/student/Student
 const StudentAttendanceHistory = React.lazy(() => import('./pages/student/StudentAttendanceHistory').then(m => ({ default: m.StudentAttendanceHistory })));
 const StudentNotifications = React.lazy(() => import('./pages/student/StudentNotifications').then(m => ({ default: m.StudentNotifications })));
 
-// Fast minimalist loader for subroutes
+// Fast layout-preserving skeleton fallback for lazy module loading
 const PageFallback: React.FC = () => (
-  <div className="min-h-[50vh] flex items-center justify-center">
-    <div className="flex flex-col items-center gap-3">
-      <div className="w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin" />
-      <span className="text-xs font-mono text-zinc-400 font-bold">Loading module...</span>
+  <div className="space-y-4 w-full max-w-7xl mx-auto p-4 animate-pulse">
+    <div className="h-28 bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] p-6 space-y-2">
+      <div className="h-4 w-32 bg-zinc-200 dark:bg-zinc-800 rounded" />
+      <div className="h-6 w-64 bg-zinc-200 dark:bg-zinc-800 rounded-lg" />
     </div>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="h-24 bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] p-4 space-y-2">
+          <div className="h-3 w-16 bg-zinc-200 dark:bg-zinc-800 rounded" />
+          <div className="h-6 w-20 bg-zinc-200 dark:bg-zinc-800 rounded-lg" />
+        </div>
+      ))}
+    </div>
+    <div className="h-64 bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e]" />
   </div>
 );
 
