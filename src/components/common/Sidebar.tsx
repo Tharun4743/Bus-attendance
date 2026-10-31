@@ -1,18 +1,75 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
+  CalendarCheck,
+  Users,
   UserCheck,
   Bus,
-  FileSpreadsheet,
 } from 'lucide-react';
+import { api } from '../../services/api';
 
 export const Sidebar: React.FC = () => {
+  const location = useLocation();
+  const [pendingCount, setPendingCount] = useState<number>(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchPending = async () => {
+      try {
+        const [pendingStudents, inchargeRes] = await Promise.all([
+          api.getPendingApprovals(),
+          api.getPendingIncharges(),
+        ]);
+        if (isMounted) {
+          const total = (pendingStudents?.length || 0) + (inchargeRes?.incharges?.length || 0);
+          setPendingCount(total);
+        }
+      } catch {
+        // Silently ignore network errors in sidebar badge
+      }
+    };
+
+    fetchPending();
+    const interval = setInterval(fetchPending, 45000);
+    const onFocus = () => fetchPending();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, []);
+
   const navItems = [
-    { to: '/admin/dashboard', label: 'All-in-One Dashboard', icon: LayoutDashboard },
-    { to: '/admin/approvals', label: 'Student Approvals', icon: UserCheck },
-    { to: '/admin/buses', label: 'Buses', icon: Bus },
-    { to: '/admin/reports', label: 'Attendance Reports', icon: FileSpreadsheet },
+    {
+      to: '/admin/dashboard',
+      label: 'Dashboard',
+      icon: LayoutDashboard,
+      exact: true,
+    },
+    {
+      to: '/admin/attendance',
+      label: 'Attendance Hub',
+      icon: CalendarCheck,
+      matchPrefixes: ['/admin/attendance', '/admin/reports'],
+    },
+    {
+      to: '/admin/students',
+      label: 'Student Directory',
+      icon: Users,
+    },
+    {
+      to: '/admin/approvals',
+      label: 'Approvals',
+      icon: UserCheck,
+      badge: pendingCount > 0 ? pendingCount : null,
+    },
+    {
+      to: '/admin/buses',
+      label: 'Bus Fleet',
+      icon: Bus,
+    },
   ];
 
   return (
@@ -27,21 +84,42 @@ export const Sidebar: React.FC = () => {
       <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-1.5 lg:pb-0">
         {navItems.map((item) => {
           const Icon = item.icon;
+          const isCustomActive = item.matchPrefixes
+            ? item.matchPrefixes.some((prefix) => location.pathname.startsWith(prefix))
+            : item.exact
+            ? location.pathname === item.to
+            : location.pathname.startsWith(item.to);
+
           return (
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to === '/admin/dashboard'}
-              className={({ isActive }) =>
-                `flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap active:scale-[0.98] ${
-                  isActive
+              end={item.exact}
+              className={({ isActive }) => {
+                const active = isCustomActive || isActive;
+                return `flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap active:scale-[0.98] ${
+                  active
                     ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-xs'
                     : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-[#202028]'
-                }`
-              }
+                }`;
+              }}
             >
-              <Icon className="w-4 h-4 shrink-0" />
-              <span>{item.label}</span>
+              <div className="flex items-center gap-2.5">
+                <Icon className="w-4 h-4 shrink-0" />
+                <span>{item.label}</span>
+              </div>
+
+              {item.badge != null && (
+                <span
+                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-black leading-none ${
+                    isCustomActive
+                      ? 'bg-white/20 text-white dark:bg-zinc-900/20 dark:text-zinc-900'
+                      : 'bg-rose-600 text-white shadow-2xs'
+                  }`}
+                >
+                  {item.badge}
+                </span>
+              )}
             </NavLink>
           );
         })}

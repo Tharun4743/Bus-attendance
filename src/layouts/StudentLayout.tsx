@@ -6,7 +6,7 @@ export const StudentLayout: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0b0b0e] text-zinc-900 dark:text-zinc-100 flex flex-col transition-colors duration-200">
       <Navbar />
-      <main className="flex-1 max-w-2xl w-full mx-auto p-3 sm:p-5">
+      <main className="flex-1 max-w-5xl w-full mx-auto p-3 sm:p-5 lg:p-6 min-w-0 overflow-x-hidden">
         <Outlet />
       </main>
     </div>

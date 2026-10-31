@@ -1,32 +1,41 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { LoginPage } from './pages/LoginPage';
 import { AdminLayout } from './layouts/AdminLayout';
 import { StudentLayout } from './layouts/StudentLayout';
 import { InchargeLayout } from './layouts/InchargeLayout';
+import { Role } from './types';
+
+// Lazy-loaded pages for high-speed initial load & bandwidth reduction
+const LoginPage = React.lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
+const SignupPage = React.lazy(() => import('./pages/auth/SignupPage').then(m => ({ default: m.SignupPage })));
+const ForgotPasswordPage = React.lazy(() => import('./pages/auth/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = React.lazy(() => import('./pages/auth/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
+const SetupPage = React.lazy(() => import('./pages/auth/SetupPage').then(m => ({ default: m.SetupPage })));
 
 // Admin Pages
-import { AdminDashboard } from './pages/admin/AdminDashboard';
-import { StudentsManagement } from './pages/admin/StudentsManagement';
-import { StudentApprovals } from './pages/admin/StudentApprovals';
-import { BusesManagement } from './pages/admin/BusesManagement';
-import { TodayAttendance } from './pages/admin/TodayAttendance';
-import { AttendanceHistory } from './pages/admin/AttendanceHistory';
-import { GeofenceSettings } from './pages/admin/GeofenceSettings';
-import { ReportsPage } from './pages/admin/ReportsPage';
-import { NotificationsPage } from './pages/admin/NotificationsPage';
-
-// Public & Setup Pages
-import { SignupPage } from './pages/auth/SignupPage';
-import { SetupPage } from './pages/auth/SetupPage';
-import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
-import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
+const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const StudentsManagement = React.lazy(() => import('./pages/admin/StudentsManagement').then(m => ({ default: m.StudentsManagement })));
+const StudentApprovals = React.lazy(() => import('./pages/admin/StudentApprovals').then(m => ({ default: m.StudentApprovals })));
+const BusesManagement = React.lazy(() => import('./pages/admin/BusesManagement').then(m => ({ default: m.BusesManagement })));
+const TodayAttendance = React.lazy(() => import('./pages/admin/TodayAttendance').then(m => ({ default: m.TodayAttendance })));
+const AttendanceHistory = React.lazy(() => import('./pages/admin/AttendanceHistory').then(m => ({ default: m.AttendanceHistory })));
+const ReportsPage = React.lazy(() => import('./pages/admin/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const NotificationsPage = React.lazy(() => import('./pages/admin/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
 
 // Student & Incharge Pages
-import { StudentDashboard } from './pages/student/StudentDashboard';
-import { InchargeDashboard } from './pages/incharge/InchargeDashboard';
-import { Role } from './types';
+const StudentDashboard = React.lazy(() => import('./pages/student/StudentDashboard').then(m => ({ default: m.StudentDashboard })));
+const InchargeDashboard = React.lazy(() => import('./pages/incharge/InchargeDashboard').then(m => ({ default: m.InchargeDashboard })));
+
+// Fast minimalist loader for subroutes
+const PageFallback: React.FC = () => (
+  <div className="min-h-[50vh] flex items-center justify-center">
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin" />
+      <span className="text-xs font-mono text-zinc-400 font-bold">Loading module...</span>
+    </div>
+  </div>
+);
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{
@@ -38,7 +47,7 @@ const ProtectedRoute: React.FC<{
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAF7F0]">
-        <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -63,7 +72,7 @@ const RootRedirect: React.FC = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAF7F0]">
-        <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -81,66 +90,68 @@ export const App: React.FC = () => {
   return (
     <AuthProvider>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/setup" element={<SetupPage />} />
+        <Suspense fallback={<PageFallback />}>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/setup" element={<SetupPage />} />
 
-          {/* Admin Routes */}
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <AdminLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="approvals" element={<StudentApprovals />} />
-            <Route path="students" element={<StudentsManagement />} />
-            <Route path="buses" element={<BusesManagement />} />
-            <Route path="attendance" element={<TodayAttendance />} />
-            <Route path="attendance/history" element={<AttendanceHistory />} />
-            <Route path="settings/geofence" element={<GeofenceSettings />} />
-            <Route path="reports" element={<ReportsPage />} />
-            <Route path="reports/:date" element={<ReportsPage />} />
-            <Route path="notifications" element={<NotificationsPage />} />
-          </Route>
+            {/* Admin Routes */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="approvals" element={<StudentApprovals />} />
+              <Route path="students" element={<StudentsManagement />} />
+              <Route path="buses" element={<BusesManagement />} />
+              <Route path="attendance" element={<TodayAttendance />} />
+              <Route path="attendance/history" element={<AttendanceHistory />} />
+              <Route path="settings/geofence" element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="reports" element={<ReportsPage />} />
+              <Route path="reports/:date" element={<ReportsPage />} />
+              <Route path="notifications" element={<NotificationsPage />} />
+            </Route>
 
-          {/* Incharge Routes */}
-          <Route
-            path="/incharge"
-            element={
-              <ProtectedRoute allowedRoles={['INCHARGE']}>
-                <InchargeLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<InchargeDashboard />} />
-          </Route>
+            {/* Incharge Routes */}
+            <Route
+              path="/incharge"
+              element={
+                <ProtectedRoute allowedRoles={['INCHARGE']}>
+                  <InchargeLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<InchargeDashboard />} />
+            </Route>
 
-          {/* Student Routes */}
-          <Route
-            path="/student"
-            element={
-              <ProtectedRoute allowedRoles={['STUDENT']}>
-                <StudentLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<StudentDashboard />} />
-          </Route>
+            {/* Student Routes */}
+            <Route
+              path="/student"
+              element={
+                <ProtectedRoute allowedRoles={['STUDENT']}>
+                  <StudentLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<StudentDashboard />} />
+            </Route>
 
-          {/* Root Fallback */}
-          <Route path="/" element={<RootRedirect />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            {/* Root Fallback */}
+            <Route path="/" element={<RootRedirect />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </AuthProvider>
   );

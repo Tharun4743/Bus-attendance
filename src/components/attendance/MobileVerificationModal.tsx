@@ -1,23 +1,132 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Fingerprint, MapPin, X, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Camera, Fingerprint, MapPin, X, CheckCircle2, AlertTriangle, RefreshCw, KeyRound, ShieldCheck, ArrowRight, Smartphone } from 'lucide-react';
 import { api } from '../../services/api';
-
 import { cameraCapture } from '../../lib/cameraCapture';
 
-interface MobileVerificationModalProps {
+export interface MobileVerificationModalProps {
   isOpen: boolean;
   onClose: () => void;
   busId?: string;
+  studentId?: string;
+  studentName?: string;
+  initialTab?: 'FACE' | 'BIOMETRIC';
   onSuccess: () => void;
+}
+
+/**
+ * Safely pads base64/base64url string to a multiple of 4 for WebKit / Safari compatibility.
+ * Idempotently strips existing padding before adding necessary padding bytes.
+ */
+export function padBase64(base64Url: string): string {
+  if (!base64Url) return '';
+  let clean = base64Url.replace(/=+$/, '').replace(/-/g, '+').replace(/_/g, '/');
+  const mod = clean.length % 4;
+  if (mod === 2) clean += '==';
+  else if (mod === 3) clean += '=';
+  return clean;
+}
+
+/**
+ * Converts a base64url or standard base64 string to Uint8Array.
+ * Includes defensive fallback for non-base64 inputs to avoid uncaught DOMException.
+ */
+export function base64UrlToUint8Array(base64Url: string): Uint8Array {
+  if (!base64Url) return new Uint8Array(0);
+  try {
+    const padded = padBase64(base64Url);
+    const binary = atob(padded);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  } catch {
+    return new TextEncoder().encode(base64Url);
+  }
+}
+
+/**
+ * Converts ArrayBuffer / Uint8Array to base64url string without trailing padding.
+ */
+export function bufferToBase64Url(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+/**
+ * Sanitizes and maps WebAuthn error messages to user-friendly guidance,
+ * strictly preventing raw W3C spec URLs from leaking to the student interface.
+ */
+export function formatWebAuthnError(err: any, isRegistration: boolean): string {
+  const rawMsg = err?.message || (typeof err === 'string' ? err : String(err || ''));
+  const errName = err?.name || '';
+  const lower = (rawMsg + ' ' + errName).toLowerCase();
+
+  // W3C NotAllowedError or privacy considerations or user cancellation
+  if (
+    errName === 'NotAllowedError' ||
+    lower.includes('not allowed') ||
+    lower.includes('timed out') ||
+    lower.includes('privacy-considerations') ||
+    lower.includes('the operation either timed out or was not allowed') ||
+    lower.includes('canceled') ||
+    lower.includes('cancelled') ||
+    lower.includes('abort')
+  ) {
+    if (isRegistration) {
+      return 'Biometric registration was cancelled or not allowed on this device. You can retry registration or switch to Mobile Face & GPS check.';
+    }
+    return 'Biometric scan was cancelled or not allowed on this device. Please tap "Register Phone Biometric" first or switch to Mobile Face & GPS check.';
+  }
+
+  if (errName === 'InvalidStateError' || lower.includes('already registered')) {
+    return 'A biometric credential is already registered on this device. You can verify attendance directly.';
+  }
+
+  if (errName === 'NotSupportedError' || lower.includes('not supported')) {
+    return 'Hardware biometrics (Fingerprint/FaceID) are not supported on this browser. Please switch to Mobile Face & GPS check.';
+  }
+
+  if (errName === 'SecurityError' || lower.includes('security')) {
+    return 'Biometric access requires a secure HTTPS connection or localhost. Please switch to Mobile Face & GPS check.';
+  }
+
+  // Strip any leaked W3C URL or internal protocol addresses and normalize whitespace
+  let sanitized = rawMsg
+    .replace(/https?:\/\/[^\s)]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (
+    !sanitized ||
+    sanitized.toLowerCase().includes('privacy-considerations') ||
+    sanitized.toLowerCase().includes('not allowed') ||
+    sanitized.toLowerCase().includes('timed out')
+  ) {
+    return isRegistration
+      ? 'Biometric registration was cancelled or not allowed on this device. You can retry registration or switch to Mobile Face & GPS check.'
+      : 'Biometric scan was cancelled or not allowed on this device. Please tap "Register Phone Biometric" first or switch to Mobile Face & GPS check.';
+  }
+
+  return sanitized;
 }
 
 export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = ({
   isOpen,
   onClose,
   busId,
+  studentId,
+  studentName,
+  initialTab = 'FACE',
   onSuccess,
 }) => {
-  const [activeTab, setActiveTab] = useState<'FACE' | 'BIOMETRIC'>('FACE');
+  const [activeTab, setActiveTab] = useState<'FACE' | 'BIOMETRIC'>(initialTab);
   const [isLoading, setIsLoading] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -27,6 +136,11 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
     faceConfidence?: number;
     selfieUrl?: string;
   } | null>(null);
+
+  // Biometric device enrollment state
+  const [registeredCredId, setRegisteredCredId] = useState<string | null>(null);
+  const [isBiometricSupported, setIsBiometricSupported] = useState<boolean>(true);
+  const [isPlatformAvailable, setIsPlatformAvailable] = useState<boolean>(true);
 
   // GPS state
   const [coords, setCoords] = useState<{ latitude: number; longitude: number; accuracy: number } | null>(null);
@@ -38,7 +152,57 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
   const streamRef = useRef<MediaStream | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
 
-  // Initialize camera and GPS when modal opens
+  const getStorageKey = () => (studentId ? `bus_biometric_cred_${studentId}` : 'bus_biometric_cred_default');
+
+  // Sync initialTab when modal opens
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
+
+  // Check hardware WebAuthn platform capabilities on mount
+  useEffect(() => {
+    const checkSupport = async () => {
+      if (typeof window !== 'undefined' && window.PublicKeyCredential) {
+        setIsBiometricSupported(true);
+        try {
+          if (PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+            const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+            // Allow biometric attempt even if platform check reports false initially (e.g. Android WebViews)
+            setIsPlatformAvailable(available !== false || Boolean(window.PublicKeyCredential));
+          } else {
+            setIsPlatformAvailable(true);
+          }
+        } catch {
+          setIsPlatformAvailable(true);
+        }
+      } else {
+        setIsBiometricSupported(false);
+        setIsPlatformAvailable(false);
+      }
+    };
+    checkSupport();
+  }, []);
+
+  // Check locally saved or backend synced biometric registration
+  useEffect(() => {
+    if (isOpen) {
+      const stored = localStorage.getItem(getStorageKey());
+      if (stored) {
+        setRegisteredCredId(stored);
+      } else {
+        api.getMobileBiometricCredential().then((res) => {
+          if (res.credential?.credentialId) {
+            localStorage.setItem(getStorageKey(), res.credential.credentialId);
+            setRegisteredCredId(res.credential.credentialId);
+          }
+        }).catch(() => {});
+      }
+    }
+  }, [isOpen, studentId]);
+
+  // Initialize camera and GPS when modal opens or tab changes
   useEffect(() => {
     if (isOpen) {
       setErrorMsg(null);
@@ -47,6 +211,8 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
       acquireGps();
       if (activeTab === 'FACE') {
         startCamera();
+      } else {
+        stopCamera();
       }
     } else {
       stopCamera();
@@ -166,6 +332,115 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
     }
   };
 
+  /**
+   * Registers native smartphone platform biometric (TouchID, FaceID, or Fingerprint)
+   * using navigator.credentials.create()
+   */
+  const handleRegisterBiometrics = async () => {
+    if (!window.PublicKeyCredential) {
+      setErrorMsg('Hardware biometrics (Fingerprint/FaceID) not supported on this browser. Please use Mobile Face & GPS check.');
+      return;
+    }
+
+    setIsLoading(true);
+    setStatusText('Prompting phone biometric sensor for enrollment...');
+    setErrorMsg(null);
+
+    try {
+      const { challenge } = await api.getMobileBiometricChallenge();
+      const challengeBytes = base64UrlToUint8Array(challenge);
+      let userIdBytes = new TextEncoder().encode(studentId || 'student-commuter');
+      if (userIdBytes.length > 64) {
+        userIdBytes = userIdBytes.slice(0, 64);
+      }
+
+      const createOptions: CredentialCreationOptions = {
+        publicKey: {
+          challenge: challengeBytes as unknown as BufferSource,
+          rp: {
+            name: 'College Bus Transit System',
+            ...(typeof window !== 'undefined' &&
+            window.location.hostname &&
+            window.location.hostname !== 'localhost' &&
+            !/^\d+\.\d+\.\d+\.\d+$/.test(window.location.hostname) &&
+            !window.location.hostname.includes(':')
+              ? { id: window.location.hostname }
+              : {}),
+          },
+          user: {
+            id: userIdBytes as unknown as BufferSource,
+            name: (studentName || 'student').toLowerCase().replace(/\s+/g, '.'),
+            displayName: studentName || 'Student Commuter',
+          },
+          pubKeyCredParams: [
+            { type: 'public-key', alg: -7 },   // ES256
+            { type: 'public-key', alg: -257 }, // RS256
+            { type: 'public-key', alg: -8 },   // Ed25519
+            { type: 'public-key', alg: -37 },  // PS256
+          ],
+          authenticatorSelection: {
+            authenticatorAttachment: 'platform',
+            userVerification: 'preferred',
+            residentKey: 'preferred',
+          },
+          timeout: 60000,
+          attestation: 'none',
+        },
+      };
+
+      let credential: PublicKeyCredential | null = null;
+      try {
+        credential = (await navigator.credentials.create(createOptions)) as PublicKeyCredential | null;
+      } catch (tier1Err: any) {
+        // Fallback tier for smartphones where strict platform attachment constraints trigger NotAllowedError
+        const fallbackOptions: CredentialCreationOptions = {
+          publicKey: {
+            ...createOptions.publicKey!,
+            authenticatorSelection: {
+              userVerification: 'preferred',
+              residentKey: 'preferred',
+            },
+          },
+        };
+        credential = (await navigator.credentials.create(fallbackOptions)) as PublicKeyCredential | null;
+      }
+
+      if (!credential) {
+        setErrorMsg('Biometric registration was dismissed or not completed.');
+        return;
+      }
+
+      const credId = credential.id;
+      const rawIdB64 = bufferToBase64Url(credential.rawId);
+
+      const storageKey = getStorageKey();
+      localStorage.setItem(storageKey, credId);
+      localStorage.setItem(`${storageKey}_raw`, rawIdB64);
+      localStorage.setItem(`${storageKey}_transports`, JSON.stringify(['internal']));
+      setRegisteredCredId(credId);
+
+      try {
+        await api.registerMobileBiometric({
+          credentialId: credId,
+          rawId: rawIdB64,
+          transports: ['internal'],
+        });
+      } catch (syncErr) {
+        console.warn('Backend biometric registration sync notice:', syncErr);
+      }
+
+      setStatusText('Biometric registered successfully on this device! You can now verify attendance.');
+      setTimeout(() => setStatusText(null), 4000);
+    } catch (err: any) {
+      setErrorMsg(formatWebAuthnError(err, true));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Verifies attendance using registered platform biometric credential and live GPS
+   */
   const handleVerifyWithBiometrics = async () => {
     if (!coords) {
       acquireGps();
@@ -173,45 +448,66 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
       return;
     }
 
+    if (!window.PublicKeyCredential) {
+      setErrorMsg('Hardware biometrics (Fingerprint/FaceID) not supported on this browser. Please use Face & Location verification.');
+      return;
+    }
+
+    if (!registeredCredId) {
+      setErrorMsg('No biometric credential registered on this device. Please tap "Register Phone Biometric" first.');
+      return;
+    }
+
     setIsLoading(true);
+    setStatusText('Prompting phone biometric sensor...');
     setErrorMsg(null);
 
     try {
       // 1. Get challenge from server
       const { challenge } = await api.getMobileBiometricChallenge();
+      const challengeBytes = base64UrlToUint8Array(challenge);
 
       let biometricPayload: any = { challenge };
 
-      // 2. Trigger native smartphone biometric sensor via WebAuthn if supported
-      if (window.PublicKeyCredential) {
-        try {
-          const credential = await navigator.credentials.get({
-            publicKey: {
-              challenge: Uint8Array.from(atob(challenge.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0)),
-              timeout: 60000,
-              userVerification: 'required',
-            },
-          });
-          if (credential) {
-            biometricPayload = {
-              credentialId: credential.id,
-              rawId: credential.id,
-              signature: 'webauthn-assertion-verified',
-            };
-          } else {
-            setErrorMsg('Device biometric prompt was dismissed or failed to authenticate.');
-            return;
-          }
-        } catch (credErr: any) {
-          setErrorMsg(credErr.message || 'Phone biometric sensor verification failed or was cancelled.');
+      // 2. Trigger native smartphone biometric sensor via WebAuthn
+      try {
+        const getOptions: CredentialRequestOptions = {
+          publicKey: {
+            challenge: challengeBytes as unknown as BufferSource,
+            timeout: 60000,
+            userVerification: 'preferred',
+            allowCredentials: [
+              {
+                id: base64UrlToUint8Array(
+                  localStorage.getItem(`${getStorageKey()}_raw`) || registeredCredId
+                ) as unknown as BufferSource,
+                type: 'public-key',
+                transports: ['internal', 'hybrid'],
+              },
+            ],
+          },
+        };
+
+        const credential = (await navigator.credentials.get(getOptions)) as PublicKeyCredential | null;
+
+        if (credential) {
+          biometricPayload = {
+            challenge,
+            credentialId: credential.id,
+            rawId: credential.id,
+            signature: 'webauthn-assertion-verified',
+          };
+        } else {
+          setErrorMsg('Device biometric prompt was dismissed or failed to authenticate.');
           return;
         }
-      } else {
-        setErrorMsg('Hardware biometrics (Fingerprint/FaceID) not supported on this browser. Please use Face & Location verification.');
+      } catch (credErr: any) {
+        setErrorMsg(formatWebAuthnError(credErr, false));
         return;
       }
 
       // 3. Dispatch to verify-mobile endpoint
+      setStatusText('Logging verified biometric attendance with GPS...');
       const res = await api.verifyMobile({
         busId,
         method: 'PHONE_BIOMETRIC_GPS',
@@ -236,7 +532,23 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
       setErrorMsg(err.message || 'Biometric verification failed.');
     } finally {
       setIsLoading(false);
+      setStatusText(null);
     }
+  };
+
+  const handleResetDeviceBiometric = async () => {
+    const storageKey = getStorageKey();
+    localStorage.removeItem(storageKey);
+    localStorage.removeItem(`${storageKey}_raw`);
+    setRegisteredCredId(null);
+    setErrorMsg(null);
+    try {
+      await api.unregisterMobileBiometric();
+    } catch {
+      // Background unregister notice
+    }
+    setStatusText('Biometric unlinked from this device. You can register a new one below.');
+    setTimeout(() => setStatusText(null), 3000);
   };
 
   if (!isOpen) return null;
@@ -247,7 +559,7 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
         {/* Top Header */}
         <div className="flex items-center justify-between p-4 border-b border-zinc-100 dark:border-[#23232a]">
           <div className="flex items-center gap-3">
-            <div id="app-logo-slot" className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+            <div id="app-logo-slot" className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400" aria-label="Company Logo Slot">
               <Camera className="w-4 h-4" />
             </div>
             <div>
@@ -267,7 +579,10 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
         <div className="flex border-b border-zinc-100 dark:border-[#23232a] bg-zinc-50 dark:bg-[#101014] p-1">
           <button
             type="button"
-            onClick={() => setActiveTab('FACE')}
+            onClick={() => {
+              setErrorMsg(null);
+              setActiveTab('FACE');
+            }}
             className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium rounded-xl transition-all ${
               activeTab === 'FACE'
                 ? 'bg-white dark:bg-[#1c1c24] text-emerald-600 dark:text-emerald-400 shadow-sm'
@@ -279,7 +594,10 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('BIOMETRIC')}
+            onClick={() => {
+              setErrorMsg(null);
+              setActiveTab('BIOMETRIC');
+            }}
             className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium rounded-xl transition-all ${
               activeTab === 'BIOMETRIC'
                 ? 'bg-white dark:bg-[#1c1c24] text-emerald-600 dark:text-emerald-400 shadow-sm'
@@ -287,7 +605,7 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
             }`}
           >
             <Fingerprint className="w-3.5 h-3.5" />
-            Phone Biometric + GPS
+            Fingerprint (In-Display / Side) + GPS
           </button>
         </div>
 
@@ -306,7 +624,7 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
           {gpsStatus !== 'LOCKED' && (
             <button
               onClick={acquireGps}
-              className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 font-medium"
+              className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 font-medium cursor-pointer"
             >
               <RefreshCw className="w-3 h-3" /> Retry
             </button>
@@ -376,7 +694,7 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
                 type="button"
                 onClick={handleVerifyWithFace}
                 disabled={isLoading || gpsStatus !== 'LOCKED'}
-                className="w-full mt-4 h-11 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full mt-4 h-11 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isLoading ? (
                   <>
@@ -390,38 +708,203 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
               </button>
             </div>
           ) : (
-            <div className="w-full flex flex-col items-center py-4">
-              <div className="w-24 h-24 rounded-full bg-emerald-500/10 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4">
-                <Fingerprint className="w-12 h-12" />
-              </div>
-              <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Phone Biometric Check</h4>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center max-w-xs mt-1">
-                Touch your phone's fingerprint sensor or use FaceID alongside your current GPS position.
-              </p>
+            /* BIOMETRIC TAB */
+            <div className="w-full flex flex-col items-center py-2">
+              {!isBiometricSupported || !isPlatformAvailable ? (
+                /* Hardware unsupported state */
+                <div className="w-full flex flex-col items-center text-center p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50">
+                  <AlertTriangle className="w-8 h-8 text-amber-600 dark:text-amber-400 mb-2" />
+                  <h4 className="text-xs font-bold text-amber-800 dark:text-amber-300">Biometrics Not Supported</h4>
+                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 max-w-xs">
+                    Hardware platform biometrics (In-display/Side Fingerprint or FaceID) are not available on this browser or device. Please use Face & GPS verification.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMsg(null);
+                      setActiveTab('FACE');
+                    }}
+                    className="mt-4 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs flex items-center gap-2 cursor-pointer shadow-sm"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    Switch to Face & GPS Check
+                  </button>
+                </div>
+              ) : !registeredCredId ? (
+                /* ------------------------------------------------------------- */
+                /* 1. NOT YET REGISTERED: PROMINENT REGISTRATION INTERFACE       */
+                /* ------------------------------------------------------------- */
+                <div className="w-full flex flex-col items-center">
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500/10 to-amber-600/5 dark:from-amber-500/20 dark:to-transparent flex items-center justify-center text-amber-600 dark:text-amber-400 mb-3 border border-amber-500/20 shadow-inner">
+                    <KeyRound className="w-10 h-10 animate-bounce" />
+                  </div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold uppercase tracking-wider mb-1">
+                    <Smartphone className="w-3 h-3" /> One-Time Device Sensor Setup
+                  </div>
+                  <h4 className="text-sm font-bold text-zinc-900 dark:text-white">Register Phone Fingerprint</h4>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center max-w-xs mt-1">
+                    Use your phone's in-display or side-mounted fingerprint scanner (or TouchID/FaceID) to register once for instant 1-tap transit attendance.
+                  </p>
 
-              {errorMsg && (
-                <div className="w-full mt-3 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 flex items-start gap-2.5 text-xs text-rose-700 dark:text-rose-400">
-                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{errorMsg}</span>
+                  {/* Status Banner */}
+                  {statusText && (
+                    <div className="w-full mt-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 flex items-center gap-2.5 text-xs text-blue-700 dark:text-blue-400">
+                      <RefreshCw className="w-4 h-4 shrink-0 animate-spin" />
+                      <span className="font-medium">{statusText}</span>
+                    </div>
+                  )}
+
+                  {/* Error Alert with 1-tap fallback to Face & GPS */}
+                  {errorMsg && (
+                    <div className="w-full mt-3 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 flex flex-col gap-2 text-xs text-rose-700 dark:text-rose-400">
+                      <div className="flex items-start gap-2.5">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span className="leading-relaxed">{errorMsg}</span>
+                      </div>
+                      <div className="flex items-center justify-end gap-3 pt-1 border-t border-rose-200/50 dark:border-rose-900/30">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setErrorMsg(null);
+                            setActiveTab('FACE');
+                          }}
+                          className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                          Switch to Mobile Face & GPS
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleRegisterBiometrics}
+                    disabled={isLoading}
+                    className="w-full mt-5 h-11 flex items-center justify-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs transition-all shadow-lg shadow-amber-600/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {isLoading ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" /> Prompting Fingerprint Sensor...
+                      </>
+                    ) : (
+                      <>
+                        <Fingerprint className="w-4 h-4" /> Scan Fingerprint (In-Display / Side Sensor)
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMsg(null);
+                      setActiveTab('FACE');
+                    }}
+                    className="mt-3 text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Prefer front camera? Switch to Face & GPS</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                /* ------------------------------------------------------------- */
+                /* 2. REGISTERED: 1-TAP VERIFICATION INTERFACE                  */
+                /* ------------------------------------------------------------- */
+                <div className="w-full flex flex-col items-center">
+                  <div className="relative w-20 h-20 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/15 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-3 border border-emerald-500/20 shadow-inner">
+                    <Fingerprint className="w-10 h-10" />
+                    <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px]">
+                      <ShieldCheck className="w-3 h-3" />
+                    </span>
+                  </div>
+
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-1">
+                    <CheckCircle2 className="w-3 h-3" /> Fingerprint Sensor Ready
+                  </div>
+
+                  <h4 className="text-sm font-bold text-zinc-900 dark:text-white">In-Display / Side Fingerprint Attendance</h4>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center max-w-xs mt-1">
+                    Touch your phone's in-display or side-mounted fingerprint reader (or TouchID/FaceID) alongside your live GPS location.
+                  </p>
+
+                  {/* Status Banner */}
+                  {statusText && (
+                    <div className="w-full mt-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 flex items-center gap-2.5 text-xs text-blue-700 dark:text-blue-400">
+                      <RefreshCw className="w-4 h-4 shrink-0 animate-spin" />
+                      <span className="font-medium">{statusText}</span>
+                    </div>
+                  )}
+
+                  {/* Error Alert with 1-tap fallback to Face & GPS */}
+                  {errorMsg && (
+                    <div className="w-full mt-3 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 flex flex-col gap-2 text-xs text-rose-700 dark:text-rose-400">
+                      <div className="flex items-start gap-2.5">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span className="leading-relaxed">{errorMsg}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-rose-200/50 dark:border-rose-900/30">
+                        <button
+                          type="button"
+                          onClick={handleRegisterBiometrics}
+                          className="text-xs font-semibold text-rose-800 dark:text-rose-200 hover:underline cursor-pointer"
+                        >
+                          Re-register Biometric
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setErrorMsg(null);
+                            setActiveTab('FACE');
+                          }}
+                          className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                          Switch to Mobile Face & GPS
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Verify Action Button */}
+                  <button
+                    type="button"
+                    onClick={handleVerifyWithBiometrics}
+                    disabled={isLoading || gpsStatus !== 'LOCKED'}
+                    className="w-full mt-5 h-11 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {isLoading ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" /> Verifying Fingerprint & GPS...
+                      </>
+                    ) : (
+                      <>
+                        <Fingerprint className="w-4 h-4" /> Scan In-Display / Side Fingerprint to Verify
+                      </>
+                    )}
+                  </button>
+
+                  <div className="flex items-center justify-between w-full mt-3 px-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                    <button
+                      type="button"
+                      onClick={handleResetDeviceBiometric}
+                      className="hover:text-zinc-800 dark:hover:text-zinc-200 underline cursor-pointer"
+                    >
+                      Re-register on this device
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setErrorMsg(null);
+                        setActiveTab('FACE');
+                      }}
+                      className="text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5 cursor-pointer font-medium"
+                    >
+                      <span>Switch to Face</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
               )}
-
-              <button
-                type="button"
-                onClick={handleVerifyWithBiometrics}
-                disabled={isLoading || gpsStatus !== 'LOCKED'}
-                className="w-full mt-6 h-11 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" /> Verifying Biometrics & GPS...
-                  </>
-                ) : (
-                  <>
-                    <Fingerprint className="w-4 h-4" /> Scan Fingerprint / FaceID
-                  </>
-                )}
-              </button>
             </div>
           )}
         </div>

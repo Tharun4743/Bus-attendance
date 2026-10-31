@@ -199,7 +199,7 @@ export const StudentApprovals: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto">
+    <div className="space-y-4 w-full mx-auto pb-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#141418] rounded-2xl p-5 sm:p-6 shadow-xs border border-zinc-200/90 dark:border-[#26262e] transition-all">
         <div>
@@ -356,9 +356,7 @@ export const StudentApprovals: React.FC = () => {
                           Assigned Bus Number <span className="text-rose-500">*</span>
                         </label>
                         <div className="relative">
-                          <BusIcon className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
-                          <input
-                            type="text"
+                          <select
                             value={currentBusNumber}
                             onChange={(e) =>
                               setInchargeBusNumbers({
@@ -366,12 +364,23 @@ export const StudentApprovals: React.FC = () => {
                                 [inc.id]: e.target.value.toUpperCase(),
                               })
                             }
-                            placeholder="e.g. BUS06"
-                            className="w-full h-10 pl-10 pr-3 text-xs font-bold font-mono uppercase rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#1a1a20] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none"
-                          />
+                            className="w-full h-10 px-3 text-xs font-bold font-mono uppercase rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#1a1a20] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none"
+                          >
+                            <option value="">-- Select Assigned Fleet Bus ({buses.length} Fleet Options) --</option>
+                            {buses.map((b) => (
+                              <option key={b.id} value={b.busNumber}>
+                                {b.busNumber} — {b.routeName}
+                              </option>
+                            ))}
+                            {currentBusNumber && !buses.some((b) => b.busNumber.toUpperCase() === currentBusNumber.toUpperCase()) && (
+                              <option value={currentBusNumber}>
+                                {currentBusNumber} (Custom / New Route)
+                              </option>
+                            )}
+                          </select>
                         </div>
                         <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1">
-                          Approving this in-charge activates their account and assigns Bus #{currentBusNumber}.
+                          Dynamically assigns this In-Charge to an operational fleet bus in PostgreSQL.
                         </p>
                       </div>
                     </div>
@@ -483,7 +492,7 @@ export const StudentApprovals: React.FC = () => {
                           }
                           className="w-full h-10 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#1a1a20] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none"
                         >
-                          <option value="">-- Choose Bus --</option>
+                          <option value="">-- Choose Bus ({buses.length} Fleet Buses) --</option>
                           {buses.map((b) => (
                             <option key={b.id} value={b.id}>
                               {b.busNumber} — {b.routeName}
