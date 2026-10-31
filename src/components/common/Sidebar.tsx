@@ -6,7 +6,6 @@ import {
   Users,
   UserCheck,
   Bus,
-  MapPin,
 } from 'lucide-react';
 import { api } from '../../services/api';
 
@@ -70,11 +69,6 @@ export const Sidebar: React.FC = () => {
       to: '/admin/buses',
       label: 'Bus Fleet',
       icon: Bus,
-    },
-    {
-      to: '/admin/settings/geofence',
-      label: 'Geofence Settings',
-      icon: MapPin,
     },
   ];
 
