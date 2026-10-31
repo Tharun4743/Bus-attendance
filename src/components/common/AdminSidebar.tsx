@@ -12,7 +12,6 @@ import {
   MapPin,
   User,
   LogOut,
-  Menu,
   X,
 } from 'lucide-react';
 import { api } from '../../services/api';
@@ -68,6 +67,13 @@ export const AdminSidebar: React.FC = () => {
   useEffect(() => {
     setIsMobileOpen(false);
   }, [location.pathname]);
+
+  // Synchronize with Navbar mobile menu trigger
+  useEffect(() => {
+    const onToggle = () => setIsMobileOpen((prev) => !prev);
+    window.addEventListener('toggle-mobile-sidebar', onToggle);
+    return () => window.removeEventListener('toggle-mobile-sidebar', onToggle);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -230,20 +236,9 @@ export const AdminSidebar: React.FC = () => {
   return (
     <>
       {/* Desktop Persistent Sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 bg-white dark:bg-[#0c0c0e] border-r border-zinc-200 dark:border-[#26262e] p-4 shrink-0 min-h-screen sticky top-0 h-screen">
+      <aside className="hidden lg:flex flex-col w-64 bg-white dark:bg-[#0c0c0e] border-r border-zinc-200 dark:border-[#26262e] p-4 shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] overflow-hidden">
         {renderNavContent()}
       </aside>
-
-      {/* Mobile Trigger Button */}
-      <div className="lg:hidden fixed top-3 left-3 z-40">
-        <button
-          onClick={() => setIsMobileOpen(true)}
-          className="p-2 rounded-xl bg-white dark:bg-[#141418] border border-zinc-200 dark:border-[#26262e] shadow-md text-zinc-700 dark:text-zinc-200"
-          aria-label="Open Navigation Menu"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-      </div>
 
       {/* Mobile Drawer Overlay */}
       {isMobileOpen && (

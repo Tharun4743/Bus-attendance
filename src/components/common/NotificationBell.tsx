@@ -124,7 +124,7 @@ export const NotificationBell: React.FC = () => {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setIsOpen(false)} />
-          <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#1a1a20] p-4 shadow-xl border border-zinc-200 dark:border-[#26262e] z-40 transition-all">
+          <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] max-w-sm sm:w-96 rounded-2xl bg-white dark:bg-[#1a1a20] p-4 shadow-xl border border-zinc-200 dark:border-[#26262e] z-40 transition-all">
             <div className="flex items-center justify-between border-b border-zinc-100 dark:border-[#26262e] pb-3 mb-2">
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-black text-zinc-900 dark:text-white">Notifications</h4>

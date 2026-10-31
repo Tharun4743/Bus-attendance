@@ -486,7 +486,7 @@ export const TodayLiveSessionView: React.FC = () => {
 
         {/* Roster Table (Desktop) */}
         <div className="hidden sm:block overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[720px]">
             <thead className="bg-zinc-50/80 dark:bg-[#101014] text-zinc-500 dark:text-zinc-400 font-black uppercase tracking-wider text-[10px] border-b border-zinc-200 dark:border-[#26262e]">
               <tr>
                 <th className="px-5 py-3.5">Register No</th>
@@ -822,7 +822,7 @@ export const DailyReportsView: React.FC<{ preselectedDate?: string }> = ({ prese
                   </div>
                 </div>
                 <div className="overflow-x-auto max-h-[380px]">
-                  <table className="w-full text-left text-xs">
+                  <table className="w-full text-left text-xs min-w-[600px]">
                     <thead className="bg-zinc-50/80 dark:bg-[#101014] text-zinc-500 dark:text-zinc-400 font-black uppercase tracking-wider text-[10px] border-b border-zinc-200 dark:border-[#26262e] sticky top-0">
                       <tr>
                         <th className="px-5 py-3">Reg No</th>
@@ -1051,7 +1051,7 @@ export const AttendanceHistoryView: React.FC = () => {
         ) : (
           <>
             <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[720px]">
               <thead className="bg-zinc-50/80 dark:bg-[#101014] text-zinc-500 dark:text-zinc-400 font-black uppercase tracking-wider text-[10px] border-b border-zinc-200 dark:border-[#26262e]">
                 <tr>
                   <th className="px-5 py-3.5">Date</th>
