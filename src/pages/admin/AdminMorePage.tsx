@@ -235,3 +235,4 @@ export const AdminMorePage: React.FC = () => {
     </div>
   );
 };
+
