@@ -23,8 +23,8 @@ describe('⚡ Responsive Layouts, Stat Cards, and Session Launcher Verification 
     expect(studentLayout).toContain('max-w-5xl');
     expect(studentLayout).not.toContain('max-w-[1600px]');
 
-    // Navbar aligns with the max-w-7xl layout width
-    expect(navbar).toContain('max-w-7xl');
+    // Navbar spans responsive full width
+    expect(navbar).toContain('w-full');
     expect(navbar).not.toContain('max-w-[1600px]');
   });
 

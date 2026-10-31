@@ -331,7 +331,7 @@ export const AdminDashboard: React.FC = () => {
       {/* ========================================================================= */}
       {/* 4. ESSENTIAL OPERATIONS WORKSPACE GRID                                     */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {/* Attendance Hub Card */}
         <Link
           to="/admin/attendance"
@@ -415,33 +415,6 @@ export const AdminDashboard: React.FC = () => {
           </div>
           <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-sky-400">
             <span>Manage Fleet</span>
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </Link>
-
-        {/* Geofence Settings Card */}
-        <Link
-          to="/admin/settings/geofence"
-          className="group p-4 sm:p-5 bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] shadow-xs hover:border-amber-500/50 hover:shadow-sm transition flex flex-col justify-between"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-200 dark:border-amber-800">
-                <MapPin className="w-4.5 h-4.5" />
-              </div>
-              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-500/30">
-                {data?.sessionInfo.radiusMeters || 50}m Radius
-              </span>
-            </div>
-            <h3 className="text-sm font-black text-zinc-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-              Geofence Settings
-            </h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-              Configure campus GPS coordinates, perimeter radius, and tolerance boundaries.
-            </p>
-          </div>
-          <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400">
-            <span>Configure Boundary</span>
             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </div>
         </Link>

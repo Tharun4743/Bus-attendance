@@ -20,7 +20,6 @@ const StudentApprovals = React.lazy(() => import('./pages/admin/StudentApprovals
 const BusesManagement = React.lazy(() => import('./pages/admin/BusesManagement').then(m => ({ default: m.BusesManagement })));
 const TodayAttendance = React.lazy(() => import('./pages/admin/TodayAttendance').then(m => ({ default: m.TodayAttendance })));
 const AttendanceHistory = React.lazy(() => import('./pages/admin/AttendanceHistory').then(m => ({ default: m.AttendanceHistory })));
-const GeofenceSettings = React.lazy(() => import('./pages/admin/GeofenceSettings').then(m => ({ default: m.GeofenceSettings })));
 const ReportsPage = React.lazy(() => import('./pages/admin/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const NotificationsPage = React.lazy(() => import('./pages/admin/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
 
@@ -116,7 +115,7 @@ export const App: React.FC = () => {
               <Route path="buses" element={<BusesManagement />} />
               <Route path="attendance" element={<TodayAttendance />} />
               <Route path="attendance/history" element={<AttendanceHistory />} />
-              <Route path="settings/geofence" element={<GeofenceSettings />} />
+              <Route path="settings/geofence" element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="reports/:date" element={<ReportsPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
