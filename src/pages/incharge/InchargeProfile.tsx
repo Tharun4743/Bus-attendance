@@ -1,3 +1,4 @@
+import { InchargeProfileSkeleton } from '../../components/skeleton/InchargeSkeletons';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
@@ -49,6 +50,10 @@ export const InchargeProfile: React.FC = () => {
       isMounted = false;
     };
   }, []);
+
+  if (isLoading && !busData) {
+    return <InchargeProfileSkeleton />;
+  }
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">

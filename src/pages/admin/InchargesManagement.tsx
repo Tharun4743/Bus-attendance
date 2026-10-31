@@ -1,3 +1,4 @@
+import { AdminInchargesSkeleton } from '../../components/skeleton/AdminSkeletons';
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Bus, User } from '../../types';
@@ -161,6 +162,10 @@ export const InchargesManagement: React.FC = () => {
       (bus && bus.busNumber.toLowerCase().includes(q))
     );
   });
+
+  if (isLoading && incharges.length === 0) {
+    return <AdminInchargesSkeleton />;
+  }
 
   return (
     <div className="space-y-4 w-full mx-auto pb-8">

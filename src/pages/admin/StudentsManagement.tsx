@@ -1,3 +1,4 @@
+import { AdminStudentsSkeleton } from '../../components/skeleton/AdminSkeletons';
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Bus, Student } from '../../types';
@@ -164,6 +165,10 @@ export const StudentsManagement: React.FC = () => {
       }
     }
   };
+
+  if (isLoading && students.length === 0) {
+    return <AdminStudentsSkeleton />;
+  }
 
   return (
     <div className="space-y-4 w-full mx-auto pb-8">

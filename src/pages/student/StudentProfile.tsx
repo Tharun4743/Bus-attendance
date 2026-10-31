@@ -1,3 +1,4 @@
+import { StudentProfileSkeleton } from '../../components/skeleton/StudentSkeletons';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
@@ -61,6 +62,10 @@ export const StudentProfile: React.FC = () => {
       setIsResettingFace(false);
     }
   };
+
+  if (isLoading && !student) {
+    return <StudentProfileSkeleton />;
+  }
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">

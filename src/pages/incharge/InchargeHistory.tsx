@@ -1,3 +1,4 @@
+﻿import { InchargeHistorySkeleton } from '../../components/skeleton/InchargeSkeletons';
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../services/api';
 import { AttendanceRecord } from '../../types';
@@ -105,6 +106,10 @@ export const InchargeHistory: React.FC = () => {
     link.click();
     document.body.removeChild(link);
   };
+
+  if (isLoading && records.length === 0) {
+    return <InchargeHistorySkeleton />;
+  }
 
   return (
     <div className="space-y-6">

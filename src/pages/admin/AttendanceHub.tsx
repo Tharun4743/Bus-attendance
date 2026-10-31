@@ -1,3 +1,4 @@
+﻿import { AdminReportsSkeleton } from '../../components/skeleton/AdminSkeletons';
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useParams } from 'react-router-dom';
 import { api } from '../../services/api';
@@ -285,13 +286,8 @@ export const TodayLiveSessionView: React.FC = () => {
     return matchesSearch && matchesStatus && matchesBus;
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 space-y-3">
-        <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Loading Live Attendance Session...</p>
-      </div>
-    );
+  if (isLoading && !data) {
+    return <AdminReportsSkeleton />;
   }
 
   return (

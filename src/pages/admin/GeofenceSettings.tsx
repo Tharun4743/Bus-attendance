@@ -1,3 +1,4 @@
+﻿import { GeofenceSettingsSkeleton } from '../../components/skeleton/AdminSkeletons';
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Button } from '../../components/ui/Button';
@@ -97,13 +98,8 @@ export const GeofenceSettings: React.FC = () => {
     setMessage({ type: 'success', text: 'Reloaded current settings from live PostgreSQL database.' });
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 space-y-2">
-        <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Loading geofence settings...</p>
-      </div>
-    );
+  if (isLoading && !locationName) {
+    return <GeofenceSettingsSkeleton />;
   }
 
   return (

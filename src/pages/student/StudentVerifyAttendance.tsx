@@ -1,3 +1,4 @@
+import { StudentVerifyAttendanceSkeleton } from '../../components/skeleton/StudentSkeletons';
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
 import { Bus, AttendanceRecord, ActiveSession } from '../../types';
@@ -225,6 +226,10 @@ export const StudentVerifyAttendance: React.FC = () => {
       setIsVerifying(false);
     }
   };
+
+  if (isLoading && !bus && !activeSession) {
+    return <StudentVerifyAttendanceSkeleton />;
+  }
 
   const isAlreadyVerified = todayRecord?.status === 'PRESENT';
 

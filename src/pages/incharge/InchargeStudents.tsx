@@ -1,3 +1,4 @@
+import { InchargeStudentsSkeleton } from '../../components/skeleton/InchargeSkeletons';
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Student } from '../../types';
@@ -37,13 +38,8 @@ export const InchargeStudents: React.FC = () => {
     return s.name.toLowerCase().includes(q) || s.registerNumber.toLowerCase().includes(q);
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 space-y-3">
-        <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-bold text-zinc-500">Loading Student Directory...</p>
-      </div>
-    );
+  if (isLoading && students.length === 0) {
+    return <InchargeStudentsSkeleton />;
   }
 
   return (

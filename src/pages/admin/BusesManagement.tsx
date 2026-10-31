@@ -1,3 +1,4 @@
+import { AdminBusesSkeleton } from '../../components/skeleton/AdminSkeletons';
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Bus, User } from '../../types';
@@ -137,6 +138,10 @@ export const BusesManagement: React.FC = () => {
       console.error('Failed to toggle bus status:', err);
     }
   };
+
+  if (isLoading && buses.length === 0) {
+    return <AdminBusesSkeleton />;
+  }
 
   return (
     <div className="space-y-4 w-full mx-auto pb-8">
