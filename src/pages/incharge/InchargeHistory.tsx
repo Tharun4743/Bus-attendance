@@ -263,7 +263,7 @@ export const InchargeHistory: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
+            <table className="w-full text-left border-collapse text-xs min-w-[700px]">
               <thead>
                 <tr className="bg-zinc-50 dark:bg-[#141418] border-b border-zinc-200 dark:border-[#27272a] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">
                   <th className="py-3 px-4">Date</th>

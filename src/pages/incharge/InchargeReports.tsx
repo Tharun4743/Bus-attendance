@@ -240,7 +240,7 @@ export const InchargeReports: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
+            <table className="w-full text-left border-collapse text-xs min-w-[700px]">
               <thead>
                 <tr className="bg-zinc-50 dark:bg-[#141418] border-b border-zinc-200 dark:border-[#27272a] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">
                   <th className="py-3.5 px-4">Session Date</th>
@@ -343,7 +343,8 @@ export const InchargeReports: React.FC = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto pr-1">
-              <table className="w-full text-left border-collapse text-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs min-w-[500px]">
                 <thead>
                   <tr className="bg-zinc-50 dark:bg-[#141418] border-b border-zinc-200 dark:border-[#27272a] text-zinc-500 font-bold uppercase tracking-wider">
                     <th className="py-2.5 px-3">Student</th>
@@ -390,6 +391,7 @@ export const InchargeReports: React.FC = () => {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-zinc-200 dark:border-[#27272a]">

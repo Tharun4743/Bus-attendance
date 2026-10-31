@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Bus, LogOut, Shield, UserCheck, GraduationCap } from 'lucide-react';
+import { Bus, LogOut, Shield, UserCheck, GraduationCap, Menu } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from '../ui/ThemeToggle';
 
@@ -43,28 +43,43 @@ export const Navbar: React.FC = () => {
     <header className="sticky top-0 z-40 bg-white/90 dark:bg-[#141418]/90 backdrop-blur-md border-b border-zinc-200/90 dark:border-[#26262e] transition-colors duration-200">
       <div className="w-full px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
-          {/* Brand Logo & Logo Slot */}
-          <Link
-            to={
-              role === 'ADMIN'
-                ? '/admin/dashboard'
-                : role === 'INCHARGE'
-                ? '/incharge/dashboard'
-                : '/student/dashboard'
-            }
-            className="flex items-center gap-2.5 group"
-          >
-            <div id="app-logo-slot" className="logo-container hidden sm:block empty:hidden" aria-label="Company Logo Slot"></div>
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-600 dark:bg-emerald-500 flex items-center justify-center text-white shadow-xs shrink-0 group-hover:scale-105 transition-transform">
-              <Bus className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm sm:text-base font-black tracking-tight text-zinc-900 dark:text-white">
-                Bus Attendance
-              </span>
-              {getRoleBadge()}
-            </div>
-          </Link>
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            {/* Mobile Sidebar Drawer Trigger Button */}
+            {role && (
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new Event('toggle-mobile-sidebar'))}
+                className="lg:hidden p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-[#1f1f26] border border-zinc-200 dark:border-[#2e2e38] transition active:scale-95 shrink-0"
+                aria-label="Open Navigation Menu"
+                title="Open Navigation Menu"
+              >
+                <Menu className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Brand Logo & Logo Slot */}
+            <Link
+              to={
+                role === 'ADMIN'
+                  ? '/admin/dashboard'
+                  : role === 'INCHARGE'
+                  ? '/incharge/dashboard'
+                  : '/student/dashboard'
+              }
+              className="flex items-center gap-2 sm:gap-2.5 group min-w-0"
+            >
+              <div id="app-logo-slot" className="logo-container hidden sm:block empty:hidden" aria-label="Company Logo Slot"></div>
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-600 dark:bg-emerald-500 flex items-center justify-center text-white shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                <Bus className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+              </div>
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <span className="text-sm sm:text-base font-black tracking-tight text-zinc-900 dark:text-white truncate">
+                  Bus Attendance
+                </span>
+                {getRoleBadge()}
+              </div>
+            </Link>
+          </div>
 
           {/* Right Navigation & Profile */}
           <div className="flex items-center gap-2 sm:gap-3">

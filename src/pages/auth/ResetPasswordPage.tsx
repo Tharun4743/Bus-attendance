@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../../services/api';
-import { Bus, Lock, ArrowRight, AlertCircle, CheckCircle2, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Lock, ArrowRight, AlertCircle, CheckCircle2, Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Badge } from '../../components/ui/Badge';
+import { Button } from '../../components/ui/Button';
+import { ThemeToggle } from '../../components/ui/ThemeToggle';
 
 export const ResetPasswordPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -23,8 +26,8 @@ export const ResetPasswordPage: React.FC = () => {
       return;
     }
 
-    if (newPassword.length < 4) {
-      setError('Password must be at least 4 characters long.');
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters long.');
       return;
     }
 
@@ -50,89 +53,96 @@ export const ResetPasswordPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 text-slate-100">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div id="app-logo-slot" className="logo-container mx-auto mb-3 empty:hidden" aria-label="Company Logo Slot"></div>
-        <div className="flex justify-center">
-          <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shadow-lg shadow-sky-500/10">
-            <Bus className="w-6 h-6" />
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0b0e] flex flex-col justify-center py-8 sm:py-12 px-4 transition-colors relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
+        <div id="app-logo-slot" className="logo-container mx-auto mb-2 empty:hidden" aria-label="Company Logo Slot"></div>
+        <div className="flex flex-col items-center justify-center gap-2 mb-3">
+          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-600 dark:bg-emerald-500 text-white shadow-lg shadow-emerald-600/25">
+            <Lock className="w-8 h-8" />
+          </div>
+          <div>
+            <Badge variant="emerald">
+              CREDENTIAL RECOVERY
+            </Badge>
           </div>
         </div>
-        <h2 className="mt-4 text-center text-2xl font-bold tracking-tight text-white">
+        <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
           Create New Password
-        </h2>
-        <p className="mt-2 text-center text-sm text-slate-400">
+        </h1>
+        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400 font-medium">
           Enter your new security credentials below.
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-md">
+      <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white dark:bg-[#141418] py-8 px-6 sm:px-8 shadow-xl dark:shadow-[0_4px_24px_-2px_rgba(0,0,0,0.7),0_0_0_1px_#26262e] rounded-3xl border border-zinc-200/90 dark:border-[#26262e] space-y-5 transition-all">
           {isSuccess ? (
             <div className="text-center py-4 space-y-4">
-              <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-full flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 rounded-full flex items-center justify-center mx-auto">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-semibold text-white">Password Updated</h3>
-              <p className="text-sm text-slate-400">
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white">Password Updated</h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
                 Your password has been changed successfully. Redirecting you to login...
               </p>
               <div className="pt-2">
                 <Link
                   to="/login"
-                  className="text-xs font-semibold text-sky-400 hover:text-sky-300"
+                  className="inline-flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
                 >
-                  Click here if not redirected automatically
+                  Click here if not redirected automatically <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
             </div>
           ) : !token ? (
             <div className="text-center py-4 space-y-4">
-              <div className="w-12 h-12 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded-full flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 bg-rose-500/10 border border-rose-500/30 text-rose-500 rounded-full flex items-center justify-center mx-auto">
                 <AlertCircle className="w-6 h-6" />
               </div>
-              <h3 className="text-base font-semibold text-white">Invalid Reset Link</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white">Invalid Reset Link</h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
                 This password reset link is invalid or missing a security token. Please request a new recovery link.
               </p>
               <div className="pt-2">
                 <Link
                   to="/forgot-password"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-400 hover:text-sky-300"
+                  className="inline-flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
                 >
-                  Request New Reset Link <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowLeft className="w-3.5 h-3.5" /> Request New Reset Link
                 </Link>
               </div>
             </div>
           ) : (
             <form onSubmit={handleReset} className="space-y-4">
               {error && (
-                <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs sm:text-sm">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+                <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>{error}</span>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                  New Password
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  New Password <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                    <Lock className="w-4 h-4" />
-                  </div>
+                  <Lock className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3 pointer-events-none" />
                   <input
                     type={showNewPassword ? 'text' : 'password'}
                     required
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter new password"
-                    className="block w-full pl-10 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent text-sm transition-all"
+                    placeholder="Enter new password (min 6 characters)"
+                    className="w-full h-10 pl-10 pr-10 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowNewPassword((prev) => !prev)}
-                    className="absolute right-3 top-2.5 p-0.5 text-slate-400 hover:text-slate-200 transition-colors focus:outline-none"
+                    className="absolute right-3 top-2.5 p-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors focus:outline-none"
                     aria-label={showNewPassword ? 'Hide password' : 'Show password'}
                     title={showNewPassword ? 'Hide password' : 'Show password'}
                   >
@@ -142,25 +152,23 @@ export const ResetPasswordPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                  Confirm New Password
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Confirm New Password <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                    <Lock className="w-4 h-4" />
-                  </div>
+                  <Lock className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3 pointer-events-none" />
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm new password"
-                    className="block w-full pl-10 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent text-sm transition-all"
+                    placeholder="Confirm your new password"
+                    className="w-full h-10 pl-10 pr-10 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword((prev) => !prev)}
-                    className="absolute right-3 top-2.5 p-0.5 text-slate-400 hover:text-slate-200 transition-colors focus:outline-none"
+                    className="absolute right-3 top-2.5 p-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors focus:outline-none"
                     aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                     title={showConfirmPassword ? 'Hide password' : 'Show password'}
                   >
@@ -169,23 +177,34 @@ export const ResetPasswordPage: React.FC = () => {
                 </div>
               </div>
 
-              <button
+              <Button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 mt-2 rounded-xl text-sm font-semibold text-white bg-sky-600 hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 focus:ring-offset-slate-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-sky-600/20"
+                className="w-full h-10 mt-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/20"
               >
                 {loading ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Updating...
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Updating Password...</span>
                   </>
                 ) : (
                   <>
-                    Save New Password <ArrowRight className="w-4 h-4" />
+                    <span>Save New Password</span>
+                    <ArrowRight className="w-4 h-4" />
                   </>
                 )}
-              </button>
+              </Button>
             </form>
           )}
+
+          <div className="pt-2 text-center border-t border-zinc-100 dark:border-[#26262e]">
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Back to Login
+            </Link>
+          </div>
         </div>
       </div>
     </div>
