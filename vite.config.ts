@@ -34,9 +34,4 @@ export default defineConfig({
       },
     },
   },
-  // @ts-ignore
-  test: {
-    testTimeout: 30000,
-    hookTimeout: 30000,
-  },
 });
