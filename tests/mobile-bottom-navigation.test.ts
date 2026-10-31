@@ -235,3 +235,4 @@ describe('⚡ Role-Based Mobile Bottom Navigation & More Screen System Circuit',
     expect(apiCode).toContain("Admins have read-only access to attendance and cannot end sessions.");
   });
 });
+
