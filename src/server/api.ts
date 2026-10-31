@@ -950,6 +950,52 @@ apiRouter.get(
 );
 
 apiRouter.post(
+  '/attendance/mobile/register-biometric',
+  requireAuth(['STUDENT']),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const studentId = req.user!.studentId || req.user!.id;
+      const { credentialId, rawId } = req.body;
+      if (!credentialId || typeof credentialId !== 'string') {
+        return res.status(400).json({ error: 'credentialId is required.' });
+      }
+      const result = mobileBiometricEngine.registerCredential(studentId, credentialId, rawId);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Failed to register biometric credential.' });
+    }
+  }
+);
+
+apiRouter.get(
+  '/attendance/mobile/credential',
+  requireAuth(['STUDENT']),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const studentId = req.user!.studentId || req.user!.id;
+      const credential = mobileBiometricEngine.getRegisteredCredential(studentId);
+      return res.json({ credential });
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Failed to retrieve biometric credential.' });
+    }
+  }
+);
+
+apiRouter.post(
+  '/attendance/mobile/unregister-biometric',
+  requireAuth(['STUDENT']),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const studentId = req.user!.studentId || req.user!.id;
+      mobileBiometricEngine.removeCredential(studentId);
+      return res.json({ success: true, message: 'Mobile biometric credential unlinked successfully.' });
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Failed to unregister biometric credential.' });
+    }
+  }
+);
+
+apiRouter.post(
   '/attendance/enroll-face',
   requireAuth(['STUDENT']),
   async (req: AuthRequest, res: Response) => {

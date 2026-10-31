@@ -212,6 +212,30 @@ class ApiClient {
     return this.request<{ challenge: string }>('/attendance/mobile/challenge');
   }
 
+  async registerMobileBiometric(payload: {
+    credentialId: string;
+    rawId?: string;
+  }): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/attendance/mobile/register-biometric', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getMobileBiometricCredential(): Promise<{
+    credential: { studentId: string; credentialId: string; rawId?: string; registeredAt: string } | null;
+  }> {
+    return this.request<{
+      credential: { studentId: string; credentialId: string; rawId?: string; registeredAt: string } | null;
+    }>('/attendance/mobile/credential');
+  }
+
+  async unregisterMobileBiometric(): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/attendance/mobile/unregister-biometric', {
+      method: 'POST',
+    });
+  }
+
   async verifyMobile(req: {
     busId?: string;
     method: 'FACE_GPS' | 'PHONE_BIOMETRIC_GPS';

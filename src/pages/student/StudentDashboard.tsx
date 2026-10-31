@@ -32,6 +32,7 @@ export const StudentDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isMobileModalOpen, setIsMobileModalOpen] = useState<boolean>(false);
+  const [mobileModalTab, setMobileModalTab] = useState<'FACE' | 'BIOMETRIC'>('FACE');
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -317,6 +318,7 @@ export const StudentDashboard: React.FC = () => {
                   if (!isFaceEnrolled) {
                     setIsEnrollModalOpen(true);
                   } else {
+                    setMobileModalTab('FACE');
                     setIsMobileModalOpen(true);
                   }
                 }}
@@ -333,20 +335,13 @@ export const StudentDashboard: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  if (!isFaceEnrolled) {
-                    setIsEnrollModalOpen(true);
-                  } else {
-                    setIsMobileModalOpen(true);
-                  }
+                  setMobileModalTab('BIOMETRIC');
+                  setIsMobileModalOpen(true);
                 }}
-                className={`flex items-center justify-center gap-3 py-3.5 sm:py-4 px-4 sm:px-5 rounded-2xl border font-bold text-sm shadow-xs transition-all cursor-pointer min-h-[52px] ${
-                  isFaceEnrolled
-                    ? 'bg-zinc-100 hover:bg-zinc-200 dark:bg-[#1a1a22] dark:hover:bg-[#22222c] active:scale-[0.98] border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white'
-                    : 'bg-zinc-50 dark:bg-zinc-900/40 border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-400 cursor-pointer opacity-80'
-                }`}
+                className="flex items-center justify-center gap-3 py-3.5 sm:py-4 px-4 sm:px-5 rounded-2xl border font-bold text-sm shadow-xs transition-all cursor-pointer min-h-[52px] bg-zinc-100 hover:bg-zinc-200 dark:bg-[#1a1a22] dark:hover:bg-[#22222c] active:scale-[0.98] border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white"
               >
-                <Fingerprint className={`w-5 h-5 shrink-0 ${isFaceEnrolled ? 'text-emerald-500' : 'text-amber-500'}`} />
-                <span className="text-center">{isFaceEnrolled ? '👆 Use Phone TouchID / Biometrics' : '🔒 Locked (Face ID Required First)'}</span>
+                <Fingerprint className="w-5 h-5 shrink-0 text-emerald-500" />
+                <span className="text-center">👆 Use Phone TouchID / Biometrics</span>
               </button>
             </div>
 
@@ -487,6 +482,9 @@ export const StudentDashboard: React.FC = () => {
         isOpen={isMobileModalOpen}
         onClose={() => setIsMobileModalOpen(false)}
         busId={student?.busId || ''}
+        studentId={student?.id || user?.studentId || user?.id || ''}
+        studentName={student?.name || user?.name || ''}
+        initialTab={mobileModalTab}
         onSuccess={() => {
           setIsMobileModalOpen(false);
           fetchStudentData();
