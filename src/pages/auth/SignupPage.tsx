@@ -20,6 +20,8 @@ import {
   ShieldCheck,
   Compass,
   GraduationCap,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 export const SignupPage: React.FC = () => {
@@ -32,6 +34,8 @@ export const SignupPage: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Student-specific States
   const [registerNumber, setRegisterNumber] = useState('');
@@ -327,18 +331,22 @@ export const SignupPage: React.FC = () => {
         <ThemeToggle />
       </div>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-1">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <div id="app-logo-slot" className="logo-container mx-auto mb-2 empty:hidden" aria-label="Company Logo Slot"></div>
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-600 dark:bg-emerald-500 shadow-lg shadow-emerald-600/25 text-white mb-2">
-          {role === 'INCHARGE' ? <BusIcon className="w-8 h-8" /> : <GraduationCap className="w-8 h-8" />}
+        <div className="flex flex-col items-center justify-center gap-2 mb-3">
+          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-600 dark:bg-emerald-500 shadow-lg shadow-emerald-600/25 text-white">
+            {role === 'INCHARGE' ? <BusIcon className="w-8 h-8" /> : <GraduationCap className="w-8 h-8" />}
+          </div>
+          <div>
+            <Badge variant={role === 'INCHARGE' ? 'indigo' : 'emerald'}>
+              {role === 'INCHARGE' ? 'BUS IN-CHARGE ONBOARDING' : 'STUDENT COMMUTER ONBOARDING'}
+            </Badge>
+          </div>
         </div>
-        <Badge variant={role === 'INCHARGE' ? 'indigo' : 'emerald'} className="mb-1">
-          {role === 'INCHARGE' ? 'BUS IN-CHARGE ONBOARDING' : 'STUDENT COMMUTER ONBOARDING'}
-        </Badge>
         <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
           {role === 'INCHARGE' ? 'Bus In-Charge Registration' : 'Student Commuter Registration'}
         </h1>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-1">
           {step === 'DETAILS'
             ? 'Create your account to access the campus transit system'
             : 'Enter the 6-digit verification code sent to your email'}
@@ -566,15 +574,24 @@ export const SignupPage: React.FC = () => {
                   Password <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
+                  <Lock className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3 pointer-events-none" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     placeholder="Create a password (min 6 characters)"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full h-10 pl-10 pr-4 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
+                    className="w-full h-10 pl-10 pr-10 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-2.5 p-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors focus:outline-none"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -584,15 +601,24 @@ export const SignupPage: React.FC = () => {
                   Confirm Password <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
+                  <Lock className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3 pointer-events-none" />
                   <input
-                    type="password"
+                    type={showConfirmPassword ? 'text' : 'password'}
                     required
                     placeholder="Re-enter your password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full h-10 pl-10 pr-4 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
+                    className="w-full h-10 pl-10 pr-10 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    className="absolute right-3 top-2.5 p-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors focus:outline-none"
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
