@@ -458,6 +458,7 @@ export const SignupPage: React.FC = () => {
                         onChange={(e) => setPreferredBusId(e.target.value)}
                         className="w-full h-10 pl-10 pr-4 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none font-medium"
                       >
+                        <option value="">-- Select In-Charge Route ({availableBuses.length} Active) --</option>
                         {availableBuses.map((b) => (
                           <option key={b.id} value={b.id}>
                             {b.busNumber} — {b.routeName} (In-Charge: {b.inchargeName})

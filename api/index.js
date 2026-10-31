@@ -35867,8 +35867,9 @@ var MobileBiometricEngine = class {
   }
   /**
    * Registers a public key credential for the student's mobile platform authenticator
+   * (Android in-display/side-mounted fingerprint or iOS TouchID/FaceID)
    */
-  registerCredential(studentId, credentialId, rawId) {
+  registerCredential(studentId, credentialId, rawId, transports = ["internal"]) {
     if (!credentialId || typeof credentialId !== "string") {
       return { success: false, message: "Invalid biometric credential ID provided." };
     }
@@ -35876,12 +35877,13 @@ var MobileBiometricEngine = class {
       studentId,
       credentialId,
       rawId,
+      transports: transports && transports.length > 0 ? transports : ["internal"],
       registeredAt: (/* @__PURE__ */ new Date()).toISOString()
     };
     this.registeredCredentials.set(studentId, entry);
     return {
       success: true,
-      message: "Mobile biometric credential registered successfully.",
+      message: "Mobile biometric credential registered successfully for in-display/side-mounted sensor.",
       credential: entry
     };
   }
@@ -35912,7 +35914,7 @@ var MobileBiometricEngine = class {
       }
       return {
         verified: true,
-        message: "Mobile biometric signature verified successfully."
+        message: "Mobile phone fingerprint sensor assertion verified successfully."
       };
     }
     return {
@@ -36653,11 +36655,16 @@ apiRouter.post(
   async (req, res) => {
     try {
       const studentId = req.user.studentId || req.user.id;
-      const { credentialId, rawId } = req.body;
+      const { credentialId, rawId, transports } = req.body;
       if (!credentialId || typeof credentialId !== "string") {
         return res.status(400).json({ error: "credentialId is required." });
       }
-      const result = mobileBiometricEngine.registerCredential(studentId, credentialId, rawId);
+      const result = mobileBiometricEngine.registerCredential(
+        studentId,
+        credentialId,
+        rawId,
+        transports || ["internal"]
+      );
       return res.json(result);
     } catch (err) {
       return res.status(500).json({ error: "Failed to register biometric credential." });

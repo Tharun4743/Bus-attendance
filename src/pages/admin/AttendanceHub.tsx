@@ -530,7 +530,7 @@ export const TodayLiveSessionView: React.FC = () => {
                 onChange={(e) => setSelectedBusId(e.target.value)}
                 className="h-10 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#26262e] bg-zinc-50 dark:bg-[#1a1a20] text-zinc-900 dark:text-white outline-none"
               >
-                <option value="ALL">All Buses</option>
+                <option value="ALL">All Transit Buses ({data?.buses?.length || 0})</option>
                 {(data?.buses || []).map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.busNumber} — {b.routeName}
@@ -661,9 +661,15 @@ export const TodayLiveSessionView: React.FC = () => {
               className="px-3 py-1.5 text-xs font-bold rounded-xl bg-white dark:bg-[#1a1a20] border border-zinc-200 dark:border-[#2e2e38] text-zinc-700 dark:text-zinc-300 outline-none"
             >
               <option value="ALL">All Statuses ({data?.roster.length || 0})</option>
-              <option value="PRESENT">Present Only</option>
-              <option value="NOT_PRESENT">Not Present</option>
-              <option value="LOCATION_ISSUES">Location Issues</option>
+              <option value="PRESENT">
+                Present Only ({(data?.roster || []).filter((r) => r.status === 'PRESENT').length})
+              </option>
+              <option value="NOT_PRESENT">
+                Not Present ({(data?.roster || []).filter((r) => r.status === 'NOT_PRESENT').length})
+              </option>
+              <option value="LOCATION_ISSUES">
+                Location Issues ({(data?.roster || []).filter((r) => r.status === 'LOCATION_UNAVAILABLE' || r.status === 'INVALID_LOCATION').length})
+              </option>
             </select>
 
             {/* Bus Filter */}
@@ -672,10 +678,10 @@ export const TodayLiveSessionView: React.FC = () => {
               onChange={(e) => setBusFilter(e.target.value)}
               className="px-3 py-1.5 text-xs font-bold rounded-xl bg-white dark:bg-[#1a1a20] border border-zinc-200 dark:border-[#2e2e38] text-zinc-700 dark:text-zinc-300 outline-none"
             >
-              <option value="ALL">All Buses</option>
+              <option value="ALL">All Buses ({data?.buses?.length || 0})</option>
               {(data?.buses || []).map((b) => (
                 <option key={b.id} value={b.id}>
-                  {b.busNumber}
+                  {b.busNumber} — {b.routeName}
                 </option>
               ))}
             </select>
@@ -1255,10 +1261,10 @@ export const AttendanceHistoryView: React.FC = () => {
             onChange={(e) => setFilterBus(e.target.value)}
             className="w-full h-9 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white outline-none"
           >
-            <option value="ALL">All Buses</option>
+            <option value="ALL">All Buses ({buses.length})</option>
             {buses.map((b) => (
               <option key={b.id} value={b.id}>
-                {b.busNumber}
+                {b.busNumber} — {b.routeName}
               </option>
             ))}
           </select>
@@ -1273,7 +1279,7 @@ export const AttendanceHistoryView: React.FC = () => {
             onChange={(e) => setFilterStudent(e.target.value)}
             className="w-full h-9 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white outline-none"
           >
-            <option value="ALL">All Students</option>
+            <option value="ALL">All Students ({students.length})</option>
             {students.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.registerNumber} - {s.name}
@@ -1291,11 +1297,19 @@ export const AttendanceHistoryView: React.FC = () => {
             onChange={(e) => setFilterStatus(e.target.value)}
             className="w-full h-9 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white outline-none"
           >
-            <option value="ALL">All Statuses</option>
-            <option value="PRESENT">Present Only</option>
-            <option value="NOT_PRESENT">Not Present</option>
-            <option value="LOCATION_UNAVAILABLE">Location Unavailable</option>
-            <option value="INVALID_LOCATION">Invalid Location</option>
+            <option value="ALL">All Statuses ({history.length})</option>
+            <option value="PRESENT">
+              Present Only ({history.filter((h) => h.status === 'PRESENT').length})
+            </option>
+            <option value="NOT_PRESENT">
+              Not Present ({history.filter((h) => h.status === 'NOT_PRESENT').length})
+            </option>
+            <option value="LOCATION_UNAVAILABLE">
+              Location Unavailable ({history.filter((h) => h.status === 'LOCATION_UNAVAILABLE').length})
+            </option>
+            <option value="INVALID_LOCATION">
+              Invalid Location ({history.filter((h) => h.status === 'INVALID_LOCATION').length})
+            </option>
           </select>
         </div>
       </div>

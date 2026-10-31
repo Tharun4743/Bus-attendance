@@ -299,7 +299,7 @@ export const BusesManagement: React.FC = () => {
               onChange={(e) => setInchargeId(e.target.value)}
               className="w-full h-11 px-4 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none"
             >
-              <option value="">-- Unassigned (No Incharge) --</option>
+              <option value="">-- Unassigned / No Incharge ({incharges.length} Available) --</option>
               {incharges.map((inc) => (
                 <option key={inc.id} value={inc.id}>
                   {inc.name} ({inc.email})

@@ -82,6 +82,9 @@ export const InchargeDashboard: React.FC = () => {
       } else {
         setActiveSession(null);
       }
+      if (sess.sessionType) {
+        setSessionType(sess.sessionType);
+      }
     } catch (err) {
       console.error('Failed to load session info:', err);
     }
@@ -305,8 +308,8 @@ export const InchargeDashboard: React.FC = () => {
                 onChange={(e) => setSessionType(e.target.value as 'MORNING' | 'EVENING')}
                 className="w-full sm:w-auto text-xs font-bold bg-zinc-50 dark:bg-[#1a1a20] border border-zinc-200 dark:border-[#2e2e38] rounded-xl px-2.5 sm:px-3 lg:px-3.5 py-2 sm:py-2.5 text-zinc-800 dark:text-zinc-200 focus:outline-none shrink-0"
               >
-                <option value="MORNING">Morning Transit</option>
-                <option value="EVENING">Evening Transit</option>
+                <option value="MORNING">Morning Transit (Pickup & Campus Inbound)</option>
+                <option value="EVENING">Evening Transit (Departure & Return Route)</option>
               </select>
 
               {/* Mode Option 1: Stationary / Bus Bay Mode (~35m) */}

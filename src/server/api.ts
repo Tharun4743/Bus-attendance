@@ -955,11 +955,16 @@ apiRouter.post(
   async (req: AuthRequest, res: Response) => {
     try {
       const studentId = req.user!.studentId || req.user!.id;
-      const { credentialId, rawId } = req.body;
+      const { credentialId, rawId, transports } = req.body;
       if (!credentialId || typeof credentialId !== 'string') {
         return res.status(400).json({ error: 'credentialId is required.' });
       }
-      const result = mobileBiometricEngine.registerCredential(studentId, credentialId, rawId);
+      const result = mobileBiometricEngine.registerCredential(
+        studentId,
+        credentialId,
+        rawId,
+        transports || ['internal']
+      );
       return res.json(result);
     } catch (err: any) {
       return res.status(500).json({ error: 'Failed to register biometric credential.' });
