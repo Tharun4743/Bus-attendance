@@ -39707,8 +39707,21 @@ apiRouter.get("/admin/settings", requireAuth(["ADMIN", "INCHARGE"]), async (_req
 });
 apiRouter.put("/admin/settings", requireAuth(["ADMIN"]), async (req, res) => {
   try {
-    const updates = req.body;
-    const updated = await storage.updateSettings(updates);
+    const { location } = req.body;
+    if (!location) {
+      return res.status(400).json({ error: "Location configuration is required for Ground settings." });
+    }
+    const currentSettings = await storage.getSettings();
+    const sanitizedLocation = {
+      name: location.name ? String(location.name).trim() : currentSettings.location?.name || "College Ground",
+      latitude: Number(location.latitude) || currentSettings.location?.latitude || 10.957585,
+      longitude: Number(location.longitude) || currentSettings.location?.longitude || 78.082725,
+      radiusMeters: Number(location.radiusMeters) > 0 ? Number(location.radiusMeters) : 10,
+      maxGpsAccuracyMeters: Number(location.maxGpsAccuracyMeters) > 0 ? Number(location.maxGpsAccuracyMeters) : 20
+    };
+    const updated = await storage.updateSettings({
+      location: sanitizedLocation
+    });
     return res.json(updated);
   } catch (err) {
     return res.status(500).json({ error: err.message });

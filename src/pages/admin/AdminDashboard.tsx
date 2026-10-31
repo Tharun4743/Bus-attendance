@@ -281,7 +281,7 @@ export const AdminDashboard: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Live smartphone geofence & biometric telemetry is active. Full live roster and session controls are in Attendance Hub.
+              Live smartphone geofence & biometric telemetry is active. Full live roster and read-only telemetry are in Attendance Hub.
             </p>
           </div>
 

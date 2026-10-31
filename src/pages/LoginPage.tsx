@@ -5,11 +5,12 @@ import { api } from '../services/api';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
-import { Bus, Lock, Mail, ArrowRight, AlertCircle, UserPlus, Clock, XCircle } from 'lucide-react';
+import { Bus, Lock, Mail, ArrowRight, AlertCircle, UserPlus, Clock, XCircle, Eye, EyeOff } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [error, setError] = useState<{ message: string; type?: string; reason?: string } | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const { login } = useAuth();
@@ -77,12 +78,16 @@ export const LoginPage: React.FC = () => {
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <div id="app-logo-slot" className="logo-container mx-auto mb-2 empty:hidden" aria-label="Company Logo Slot"></div>
-        <div className="mx-auto w-14 h-14 rounded-2xl bg-emerald-600 dark:bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-600/25 mb-3">
-          <Bus className="w-8 h-8" />
+        <div className="flex flex-col items-center justify-center gap-2 mb-3">
+          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-600 dark:bg-emerald-500 text-white shadow-lg shadow-emerald-600/25">
+            <Bus className="w-8 h-8" />
+          </div>
+          <div>
+            <Badge variant="emerald">
+              TRANSPORT PORTAL
+            </Badge>
+          </div>
         </div>
-        <Badge variant="emerald" className="mb-2">
-          TRANSPORT PORTAL
-        </Badge>
         <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
           Bus Attendance
         </h1>
@@ -158,13 +163,22 @@ export const LoginPage: React.FC = () => {
                   <Lock className="w-4 h-4" />
                 </div>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder="Enter your password"
-                  className="block w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
+                  className="block w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-2.5 p-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors focus:outline-none"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 

@@ -15,6 +15,8 @@ import {
   UserX,
   RefreshCw,
   Plus,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 export const InchargesManagement: React.FC = () => {
@@ -32,6 +34,7 @@ export const InchargesManagement: React.FC = () => {
   const [addEmail, setAddEmail] = useState<string>('');
   const [addPhone, setAddPhone] = useState<string>('');
   const [addPassword, setAddPassword] = useState<string>('');
+  const [showAddPassword, setShowAddPassword] = useState<boolean>(false);
   const [addBusId, setAddBusId] = useState<string>('');
   const [isAdding, setIsAdding] = useState<boolean>(false);
 
@@ -492,14 +495,25 @@ export const InchargesManagement: React.FC = () => {
             <label className="block text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">
               Initial Password *
             </label>
-            <input
-              type="password"
-              required
-              placeholder="Minimum 6 characters"
-              value={addPassword}
-              onChange={(e) => setAddPassword(e.target.value)}
-              className="w-full h-10 px-3 text-xs rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-white dark:bg-[#101014] text-zinc-900 dark:text-white outline-none"
-            />
+            <div className="relative">
+              <input
+                type={showAddPassword ? 'text' : 'password'}
+                required
+                placeholder="Minimum 6 characters"
+                value={addPassword}
+                onChange={(e) => setAddPassword(e.target.value)}
+                className="w-full h-10 pl-3 pr-10 text-xs rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-white dark:bg-[#101014] text-zinc-900 dark:text-white outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowAddPassword((prev) => !prev)}
+                className="absolute right-3 top-2.5 p-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors focus:outline-none"
+                aria-label={showAddPassword ? 'Hide password' : 'Show password'}
+                title={showAddPassword ? 'Hide password' : 'Show password'}
+              >
+                {showAddPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           <div>
