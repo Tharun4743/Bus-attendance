@@ -39024,16 +39024,32 @@ apiRouter.post(
   async (req, res) => {
     try {
       const studentId = req.user.studentId || req.user.id;
+      let student = await storage.getStudentById(studentId);
+      if (!student && req.user.email) {
+        student = await storage.getStudentById(req.user.email);
+      }
       const { credentialId, rawId, transports } = req.body;
       if (!credentialId || typeof credentialId !== "string") {
         return res.status(400).json({ error: "credentialId is required." });
       }
+      const effectiveStudentId = student ? student.id : studentId;
       const result = mobileBiometricEngine.registerCredential(
-        studentId,
+        effectiveStudentId,
         credentialId,
         rawId,
         transports || ["internal"]
       );
+      if (student) {
+        await storage.updateStudent(student.id, {
+          biometricCredential: {
+            credentialId,
+            rawId,
+            transports: transports || ["internal"],
+            registeredAt: (/* @__PURE__ */ new Date()).toISOString()
+          },
+          biometricEnrolledAt: (/* @__PURE__ */ new Date()).toISOString()
+        });
+      }
       return res.json(result);
     } catch (err) {
       return res.status(500).json({ error: "Failed to register biometric credential." });
@@ -39046,7 +39062,21 @@ apiRouter.get(
   async (req, res) => {
     try {
       const studentId = req.user.studentId || req.user.id;
-      const credential = mobileBiometricEngine.getRegisteredCredential(studentId);
+      let student = await storage.getStudentById(studentId);
+      if (!student && req.user.email) {
+        student = await storage.getStudentById(req.user.email);
+      }
+      const effectiveStudentId = student ? student.id : studentId;
+      let credential = mobileBiometricEngine.getRegisteredCredential(effectiveStudentId);
+      if (!credential && student?.biometricCredential) {
+        credential = {
+          studentId: effectiveStudentId,
+          credentialId: student.biometricCredential.credentialId,
+          rawId: student.biometricCredential.rawId,
+          transports: student.biometricCredential.transports || ["internal"],
+          registeredAt: student.biometricEnrolledAt || student.biometricCredential.registeredAt || (/* @__PURE__ */ new Date()).toISOString()
+        };
+      }
       return res.json({ credential });
     } catch (err) {
       return res.status(500).json({ error: "Failed to retrieve biometric credential." });
@@ -39059,10 +39089,45 @@ apiRouter.post(
   async (req, res) => {
     try {
       const studentId = req.user.studentId || req.user.id;
-      mobileBiometricEngine.removeCredential(studentId);
+      let student = await storage.getStudentById(studentId);
+      if (!student && req.user.email) {
+        student = await storage.getStudentById(req.user.email);
+      }
+      const effectiveStudentId = student ? student.id : studentId;
+      mobileBiometricEngine.removeCredential(effectiveStudentId);
+      if (student) {
+        await storage.updateStudent(student.id, {
+          biometricCredential: null,
+          biometricEnrolledAt: null
+        });
+      }
       return res.json({ success: true, message: "Mobile biometric credential unlinked successfully." });
     } catch (err) {
       return res.status(500).json({ error: "Failed to unregister biometric credential." });
+    }
+  }
+);
+apiRouter.post(
+  "/attendance/reset-biometric",
+  requireAuth(["STUDENT", "ADMIN"]),
+  async (req, res) => {
+    try {
+      const studentId = req.body?.studentId || req.user.studentId || req.user.id;
+      let student = await storage.getStudentById(studentId);
+      if (!student && req.user.email) {
+        student = await storage.getStudentById(req.user.email);
+      }
+      const effectiveStudentId = student ? student.id : studentId;
+      mobileBiometricEngine.removeCredential(effectiveStudentId);
+      if (student) {
+        await storage.updateStudent(student.id, {
+          biometricCredential: null,
+          biometricEnrolledAt: null
+        });
+      }
+      return res.json({ success: true, message: "Biometric credential reset successfully. You can now register a fresh sensor profile." });
+    } catch (err) {
+      return res.status(500).json({ error: "Failed to reset biometric credential." });
     }
   }
 );

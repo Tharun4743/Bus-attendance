@@ -71,12 +71,12 @@ export const Navbar: React.FC = () => {
       <div className="w-full px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-            {/* Mobile Sidebar Drawer Trigger Button */}
+            {/* Mobile Sidebar Drawer Trigger Button - Hidden when mobile bottom navigation is active */}
             {role && (
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new Event('toggle-mobile-sidebar'))}
-                className="md:hidden p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-[#1f1f26] border border-zinc-200 dark:border-[#2e2e38] transition active:scale-95 shrink-0"
+                className="hidden p-2 rounded-xl text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-[#1f1f26] border border-zinc-200 dark:border-[#2e2e38] transition active:scale-95 shrink-0"
                 aria-label="Open Navigation Menu"
                 title="Open Navigation Menu"
               >

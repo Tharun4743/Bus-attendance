@@ -106,11 +106,17 @@ CREATE TABLE IF NOT EXISTS public.students (
     face_descriptor_right JSONB,
     face_enrolled_at TIMESTAMPTZ,
     face_enrollment_quality NUMERIC,
+    biometric_credential JSONB,
+    biometric_enrolled_at TIMESTAMPTZ,
     approved_at TIMESTAMPTZ,
     approved_by TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
+
+-- Idempotent column migrations for students table
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS biometric_credential JSONB;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS biometric_enrolled_at TIMESTAMPTZ;
 
 -- ============================================================================
 -- 5. CHECKPOINTS TABLE (Campus Transit Stops & Hubs)

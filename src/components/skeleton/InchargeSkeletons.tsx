@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import {
   Skeleton,
   SkeletonCard,
@@ -379,6 +379,59 @@ export const InchargeProfileSkeleton: React.FC = () => {
             <div key={idx} className="space-y-1.5 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/40">
               <Skeleton className="h-3 w-24 rounded-md" />
               <Skeleton className="h-5 w-28 rounded-md" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// 8. InchargeMoreSkeleton
+// ============================================================================
+export const InchargeMoreSkeleton: React.FC = () => {
+  return (
+    <div className="space-y-6 w-full max-w-2xl mx-auto pb-12 animate-in fade-in duration-150">
+      {/* Header */}
+      <div className="bg-white dark:bg-[#141418] rounded-2xl p-5 border border-zinc-200/90 dark:border-[#26262e] shadow-xs space-y-2">
+        <Skeleton className="h-6 w-36 rounded-lg" />
+        <Skeleton className="h-3.5 w-60 rounded-md" />
+      </div>
+
+      {/* Reports section */}
+      <div className="space-y-3">
+        <Skeleton className="h-3.5 w-32 rounded-md" />
+        <div className="space-y-2.5">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between p-3.5 bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e]">
+              <div className="flex items-center gap-3">
+                <Skeleton className="w-10 h-10 rounded-xl" />
+                <div className="space-y-1.5">
+                  <Skeleton className="h-4 w-36 rounded-md" />
+                  <Skeleton className="h-3 w-48 rounded-md" />
+                </div>
+              </div>
+              <Skeleton className="w-4 h-4 rounded-md" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Account section */}
+      <div className="space-y-3">
+        <Skeleton className="h-3.5 w-32 rounded-md" />
+        <div className="space-y-2.5">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between p-3.5 bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e]">
+              <div className="flex items-center gap-3">
+                <Skeleton className="w-10 h-10 rounded-xl" />
+                <div className="space-y-1.5">
+                  <Skeleton className="h-4 w-28 rounded-md" />
+                  <Skeleton className="h-3 w-40 rounded-md" />
+                </div>
+              </div>
+              <Skeleton className="w-4 h-4 rounded-md" />
             </div>
           ))}
         </div>
