@@ -63,7 +63,7 @@ export const AttendanceHub: React.FC<AttendanceHubProps> = ({ initialTab }) => {
   };
 
   return (
-    <div className="space-y-4 max-w-[1600px] w-full mx-auto">
+    <div className="space-y-4 w-full mx-auto pb-8">
       {/* ========================================================================= */}
       {/* 1. UNIFIED EXECUTIVE HEADER                                               */}
       {/* ========================================================================= */}

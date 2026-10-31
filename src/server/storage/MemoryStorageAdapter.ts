@@ -207,6 +207,28 @@ export class MemoryStorageAdapter implements StorageAdapter {
     return this.students.find((s) => s.registerNumber.toLowerCase() === clean) || null;
   }
 
+  async getStudentForUser(user: { id: string; email: string; name?: string; studentId?: string }): Promise<Student | null> {
+    if (user.studentId) {
+      const byId = await this.getStudentById(user.studentId);
+      if (byId) return byId;
+    }
+    if (user.id) {
+      const byUserId = await this.getStudentById(user.id);
+      if (byUserId) return byUserId;
+    }
+    if (user.email) {
+      const cleanEmail = user.email.trim().toLowerCase();
+      const byEmail = this.students.find((s) => s.email.toLowerCase() === cleanEmail);
+      if (byEmail) return byEmail;
+    }
+    if (user.name) {
+      const cleanName = user.name.trim().toLowerCase();
+      const byName = this.students.find((s) => s.name.trim().toLowerCase() === cleanName);
+      if (byName) return byName;
+    }
+    return null;
+  }
+
   async getStudentsByBusId(busId: string): Promise<Student[]> {
     return this.getStudents({ busId, status: 'APPROVED' });
   }

@@ -169,12 +169,13 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
         try {
           if (PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
             const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-            setIsPlatformAvailable(Boolean(available));
+            // Allow biometric attempt even if platform check reports false initially (e.g. Android WebViews)
+            setIsPlatformAvailable(available !== false || Boolean(window.PublicKeyCredential));
           } else {
             setIsPlatformAvailable(true);
           }
         } catch {
-          setIsPlatformAvailable(false);
+          setIsPlatformAvailable(true);
         }
       } else {
         setIsBiometricSupported(false);
@@ -379,7 +380,7 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
           ],
           authenticatorSelection: {
             authenticatorAttachment: 'platform',
-            userVerification: 'required',
+            userVerification: 'preferred',
             residentKey: 'preferred',
           },
           timeout: 60000,
@@ -387,7 +388,22 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
         },
       };
 
-      const credential = (await navigator.credentials.create(createOptions)) as PublicKeyCredential | null;
+      let credential: PublicKeyCredential | null = null;
+      try {
+        credential = (await navigator.credentials.create(createOptions)) as PublicKeyCredential | null;
+      } catch (tier1Err: any) {
+        // Fallback tier for smartphones where strict platform attachment constraints trigger NotAllowedError
+        const fallbackOptions: CredentialCreationOptions = {
+          publicKey: {
+            ...createOptions.publicKey!,
+            authenticatorSelection: {
+              userVerification: 'preferred',
+              residentKey: 'preferred',
+            },
+          },
+        };
+        credential = (await navigator.credentials.create(fallbackOptions)) as PublicKeyCredential | null;
+      }
 
       if (!credential) {
         setErrorMsg('Biometric registration was dismissed or not completed.');
@@ -459,14 +475,14 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
           publicKey: {
             challenge: challengeBytes as unknown as BufferSource,
             timeout: 60000,
-            userVerification: 'required',
+            userVerification: 'preferred',
             allowCredentials: [
               {
                 id: base64UrlToUint8Array(
                   localStorage.getItem(`${getStorageKey()}_raw`) || registeredCredId
                 ) as unknown as BufferSource,
                 type: 'public-key',
-                transports: ['internal'],
+                transports: ['internal', 'hybrid'],
               },
             ],
           },

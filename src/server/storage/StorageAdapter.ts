@@ -41,6 +41,7 @@ export interface StorageAdapter {
   getPendingStudents(): Promise<Student[]>;
   getStudentById(id: string): Promise<Student | null>;
   getStudentByRegisterNumber(regNo: string): Promise<Student | null>;
+  getStudentForUser(user: { id: string; email: string; name?: string; studentId?: string }): Promise<Student | null>;
   getStudentsByBusId(busId: string): Promise<Student[]>;
   signupStudent(data: {
     name: string;

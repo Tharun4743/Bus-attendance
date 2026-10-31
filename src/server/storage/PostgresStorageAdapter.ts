@@ -445,6 +445,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
           OR register_number ILIKE $1 
           OR email ILIKE $1 
           OR register_number ILIKE $2
+          OR user_id::text = $1
        LIMIT 1;`,
       [clean, cleanNoPrefix]
     );
@@ -460,6 +461,72 @@ export class PostgresStorageAdapter implements StorageAdapter {
     );
     if (res.rows.length === 0) return null;
     return this.mapStudent(res.rows[0]);
+  }
+
+  private async linkUserAndStudent(userId: string, studentId: string): Promise<void> {
+    try {
+      if (userId && studentId) {
+        await this.pool.query(
+          `UPDATE public.students SET user_id = $1 WHERE id = $2 AND (user_id IS NULL OR user_id::text != $1);`,
+          [userId, studentId]
+        );
+        await this.pool.query(
+          `UPDATE public.users SET student_id = $1 WHERE id::text = $2 AND (student_id IS NULL OR student_id != $1);`,
+          [studentId, userId]
+        );
+      }
+    } catch (err: any) {
+      console.warn('⚠️ [PostgresStorageAdapter] linkUserAndStudent notice:', err?.message || err);
+    }
+  }
+
+  async getStudentForUser(user: { id: string; email: string; name?: string; studentId?: string }): Promise<Student | null> {
+    // 1. Try by studentId if present
+    if (user.studentId) {
+      const byId = await this.getStudentById(user.studentId);
+      if (byId) return byId;
+    }
+    // 2. Try by user.id (which matches user_id column)
+    if (user.id) {
+      const byUserId = await this.getStudentById(user.id);
+      if (byUserId) return byUserId;
+    }
+    // 3. Try by exact / normalized email
+    if (user.email) {
+      const cleanEmail = user.email.trim().toLowerCase();
+      const res = await this.pool.query(
+        `SELECT * FROM public.students 
+         WHERE LOWER(TRIM(email)) = $1 
+            OR email ILIKE $2
+         ORDER BY created_at DESC LIMIT 1;`,
+        [cleanEmail, `%${cleanEmail}%`]
+      );
+      if (res.rows.length > 0) {
+        const student = this.mapStudent(res.rows[0]);
+        if (user.id) {
+          await this.linkUserAndStudent(user.id, student.id);
+        }
+        return student;
+      }
+    }
+    // 4. Try by name match (exact case-insensitive)
+    if (user.name) {
+      const cleanName = user.name.trim().toLowerCase();
+      const res = await this.pool.query(
+        `SELECT * FROM public.students 
+         WHERE LOWER(TRIM(name)) = $1 
+         ORDER BY created_at DESC LIMIT 1;`,
+        [cleanName]
+      );
+      if (res.rows.length > 0) {
+        const student = this.mapStudent(res.rows[0]);
+        if (user.id) {
+          await this.linkUserAndStudent(user.id, student.id);
+        }
+        return student;
+      }
+    }
+    return null;
   }
 
   async getStudentsByBusId(busId: string): Promise<Student[]> {

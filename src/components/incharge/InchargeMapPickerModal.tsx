@@ -28,7 +28,7 @@ export const InchargeMapPickerModal: React.FC<InchargeMapPickerModalProps> = ({
   onClose,
   bus,
   initialSessionType = 'MORNING',
-  initialAttendanceMode = 'TRAVELLING',
+  initialAttendanceMode = 'GROUND',
   onSessionStarted,
 }) => {
   const [sessionType, setSessionType] = useState<SessionType>(initialSessionType);
@@ -428,6 +428,20 @@ export const InchargeMapPickerModal: React.FC<InchargeMapPickerModalProps> = ({
               ref={mapContainerRef}
               className="w-full h-56 sm:h-72 z-0 bg-zinc-100 dark:bg-zinc-900"
             />
+
+            {/* Acquiring Real Live GPS Satellite Fix Overlay */}
+            {gpsStatus === 'ACQUIRING' && (
+              <div className="absolute inset-0 z-20 bg-zinc-950/70 backdrop-blur-xs flex flex-col items-center justify-center text-white p-4 text-center">
+                <div className="w-10 h-10 rounded-full border-3 border-amber-400 border-t-transparent animate-spin mb-3 shadow-lg shadow-amber-500/20" />
+                <p className="text-xs font-black tracking-wide uppercase text-amber-300 flex items-center gap-2">
+                  <Navigation className="w-4 h-4 animate-pulse" />
+                  <span>Locking Live Physical Bus GPS Fix...</span>
+                </p>
+                <p className="text-[11px] text-zinc-300 mt-1 max-w-xs font-medium">
+                  Auto-detecting exact device coordinates for Bus {bus.busNumber}. Zero mock coordinates.
+                </p>
+              </div>
+            )}
 
             {/* Floating Top GPS Status Overlay */}
             <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
