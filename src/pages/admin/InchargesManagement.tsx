@@ -2,11 +2,12 @@ import { AdminInchargesSkeleton } from '../../components/skeleton/AdminSkeletons
 import { SkeletonTable } from '../../components/skeleton/SkeletonPrimitives';
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
-import { Bus, User } from '../../types';
+import { Bus, User, SessionType } from '../../types';
 import { Modal } from '../../components/common/Modal';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { Select } from '../../components/ui/Select';
 import {
   Search,
   CheckCircle2,
@@ -19,6 +20,8 @@ import {
   Plus,
   Eye,
   EyeOff,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 export const InchargesManagement: React.FC = () => {
@@ -39,12 +42,14 @@ export const InchargesManagement: React.FC = () => {
   const [addPassword, setAddPassword] = useState<string>('');
   const [showAddPassword, setShowAddPassword] = useState<boolean>(false);
   const [addBusId, setAddBusId] = useState<string>('');
+  const [addTransit, setAddTransit] = useState<SessionType>('MORNING');
   const [isAdding, setIsAdding] = useState<boolean>(false);
 
   // Edit / Assignment Modal
   const [isAssignModalOpen, setIsAssignModalOpen] = useState<boolean>(false);
   const [selectedIncharge, setSelectedIncharge] = useState<User | null>(null);
   const [assignedBusId, setAssignedBusId] = useState<string>('');
+  const [assignedTransit, setAssignedTransit] = useState<SessionType>('MORNING');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const fetchData = async () => {
@@ -106,6 +111,7 @@ export const InchargesManagement: React.FC = () => {
   const handleOpenAssign = (incharge: User) => {
     setSelectedIncharge(incharge);
     setAssignedBusId(incharge.assignedBusId || '');
+    setAssignedTransit(incharge.assignedTransit || 'MORNING');
     setIsAssignModalOpen(true);
   };
 
@@ -114,8 +120,8 @@ export const InchargesManagement: React.FC = () => {
     if (!selectedIncharge || !assignedBusId) return;
     setIsSubmitting(true);
     try {
-      await api.assignIncharge(selectedIncharge.id, assignedBusId);
-      setFeedback({ type: 'success', message: 'Bus assignment updated successfully.' });
+      await api.assignIncharge(selectedIncharge.id, assignedBusId, assignedTransit);
+      setFeedback({ type: 'success', message: 'Bus & transit assignment synchronized successfully.' });
       setIsAssignModalOpen(false);
       await fetchData();
     } catch (err: any) {
@@ -139,14 +145,16 @@ export const InchargesManagement: React.FC = () => {
         phone: addPhone.trim() || undefined,
         password: addPassword.trim(),
         assignedBusId: addBusId || undefined,
+        assignedTransit: addTransit,
       });
-      setFeedback({ type: 'success', message: 'In-Charge created successfully.' });
+      setFeedback({ type: 'success', message: 'In-Charge registered successfully.' });
       setIsAddModalOpen(false);
       setAddName('');
       setAddEmail('');
       setAddPhone('');
       setAddPassword('');
       setAddBusId('');
+      setAddTransit('MORNING');
       await fetchData();
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || 'Failed to register In-Charge.' });
@@ -307,6 +315,7 @@ export const InchargesManagement: React.FC = () => {
                     <th className="px-5 py-3.5">In-Charge Name</th>
                     <th className="px-5 py-3.5">Contact</th>
                     <th className="px-5 py-3.5">Assigned Bus</th>
+                    <th className="px-5 py-3.5">Transit Shift</th>
                     <th className="px-5 py-3.5">Status</th>
                     <th className="px-5 py-3.5 text-right">Actions</th>
                   </tr>
@@ -343,6 +352,20 @@ export const InchargesManagement: React.FC = () => {
                           ) : (
                             <span className="text-zinc-400 font-mono text-[11px]">Unassigned</span>
                           )}
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border ${
+                            inc.assignedTransit === 'EVENING'
+                              ? 'bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400'
+                              : 'bg-blue-500/10 border-blue-500/20 text-blue-700 dark:text-blue-400'
+                          }`}>
+                            {inc.assignedTransit === 'EVENING' ? (
+                              <Moon className="w-3 h-3 text-amber-500" />
+                            ) : (
+                              <Sun className="w-3 h-3 text-blue-500" />
+                            )}
+                            <span>{inc.assignedTransit === 'EVENING' ? 'Evening Transit' : 'Morning Transit'}</span>
+                          </span>
                         </td>
                         <td className="px-5 py-4">
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-[#4ade80]">
@@ -436,24 +459,29 @@ export const InchargesManagement: React.FC = () => {
             <p className="text-zinc-500">{selectedIncharge?.email}</p>
           </div>
 
-          <div>
-            <label className="block text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">
-              Select Fleet Bus *
-            </label>
-            <select
-              required
-              value={assignedBusId}
-              onChange={(e) => setAssignedBusId(e.target.value)}
-              className="w-full h-10 px-3 text-xs rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-white dark:bg-[#101014] text-zinc-900 dark:text-white outline-none font-bold"
-            >
-              <option value="">-- Choose Bus --</option>
-              {buses.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.busNumber} — {b.routeName}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            label="Select Fleet Bus"
+            placeholder="Select Bus"
+            required
+            value={assignedBusId}
+            onChange={(e) => setAssignedBusId(e.target.value)}
+            options={buses.map((b) => ({
+              value: b.id,
+              label: `${b.busNumber} — ${b.routeName}`,
+            }))}
+          />
+
+          <Select
+            label="Transit Shift"
+            placeholder="Select Transit"
+            required
+            value={assignedTransit}
+            onChange={(e) => setAssignedTransit(e.target.value as SessionType)}
+            options={[
+              { value: 'MORNING', label: 'Morning Transit' },
+              { value: 'EVENING', label: 'Evening Transit' },
+            ]}
+          />
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-100 dark:border-[#26262e]">
             <Button type="button" variant="secondary" size="sm" onClick={() => setIsAssignModalOpen(false)}>
@@ -539,23 +567,28 @@ export const InchargesManagement: React.FC = () => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">
-              Assigned Fleet Bus (Optional)
-            </label>
-            <select
-              value={addBusId}
-              onChange={(e) => setAddBusId(e.target.value)}
-              className="w-full h-10 px-3 text-xs rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-white dark:bg-[#101014] text-zinc-900 dark:text-white outline-none font-bold"
-            >
-              <option value="">-- Assign Later / Unassigned --</option>
-              {buses.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.busNumber} — {b.routeName}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            label="Assigned Fleet Bus"
+            placeholder="Select Bus"
+            value={addBusId}
+            onChange={(e) => setAddBusId(e.target.value)}
+            options={buses.map((b) => ({
+              value: b.id,
+              label: `${b.busNumber} — ${b.routeName}`,
+            }))}
+          />
+
+          <Select
+            label="Transit Shift"
+            placeholder="Select Transit"
+            required
+            value={addTransit}
+            onChange={(e) => setAddTransit(e.target.value as SessionType)}
+            options={[
+              { value: 'MORNING', label: 'Morning Transit' },
+              { value: 'EVENING', label: 'Evening Transit' },
+            ]}
+          />
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-100 dark:border-[#26262e]">
             <Button type="button" variant="secondary" size="sm" onClick={() => setIsAddModalOpen(false)}>

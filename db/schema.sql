@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     phone TEXT,
     role user_role NOT NULL DEFAULT 'STUDENT',
     assigned_bus_id TEXT,
+    assigned_transit session_type NOT NULL DEFAULT 'MORNING',
     student_id TEXT,
     status approval_status NOT NULL DEFAULT 'APPROVED',
     active BOOLEAN NOT NULL DEFAULT true,
@@ -75,6 +76,7 @@ CREATE TABLE IF NOT EXISTS public.buses (
     bus_number TEXT NOT NULL UNIQUE,
     route_name TEXT NOT NULL,
     incharge_id TEXT,
+    assigned_transit session_type NOT NULL DEFAULT 'MORNING',
     capacity INTEGER NOT NULL DEFAULT 60,
     active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
@@ -117,6 +119,8 @@ CREATE TABLE IF NOT EXISTS public.students (
 -- Idempotent column migrations for students table
 ALTER TABLE public.students ADD COLUMN IF NOT EXISTS biometric_credential JSONB;
 ALTER TABLE public.students ADD COLUMN IF NOT EXISTS biometric_enrolled_at TIMESTAMPTZ;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS biometric_challenge TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS biometric_challenge_expires_at TIMESTAMPTZ;
 
 -- ============================================================================
 -- 5. CHECKPOINTS TABLE (Campus Transit Stops & Hubs)

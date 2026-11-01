@@ -96,6 +96,12 @@ export class PostgresStorageAdapter implements StorageAdapter {
 
         ALTER TABLE public.password_resets
           ADD COLUMN IF NOT EXISTS token_hash TEXT;
+
+        ALTER TABLE public.users
+          ADD COLUMN IF NOT EXISTS assigned_transit session_type NOT NULL DEFAULT 'MORNING';
+
+        ALTER TABLE public.buses
+          ADD COLUMN IF NOT EXISTS assigned_transit session_type NOT NULL DEFAULT 'MORNING';
       `);
 
       this.isInitialized = true;
@@ -109,7 +115,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
   // ==========================================================================
   async getUsers(): Promise<User[]> {
     const res = await this.pool.query(
-      `SELECT id, email, password_hash, name, role, assigned_bus_id, student_id, status, active, created_at
+      `SELECT id, email, password_hash, name, role, assigned_bus_id, assigned_transit, student_id, status, active, created_at
        FROM public.users ORDER BY created_at ASC;`
     );
     return res.rows.map((u) => ({
@@ -119,6 +125,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
       name: u.name,
       role: u.role,
       assignedBusId: u.assigned_bus_id,
+      assignedTransit: (u.assigned_transit || 'MORNING') as SessionType,
       studentId: u.student_id,
       status: u.status,
       active: u.active,
@@ -129,7 +136,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
   async getUserByEmail(email: string): Promise<User | null> {
     const clean = email.trim().toLowerCase();
     const res = await this.pool.query(
-      `SELECT id, email, password_hash, name, role, assigned_bus_id, student_id, status, active
+      `SELECT id, email, password_hash, name, role, assigned_bus_id, assigned_transit, student_id, status, active
        FROM public.users WHERE LOWER(email) = LOWER($1) LIMIT 1;`,
       [clean]
     );
@@ -142,6 +149,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
       name: u.name,
       role: u.role,
       assignedBusId: u.assigned_bus_id,
+      assignedTransit: (u.assigned_transit || 'MORNING') as SessionType,
       studentId: u.student_id,
       status: u.status,
       active: u.active,
@@ -151,7 +159,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
 
   async getUserById(id: string): Promise<User | null> {
     const res = await this.pool.query(
-      `SELECT id, email, password_hash, name, role, assigned_bus_id, student_id, status, active
+      `SELECT id, email, password_hash, name, role, assigned_bus_id, assigned_transit, student_id, status, active
        FROM public.users WHERE id::text = $1 OR student_id = $1 LIMIT 1;`,
       [id.trim()]
     );
@@ -164,6 +172,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
       name: u.name,
       role: u.role,
       assignedBusId: u.assigned_bus_id,
+      assignedTransit: (u.assigned_transit || 'MORNING') as SessionType,
       studentId: u.student_id,
       status: u.status,
       active: u.active,
@@ -173,15 +182,16 @@ export class PostgresStorageAdapter implements StorageAdapter {
 
   async createUser(user: User): Promise<User> {
     const res = await this.pool.query(
-      `INSERT INTO public.users (email, password_hash, name, role, assigned_bus_id, student_id, status, active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING id, email, name, role, assigned_bus_id, student_id, status, active;`,
+      `INSERT INTO public.users (email, password_hash, name, role, assigned_bus_id, assigned_transit, student_id, status, active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, email, name, role, assigned_bus_id, assigned_transit, student_id, status, active;`,
       [
         user.email.toLowerCase(),
         user.password || '',
         user.name,
         user.role,
         user.assignedBusId || null,
+        user.assignedTransit || 'MORNING',
         user.studentId || null,
         user.status || 'APPROVED',
         user.active ?? true,
@@ -194,6 +204,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
       name: u.name,
       role: u.role,
       assignedBusId: u.assigned_bus_id,
+      assignedTransit: (u.assigned_transit || 'MORNING') as SessionType,
       studentId: u.student_id,
       status: u.status,
       active: u.active,
@@ -224,6 +235,10 @@ export class PostgresStorageAdapter implements StorageAdapter {
     if (updates.assignedBusId !== undefined) {
       fields.push(`assigned_bus_id = $${idx++}`);
       values.push(updates.assignedBusId);
+    }
+    if (updates.assignedTransit !== undefined) {
+      fields.push(`assigned_transit = $${idx++}`);
+      values.push(updates.assignedTransit);
     }
 
     if (fields.length === 0) {
@@ -423,6 +438,10 @@ export class PostgresStorageAdapter implements StorageAdapter {
       faceDescriptorRight: s.face_descriptor_right ? (typeof s.face_descriptor_right === 'string' ? JSON.parse(s.face_descriptor_right) : s.face_descriptor_right) : undefined,
       faceEnrolledAt: s.face_enrolled_at,
       faceEnrollmentQuality: s.face_enrollment_quality ? Number(s.face_enrollment_quality) : undefined,
+      biometricCredential: s.biometric_credential ? (typeof s.biometric_credential === 'string' ? JSON.parse(s.biometric_credential) : s.biometric_credential) : undefined,
+      biometricEnrolledAt: s.biometric_enrolled_at,
+      biometricChallenge: s.biometric_challenge,
+      biometricChallengeExpiresAt: s.biometric_challenge_expires_at,
       approvedAt: s.approved_at,
       approvedBy: s.approved_by,
       createdAt: s.created_at,
@@ -748,6 +767,22 @@ export class PostgresStorageAdapter implements StorageAdapter {
       fields.push(`face_enrollment_quality = $${idx++}`);
       values.push(updates.faceEnrollmentQuality);
     }
+    if (updates.biometricCredential !== undefined) {
+      fields.push(`biometric_credential = $${idx++}`);
+      values.push(updates.biometricCredential ? JSON.stringify(updates.biometricCredential) : null);
+    }
+    if (updates.biometricEnrolledAt !== undefined) {
+      fields.push(`biometric_enrolled_at = $${idx++}`);
+      values.push(updates.biometricEnrolledAt);
+    }
+    if (updates.biometricChallenge !== undefined) {
+      fields.push(`biometric_challenge = $${idx++}`);
+      values.push(updates.biometricChallenge);
+    }
+    if (updates.biometricChallengeExpiresAt !== undefined) {
+      fields.push(`biometric_challenge_expires_at = $${idx++}`);
+      values.push(updates.biometricChallengeExpiresAt);
+    }
 
     if (fields.length === 0) {
       return this.getStudentById(id);
@@ -815,6 +850,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
       busNumber: b.bus_number,
       routeName: b.route_name,
       inchargeId: b.incharge_id || '',
+      assignedTransit: (b.assigned_transit || 'MORNING') as SessionType,
       capacity: b.capacity,
       active: b.active,
     }));
@@ -829,6 +865,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
       busNumber: b.bus_number,
       routeName: b.route_name,
       inchargeId: b.incharge_id || '',
+      assignedTransit: (b.assigned_transit || 'MORNING') as SessionType,
       capacity: b.capacity,
       active: b.active,
     };
@@ -861,6 +898,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
       busNumber: b.bus_number,
       routeName: b.route_name,
       inchargeId: b.incharge_id || '',
+      assignedTransit: (b.assigned_transit || 'MORNING') as SessionType,
       capacity: b.capacity,
       active: b.active,
     };
@@ -870,24 +908,25 @@ export class PostgresStorageAdapter implements StorageAdapter {
     const cleanBusNo = bus.busNumber.trim().toUpperCase();
     const id = bus.id || (cleanBusNo.startsWith('BUS') ? cleanBusNo : `BUS-${cleanBusNo}`);
     const res = await this.pool.query(
-      `INSERT INTO public.buses (id, bus_number, route_name, incharge_id, capacity, active)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO public.buses (id, bus_number, route_name, incharge_id, assigned_transit, capacity, active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (id) DO UPDATE SET
          bus_number = EXCLUDED.bus_number,
          route_name = EXCLUDED.route_name,
          incharge_id = COALESCE(EXCLUDED.incharge_id, public.buses.incharge_id),
+         assigned_transit = EXCLUDED.assigned_transit,
          capacity = EXCLUDED.capacity,
          active = EXCLUDED.active,
          updated_at = NOW()
        RETURNING *;`,
-      [id, cleanBusNo, bus.routeName.trim(), bus.inchargeId || null, bus.capacity || 60, bus.active ?? true]
+      [id, cleanBusNo, bus.routeName.trim(), bus.inchargeId || null, bus.assignedTransit || 'MORNING', bus.capacity || 60, bus.active ?? true]
     );
     const b = res.rows[0];
 
     if (bus.inchargeId) {
       await this.pool.query(
-        `UPDATE public.users SET assigned_bus_id = $1 WHERE id::text = $2;`,
-        [id, bus.inchargeId]
+        `UPDATE public.users SET assigned_bus_id = $1, assigned_transit = $2 WHERE id::text = $3;`,
+        [id, bus.assignedTransit || 'MORNING', bus.inchargeId]
       );
     }
 
@@ -896,6 +935,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
       busNumber: b.bus_number,
       routeName: b.route_name,
       inchargeId: b.incharge_id || '',
+      assignedTransit: (b.assigned_transit || 'MORNING') as SessionType,
       capacity: b.capacity,
       active: b.active,
     };
@@ -918,6 +958,10 @@ export class PostgresStorageAdapter implements StorageAdapter {
       fields.push(`incharge_id = $${idx++}`);
       values.push(updates.inchargeId);
     }
+    if (updates.assignedTransit !== undefined) {
+      fields.push(`assigned_transit = $${idx++}`);
+      values.push(updates.assignedTransit);
+    }
     if (updates.active !== undefined) {
       fields.push(`active = $${idx++}`);
       values.push(updates.active);
@@ -934,11 +978,21 @@ export class PostgresStorageAdapter implements StorageAdapter {
     );
     if (res.rows.length === 0) return null;
     const b = res.rows[0];
+
+    // If assignedTransit was updated and bus has inchargeId, sync the incharge user's transit
+    if (updates.assignedTransit && b.incharge_id) {
+      await this.pool.query(
+        `UPDATE public.users SET assigned_transit = $1 WHERE id::text = $2;`,
+        [updates.assignedTransit, b.incharge_id]
+      );
+    }
+
     return {
       id: b.id,
       busNumber: b.bus_number,
       routeName: b.route_name,
       inchargeId: b.incharge_id || '',
+      assignedTransit: (b.assigned_transit || 'MORNING') as SessionType,
       capacity: b.capacity,
       active: b.active,
     };
@@ -1222,6 +1276,12 @@ export class PostgresStorageAdapter implements StorageAdapter {
   }
 
   async saveActiveSession(session: ActiveSession): Promise<ActiveSession> {
+    const code = (session.currentCode && String(session.currentCode).trim()) || crypto.randomInt(100000, 1000000).toString();
+    const now = new Date();
+    const codeIssuedAt = session.codeIssuedAt ? new Date(session.codeIssuedAt).toISOString() : now.toISOString();
+    const codeExpiresAt = session.codeExpiresAt ? new Date(session.codeExpiresAt).toISOString() : new Date(now.getTime() + 60000).toISOString();
+    const startedBy = (session.startedBy && String(session.startedBy).trim()) || 'Bus In-Charge';
+
     const res = await this.pool.query(
       `INSERT INTO public.active_sessions (
          id, session_type, attendance_mode, verification_method, bus_id, status,
@@ -1247,12 +1307,12 @@ export class PostgresStorageAdapter implements StorageAdapter {
         session.verificationMethod,
         session.busId,
         session.status,
-        session.startedBy,
-        session.currentCode,
-        session.codeIssuedAt,
-        session.codeExpiresAt,
-        session.radiusMeters,
-        session.maxGpsAccuracyMeters,
+        startedBy,
+        code,
+        codeIssuedAt,
+        codeExpiresAt,
+        Number(session.radiusMeters) || 10,
+        Number(session.maxGpsAccuracyMeters) || 20,
         session.location?.latitude || null,
         session.location?.longitude || null,
         session.location?.name || null,
@@ -1265,6 +1325,10 @@ export class PostgresStorageAdapter implements StorageAdapter {
     return {
       ...session,
       id: data.id,
+      startedBy,
+      currentCode: code,
+      codeIssuedAt,
+      codeExpiresAt,
     };
   }
 

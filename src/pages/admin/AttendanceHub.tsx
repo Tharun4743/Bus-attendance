@@ -9,6 +9,7 @@ import { EmptyState } from '../../components/common/EmptyState';
 import { StatCard } from '../../components/ui/StatCard';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { Select } from '../../components/ui/Select';
 import {
   CalendarCheck,
   FileSpreadsheet,
@@ -432,36 +433,35 @@ export const TodayLiveSessionView: React.FC = () => {
             </div>
 
             {/* Status Filter */}
-            <select
+            <Select
+              placeholder="Select Attendance Status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-1.5 text-xs font-bold rounded-xl bg-white dark:bg-[#1a1a20] border border-zinc-200 dark:border-[#2e2e38] text-zinc-700 dark:text-zinc-300 outline-none"
-            >
-              <option value="ALL">All Statuses ({data?.roster.length || 0})</option>
-              <option value="PRESENT">
-                Present Only ({(data?.roster || []).filter((r) => r.status === 'PRESENT').length})
-              </option>
-              <option value="NOT_PRESENT">
-                Not Present ({(data?.roster || []).filter((r) => r.status === 'NOT_PRESENT').length})
-              </option>
-              <option value="LOCATION_ISSUES">
-                Location Issues ({(data?.roster || []).filter((r) => r.status === 'LOCATION_UNAVAILABLE' || r.status === 'INVALID_LOCATION').length})
-              </option>
-            </select>
+              className="py-1.5 text-xs font-bold"
+              containerClassName="w-48"
+              options={[
+                { value: 'ALL', label: `All Statuses (${data?.roster.length || 0})` },
+                { value: 'PRESENT', label: `Present Only (${(data?.roster || []).filter((r) => r.status === 'PRESENT').length})` },
+                { value: 'NOT_PRESENT', label: `Not Present (${(data?.roster || []).filter((r) => r.status === 'NOT_PRESENT').length})` },
+                { value: 'LOCATION_ISSUES', label: `Location Issues (${(data?.roster || []).filter((r) => r.status === 'LOCATION_UNAVAILABLE' || r.status === 'INVALID_LOCATION').length})` },
+              ]}
+            />
 
             {/* Bus Filter */}
-            <select
+            <Select
+              placeholder="Select Bus Route"
               value={busFilter}
               onChange={(e) => setBusFilter(e.target.value)}
-              className="px-3 py-1.5 text-xs font-bold rounded-xl bg-white dark:bg-[#1a1a20] border border-zinc-200 dark:border-[#2e2e38] text-zinc-700 dark:text-zinc-300 outline-none"
-            >
-              <option value="ALL">All Buses ({data?.buses?.length || 0})</option>
-              {(data?.buses || []).map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.busNumber} — {b.routeName}
-                </option>
-              ))}
-            </select>
+              className="py-1.5 text-xs font-bold"
+              containerClassName="w-48"
+              options={[
+                { value: 'ALL', label: `All Buses (${data?.buses?.length || 0})` },
+                ...(data?.buses || []).map((b) => ({
+                  value: b.id,
+                  label: `${b.busNumber} — ${b.routeName}`,
+                })),
+              ]}
+            />
           </div>
 
           <div className="flex items-center gap-2">

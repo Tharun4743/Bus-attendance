@@ -12,6 +12,7 @@ import {
   RefreshCw,
   AlertCircle,
   Camera,
+  Fingerprint,
   Bus as BusIcon,
   Navigation,
 } from 'lucide-react';
@@ -405,6 +406,19 @@ export const StudentVerifyAttendance: React.FC = () => {
                         Verify Attendance with GPS
                       </>
                     )}
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => {
+                      setMobileModalTab('BIOMETRIC');
+                      setIsMobileModalOpen(true);
+                    }}
+                    className="flex items-center justify-center gap-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
+                  >
+                    <Fingerprint className="w-4 h-4" />
+                    Verify Fingerprint
                   </Button>
 
                   <Button
