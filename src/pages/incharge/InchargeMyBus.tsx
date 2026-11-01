@@ -87,7 +87,17 @@ export const InchargeMyBus: React.FC = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="p-4 bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] shadow-xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+            Assigned Transit
+          </span>
+          <span className="text-xl font-black text-zinc-900 dark:text-white block">
+            {data.bus.assignedTransit === 'EVENING' ? 'Evening Transit' : 'Morning Transit'}
+          </span>
+          <span className="text-xs text-zinc-500">Official transit shift</span>
+        </div>
+
         <div className="p-4 bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] shadow-xs">
           <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
             Registered Commuters

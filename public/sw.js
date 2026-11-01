@@ -1,81 +1,23 @@
-const CACHE_NAME = 'bus-attendance-pwa-v2';
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json'
-];
+// PWA Service Worker for Push & Device Notifications
+// Pure network passthrough with cache-purging for all legacy caches
 
-// Install & Cache Core Shell
+// 1. Immediately activate and purge ALL legacy stale caches on install/activate
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
-  );
   self.skipWaiting();
 });
 
-// Activate & Remove Stale Caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
-      return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-      );
-    })
+      return Promise.all(keys.map((key) => caches.delete(key)));
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-// Fetch Network-First for dynamic APIs, Cache-First for static assets, bypass Vite dev requests
+// 2. Fetch Handler: Pure network passthrough. Never serve stale cached HTML or JS bundles.
 self.addEventListener('fetch', (event) => {
-  const url = event.request.url;
-
-  // Never intercept on localhost or during local Vite dev testing
-  if (self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1') {
-    return;
-  }
-
-  // Never intercept Vite internal modules, source files, or backend API endpoints
-  if (
-    url.includes('/@vite') ||
-    url.includes('/@react-refresh') ||
-    url.includes('/@fs') ||
-    url.includes('/__vite') ||
-    url.includes('/api/') ||
-    url.includes('/src/') ||
-    url.includes('node_modules') ||
-    event.request.method !== 'GET'
-  ) {
-    return; // Pass through cleanly to network
-  }
-
-  event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && event.request.url.startsWith('http')) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return networkResponse;
-      })
-      .catch(async () => {
-        const cached = await caches.match(event.request);
-        if (cached) return cached;
-        if (event.request.mode === 'navigate') {
-          const fallback = (await caches.match('/index.html')) || (await caches.match('/'));
-          if (fallback) return fallback;
-          return fetch('/index.html');
-        }
-        return new Response('Offline', {
-          status: 200,
-          statusText: 'OK',
-          headers: new Headers({ 'Content-Type': 'text/plain' })
-        });
-      })
-  );
+  // Let all network requests pass through directly to network
+  return;
 });
 
 // ----------------------------------------------------------------------
@@ -101,8 +43,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body,
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: '/icon.svg',
+    badge: '/icon.svg',
     vibrate: [200, 100, 200, 100, 200],
     tag: data.tag || 'bus-attendance',
     renotify: true,
@@ -151,8 +93,8 @@ self.addEventListener('message', (event) => {
     const { title, body, url, tag } = event.data;
     self.registration.showNotification(title || '🚌 Bus Attendance Alert', {
       body: body || 'Attendance is now active!',
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
+      icon: '/icon.svg',
+      badge: '/icon.svg',
       vibrate: [200, 100, 200],
       tag: tag || 'bus-attendance-msg',
       renotify: true,

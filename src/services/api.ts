@@ -11,6 +11,7 @@ import {
   Student,
   User,
   CampusCheckpoint,
+  SessionType,
 } from '../types';
 
 const API_BASE = '/api';
@@ -300,6 +301,24 @@ class ApiClient {
     });
   }
 
+  async getMobileRegistrationOptions(): Promise<any> {
+    return this.request<any>('/attendance/mobile/registration-options');
+  }
+
+  async verifyMobileRegistration(response: any): Promise<{ verified: boolean; message: string; credentialId: string }> {
+    return this.request<{ verified: boolean; message: string; credentialId: string }>(
+      '/attendance/mobile/verify-registration',
+      {
+        method: 'POST',
+        body: JSON.stringify(response),
+      }
+    );
+  }
+
+  async getMobileAuthenticationOptions(): Promise<any> {
+    return this.request<any>('/attendance/mobile/authentication-options');
+  }
+
   async getMobileBiometricChallenge(): Promise<{ challenge: string }> {
     return this.request<{ challenge: string }>('/attendance/mobile/challenge');
   }
@@ -448,6 +467,7 @@ class ApiClient {
     phone?: string;
     password: string;
     assignedBusId?: string;
+    assignedTransit?: SessionType;
   }): Promise<{ success: boolean; user: User; message: string }> {
     return this.request('/admin/incharges', {
       method: 'POST',
@@ -691,10 +711,10 @@ class ApiClient {
     });
   }
 
-  async assignIncharge(inchargeId: string, busId: string): Promise<{ success: boolean; message: string }> {
+  async assignIncharge(inchargeId: string, busId: string, transit?: SessionType): Promise<{ success: boolean; message: string }> {
     return this.request('/admin/assignments/incharge', {
       method: 'POST',
-      body: JSON.stringify({ inchargeId, busId }),
+      body: JSON.stringify({ inchargeId, busId, transit }),
     });
   }
 

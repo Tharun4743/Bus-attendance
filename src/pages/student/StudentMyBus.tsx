@@ -103,9 +103,18 @@ export const StudentMyBus: React.FC = () => {
                   Bus {data.bus.busNumber}
                 </h2>
               </div>
-              <Badge variant="emerald" className="text-xs px-3 py-1">
-                Active Route
-              </Badge>
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                  data.bus.assignedTransit === 'EVENING'
+                    ? 'bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400'
+                    : 'bg-blue-500/10 border-blue-500/20 text-blue-700 dark:text-blue-400'
+                }`}>
+                  {data.bus.assignedTransit === 'EVENING' ? 'Evening Transit' : 'Morning Transit'}
+                </span>
+                <Badge variant="emerald" className="text-xs px-3 py-1">
+                  Active Route
+                </Badge>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-5">

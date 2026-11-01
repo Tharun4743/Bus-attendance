@@ -1,4 +1,3 @@
-import { AdminDashboardSkeleton } from '../../components/skeleton/AdminSkeletons';
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -7,6 +6,7 @@ import { Bus, Student, SessionInfo, ActiveSession, User } from '../../types';
 import { StatCard } from '../../components/ui/StatCard';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/common/EmptyState';
+import { AdminDashboardSkeleton } from '../../components/skeleton/AdminSkeletons';
 import {
   Users,
   CheckCircle2,
@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
-  // Main Dashboard Data
   const [data, setData] = useState<{
     date: string;
     sessionInfo: SessionInfo;
@@ -43,27 +42,20 @@ export const AdminDashboard: React.FC = () => {
     buses: Bus[];
   } | null>(null);
 
-  // Fleet & Directory Counts
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [allBuses, setAllBuses] = useState<(Bus & { studentsCount: number; inchargeName: string })[]>([]);
   const [allIncharges, setAllIncharges] = useState<User[]>([]);
-
-  // Active Session State
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
-
-  // Pending Approvals & Notifications
   const [pendingStudents, setPendingStudents] = useState<Student[]>([]);
   const [pendingIncharges, setPendingIncharges] = useState<User[]>([]);
   const [unreadNotifsCount, setUnreadNotifsCount] = useState<number>(0);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
-
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const { user } = useAuth();
   const lastFocusRef = useRef<number>(0);
 
-  // Fetch Attendance Roster & Bus Data
   const fetchDashboardData = async () => {
     try {
       const res = await api.getTodayAttendance();
@@ -73,7 +65,6 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Fetch Session State
   const fetchSessionData = async () => {
     try {
       const sess = await api.getSessionInfo();
@@ -87,7 +78,6 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Fetch Pending Student & Incharge Approvals + Notifications
   const fetchPendingApprovals = async () => {
     try {
       const [pending, incRes, notifsRes] = await Promise.all([
@@ -103,7 +93,6 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Fetch Complete Fleet Roster for Counts & Bus-Wise Overview
   const fetchFleetStats = async () => {
     try {
       const [students, buses, incharges] = await Promise.all([
@@ -119,7 +108,6 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Combined Refresh
   const refreshAll = async () => {
     setIsRefreshing(true);
     setError(null);
@@ -160,32 +148,7 @@ export const AdminDashboard: React.FC = () => {
       fetchFleetStats();
     }, 25000);
 
-    const throttledRefresh = () => {
-      const currentToken = localStorage.getItem('bus_token');
-      if (!currentToken) return;
-      const now = Date.now();
-      if (now - lastFocusRef.current < 15000) return;
-      lastFocusRef.current = now;
-      fetchDashboardData();
-      fetchSessionData();
-      fetchPendingApprovals();
-      fetchFleetStats();
-    };
-
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        throttledRefresh();
-      }
-    };
-
-    window.addEventListener('focus', throttledRefresh);
-    document.addEventListener('visibilitychange', onVisibility);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', throttledRefresh);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
+    return () => clearInterval(interval);
   }, [user]);
 
   if (isLoading && !data) {
@@ -206,7 +169,6 @@ export const AdminDashboard: React.FC = () => {
     );
   }
 
-  // Attendance Lifecycle State
   const isActive = Boolean(activeSession && activeSession.status === 'ACTIVE');
   const isCompleted = Boolean(
     data?.sessionInfo?.status === 'CLOSED' ||
@@ -215,7 +177,6 @@ export const AdminDashboard: React.FC = () => {
   );
   const isNotStarted = !isActive && !isCompleted;
 
-  // Counts and metrics based on live database values
   const totalStudentsCount = allStudents.length > 0 ? allStudents.length : (data?.stats.total ?? 0);
   const totalBusesCount = allBuses.length > 0 ? allBuses.length : (data?.buses.length ?? 0);
   const totalInchargesCount = allIncharges.length;
@@ -224,8 +185,6 @@ export const AdminDashboard: React.FC = () => {
   const presentCount = isNotStarted ? 0 : (data?.stats.present ?? 0);
   const pendingOrAbsentCount = isNotStarted
     ? totalStudentsCount
-    : isActive
-    ? Math.max(0, totalStudentsCount - presentCount)
     : Math.max(0, totalStudentsCount - presentCount);
 
   const turnoutPercentage = isNotStarted
@@ -236,30 +195,26 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <div className="space-y-5 w-full mx-auto pb-8">
-      {/* ========================================================================= */}
-      {/* 1. CLEAN DASHBOARD HEADER                                                 */}
-      {/* ========================================================================= */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#141418] rounded-2xl p-5 sm:p-6 shadow-xs border border-zinc-200/90 dark:border-[#26262e] transition-all">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#141418] rounded-2xl p-5 sm:p-6 shadow-xs border border-zinc-200/90 dark:border-[#26262e]">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
             Admin Dashboard
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-1">
-            Overview of students, transit fleet buses, and daily attendance summaries.
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+            System overview and daily attendance metrics.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <Button onClick={refreshAll} disabled={isRefreshing} variant="secondary" size="sm">
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </Button>
-        </div>
+        <Button onClick={refreshAll} disabled={isRefreshing} variant="secondary" size="sm">
+          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <span>Refresh</span>
+        </Button>
       </div>
 
       {feedback && (
         <div
-          className={`p-3.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all ${
+          className={`p-3.5 rounded-xl border text-xs font-semibold flex items-center justify-between ${
             feedback.type === 'success'
               ? 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-500/15 dark:border-emerald-500/30 dark:text-[#4ade80]'
               : 'bg-rose-50 border-rose-200 text-rose-800 dark:bg-rose-500/15 dark:border-rose-500/30 dark:text-[#fb7185]'
@@ -282,12 +237,11 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Unread Notifications Alert (when applicable) */}
       {unreadNotifsCount > 0 && (
         <div className="flex items-center justify-between p-3.5 rounded-xl bg-purple-50/70 dark:bg-purple-950/20 border border-purple-200/80 dark:border-purple-800/40 text-xs">
           <div className="flex items-center gap-2.5 text-purple-900 dark:text-purple-200 font-medium">
             <Bell className="w-4 h-4 text-purple-600 dark:text-[#c084fc] shrink-0" />
-            <span>You have <strong>{unreadNotifsCount} unread notification{unreadNotifsCount > 1 ? 's' : ''}</strong> requiring review.</span>
+            <span>You have <strong>{unreadNotifsCount} unread alert{unreadNotifsCount > 1 ? 's' : ''}</strong>.</span>
           </div>
           <Link
             to="/admin/notifications"
@@ -298,43 +252,35 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* 2. STATISTIC CARDS (4 Balanced KPI Metrics)                               */}
-      {/* ========================================================================= */}
+      {/* Metric Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Total Students"
           value={totalStudentsCount}
           icon={<Users className="w-5 h-5" />}
           color="indigo"
-          subtitle="Enrolled Commuters"
         />
         <StatCard
           title="Total Buses"
           value={totalBusesCount}
           icon={<BusIcon className="w-5 h-5" />}
           color="blue"
-          subtitle="Transit Fleet Vehicles"
         />
         <StatCard
           title="Total In-charges"
           value={totalInchargesCount}
           icon={<UserCheck className="w-5 h-5" />}
           color="emerald"
-          subtitle="Assigned Operators"
         />
         <StatCard
           title="Pending Approvals"
           value={pendingApprovalsCount}
           icon={<Clock className="w-5 h-5" />}
           color="amber"
-          subtitle={pendingApprovalsCount > 0 ? "Awaiting Review" : "All Caught Up"}
         />
       </div>
 
-      {/* ========================================================================= */}
-      {/* 3. TODAY'S ATTENDANCE SUMMARY PANEL                                       */}
-      {/* ========================================================================= */}
+      {/* Attendance Summary Panel */}
       <div className="bg-white dark:bg-[#141418] rounded-2xl shadow-xs border border-zinc-200/90 dark:border-[#26262e] p-5 sm:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-200 dark:border-[#26262e]">
           <div className="flex items-center gap-2.5">
@@ -345,13 +291,9 @@ export const AdminDashboard: React.FC = () => {
               <h2 className="text-base font-black text-zinc-900 dark:text-white tracking-tight">
                 Today's Attendance Summary
               </h2>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Consolidated overview across all active college bus routes for today
-              </p>
             </div>
           </div>
 
-          {/* Single Authoritative Session Status Indicator */}
           <div className="self-start sm:self-auto">
             {isActive ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-[#4ade80] border border-emerald-200 dark:border-emerald-500/30">
@@ -370,35 +312,25 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* 4 Attendance Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {/* Card 1: Total Enrolled */}
           <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-[#1a1a20] border border-zinc-200/80 dark:border-[#26262e]">
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
               Total Enrolled
             </span>
-            <span className="text-base sm:text-lg font-black text-zinc-900 dark:text-white mt-1 block">
-              {totalStudentsCount} Commuters
-            </span>
-            <span className="text-[11px] text-zinc-500 block mt-0.5">
-              Assigned to active fleet
+            <span className="text-base sm:text-lg font-black text-zinc-900 dark:text-white mt-1 block font-mono">
+              {totalStudentsCount}
             </span>
           </div>
 
-          {/* Card 2: Present Today */}
           <div className="p-3.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/40">
             <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
               Present Today
             </span>
             <span className="text-base sm:text-lg font-black font-mono text-emerald-600 dark:text-emerald-400 mt-1 block">
-              {presentCount} Commuters
-            </span>
-            <span className="text-[11px] text-zinc-500 block mt-0.5">
-              {isNotStarted ? 'Awaiting session start' : 'Verified on-board'}
+              {presentCount}
             </span>
           </div>
 
-          {/* Card 3: Pending vs Absent (Terminology strictly aligned with session state) */}
           <div className={`p-3.5 rounded-xl border ${
             isCompleted
               ? 'bg-rose-50/60 dark:bg-rose-950/20 border-rose-200/60 dark:border-rose-800/40'
@@ -412,51 +344,32 @@ export const AdminDashboard: React.FC = () => {
             <span className={`text-base sm:text-lg font-black font-mono mt-1 block ${
               isCompleted ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400'
             }`}>
-              {pendingOrAbsentCount} Commuters
-            </span>
-            <span className="text-[11px] text-zinc-500 block mt-0.5">
-              {isCompleted
-                ? 'Unverified after session close'
-                : isNotStarted
-                ? 'Scheduled for upcoming shifts'
-                : 'Boarding in progress'}
+              {pendingOrAbsentCount}
             </span>
           </div>
 
-          {/* Card 4: Turnout */}
           <div className="p-3.5 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-200/60 dark:border-indigo-800/40">
             <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block">
-              {isCompleted ? 'Final Turnout' : isActive ? 'Boarding Progress' : 'Turnout'}
+              Turnout
             </span>
             <span className="text-base sm:text-lg font-black font-mono text-indigo-600 dark:text-indigo-400 mt-1 block">
               {turnoutPercentage != null ? `${turnoutPercentage}%` : '—'}
             </span>
-            <span className="text-[11px] text-zinc-500 block mt-0.5">
-              {isNotStarted
-                ? 'Session not started'
-                : `${presentCount} of ${totalStudentsCount} checked in`}
-            </span>
           </div>
         </div>
-
-        <p className="text-[11px] text-zinc-500 dark:text-zinc-400 italic">
-          * Attendance sessions and verifications are managed by assigned Bus In-Charges. Administrator access is strictly read-only.
-        </p>
       </div>
 
-      {/* ========================================================================= */}
-      {/* 4. SIMPLE BUS-WISE ATTENDANCE OVERVIEW TABLE                              */}
-      {/* ========================================================================= */}
+      {/* Bus-Wise Table */}
       <div className="bg-white dark:bg-[#141418] rounded-2xl shadow-xs border border-zinc-200/90 dark:border-[#26262e] overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-zinc-200 dark:border-[#26262e] bg-zinc-50/70 dark:bg-[#101014] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <BusIcon className="w-4 h-4 text-purple-600 dark:text-[#c084fc]" />
             <h3 className="text-sm font-black text-zinc-900 dark:text-white">
-              Bus-Wise Attendance Overview
+              Bus Route Attendance Summary
             </h3>
           </div>
           <span className="text-xs font-mono font-bold text-zinc-400">
-            {allBuses.length || data?.buses.length || 0} Routes Configured
+            {allBuses.length || data?.buses.length || 0} Routes
           </span>
         </div>
 
@@ -465,7 +378,7 @@ export const AdminDashboard: React.FC = () => {
             <EmptyState
               icon={BusIcon}
               title="No Transit Buses Found"
-              description="No fleet buses have been configured yet. Add transit routes in the Buses management section."
+              description="No fleet buses have been configured yet."
             />
           </div>
         ) : (
@@ -475,6 +388,7 @@ export const AdminDashboard: React.FC = () => {
                 <tr>
                   <th className="px-5 py-3.5">Bus & Route</th>
                   <th className="px-5 py-3.5">Assigned In-Charge</th>
+                  <th className="px-5 py-3.5">Transit Shift</th>
                   <th className="px-5 py-3.5">Assigned Students</th>
                   <th className="px-5 py-3.5">Present</th>
                   <th className="px-5 py-3.5">
@@ -501,7 +415,8 @@ export const AdminDashboard: React.FC = () => {
                     busStudentsCount > 0
                       ? Math.round((busPresentCount / busStudentsCount) * 10000) / 100
                       : 0;
-                  const inchargeName = (bus as any).inchargeName || 'Unassigned';
+                  const inchargeName = (bus as any).inchargeName || '— Unassigned —';
+                  const currentTransit = bus.assignedTransit || 'MORNING';
 
                   return (
                     <tr key={bus.id} className="hover:bg-zinc-50/60 dark:hover:bg-[#181820] transition">
@@ -513,6 +428,17 @@ export const AdminDashboard: React.FC = () => {
                       </td>
                       <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-300 font-medium">
                         {inchargeName}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            currentTransit === 'EVENING'
+                              ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                              : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                          }`}
+                        >
+                          {currentTransit === 'EVENING' ? 'Evening Transit' : 'Morning Transit'}
+                        </span>
                       </td>
                       <td className="px-5 py-3.5 font-bold font-mono text-zinc-700 dark:text-zinc-300">
                         {busStudentsCount} Commuters

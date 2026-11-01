@@ -375,6 +375,7 @@ export class MemoryStorageAdapter implements StorageAdapter {
       busNumber: cleanBusNo,
       routeName: bus.routeName.trim(),
       inchargeId: bus.inchargeId || '',
+      assignedTransit: bus.assignedTransit || 'MORNING',
       capacity: bus.capacity || 60,
       active: bus.active ?? true,
     };
@@ -385,7 +386,10 @@ export class MemoryStorageAdapter implements StorageAdapter {
     }
     if (bus.inchargeId) {
       const u = this.users.find((user) => user.id === bus.inchargeId);
-      if (u) u.assignedBusId = id;
+      if (u) {
+        u.assignedBusId = id;
+        u.assignedTransit = bus.assignedTransit || 'MORNING';
+      }
     }
     return newBus;
   }
@@ -394,6 +398,10 @@ export class MemoryStorageAdapter implements StorageAdapter {
     const bus = await this.getBusById(id);
     if (!bus) return null;
     Object.assign(bus, updates);
+    if (updates.assignedTransit && bus.inchargeId) {
+      const u = this.users.find((user) => user.id === bus.inchargeId);
+      if (u) u.assignedTransit = updates.assignedTransit;
+    }
     return bus;
   }
 
