@@ -1129,7 +1129,7 @@ apiRouter.post(
 
       const host = (req.get('x-forwarded-host') || req.get('host') || 'vsbecbus.vercel.app').split(',')[0].trim();
       const rpID = getRPID(host);
-      const expectedOrigin = getExpectedOrigin(host);
+      const expectedOrigin = getExpectedOrigin(host, req.get('origin'));
 
       const registrationResponse = req.body;
       const verifyResult = await verifyStudentRegistration(
@@ -1525,6 +1525,18 @@ apiRouter.post(
         });
       }
 
+      // Early duplicate attendance prevention
+      const todayDate = getISTDateString();
+      const existingAttendance = await storage.getAttendanceRecord(student.id, todayDate, activeSession.sessionType);
+      if (existingAttendance && existingAttendance.status === 'PRESENT') {
+        return res.json({
+          status: 'PRESENT',
+          message: 'Attendance already recorded and verified for this session.',
+          record: existingAttendance,
+          distanceMeters: existingAttendance.distanceMeters,
+        });
+      }
+
       // 2. Validate Smartphone GPS Coordinates
       if (latitude === undefined || longitude === undefined) {
         return res.status(400).json({
@@ -1652,7 +1664,7 @@ apiRouter.post(
 
         const host = (req.get('x-forwarded-host') || req.get('host') || 'vsbecbus.vercel.app').split(',')[0].trim();
         const rpID = getRPID(host);
-        const expectedOrigin = getExpectedOrigin(host);
+        const expectedOrigin = getExpectedOrigin(host, req.get('origin'));
 
         const bioResult = await verifyStudentAuthentication(
           student,
@@ -1692,7 +1704,6 @@ apiRouter.post(
       }
 
       // 5. Commit Verified Presence Record to PostgreSQL
-      const todayDate = getISTDateString();
       const nowIso = new Date().toISOString();
 
       const record = await storage.createAttendance({
