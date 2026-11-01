@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Bus,
@@ -90,9 +90,10 @@ export const InchargeSidebar: React.FC = () => {
           const active = item.to === activePath;
 
           return (
-            <NavLink
+            <Link
               key={item.to}
               to={item.to}
+              aria-current={active ? 'page' : undefined}
               className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${
                 active
                   ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-xs'
@@ -109,7 +110,7 @@ export const InchargeSidebar: React.FC = () => {
                   {item.badge}
                 </span>
               )}
-            </NavLink>
+            </Link>
           );
         })}
 
@@ -128,7 +129,10 @@ export const InchargeSidebar: React.FC = () => {
   );
 
   return (
-    <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-[#0c0c0e] border-r border-zinc-200 dark:border-[#26262e] p-4 shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] overflow-hidden">
+    <aside
+      data-desktop-sidebar="true"
+      className="hidden md:flex flex-col w-64 bg-white dark:bg-[#0c0c0e] border-r border-zinc-200 dark:border-[#26262e] p-4 shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] overflow-hidden"
+    >
       {renderNavContent()}
     </aside>
   );

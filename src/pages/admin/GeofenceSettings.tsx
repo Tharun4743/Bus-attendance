@@ -1,4 +1,4 @@
-﻿import { GeofenceSettingsSkeleton } from '../../components/skeleton/AdminSkeletons';
+import { GeofenceSettingsSkeleton } from '../../components/skeleton/AdminSkeletons';
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Button } from '../../components/ui/Button';

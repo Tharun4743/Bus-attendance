@@ -1,4 +1,4 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
 @import 'leaflet/dist/leaflet.css';
 
 @tailwind base;
@@ -137,4 +137,34 @@ html.dark .animate-skeleton-shimmer {
     rgba(255, 255, 255, 0.06) 50%,
     rgba(255, 255, 255, 0) 100%
   );
+}
+
+/* ==========================================================================
+   RESPONSIVE LAYOUT & SIDEBAR ARCHITECTURE (Strict breakpoint enforcement)
+   ========================================================================== */
+@media (max-width: 767.98px) {
+  /* Complete removal of desktop sidebar on mobile viewports (< 768px) */
+  aside[data-desktop-sidebar="true"] {
+    display: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  /* Fixed mobile bottom navigation active */
+  nav[data-mobile-bottom-nav="true"] {
+    display: block !important;
+  }
+}
+
+@media (min-width: 768px) {
+  /* Completely hide mobile bottom navigation on desktop viewports (>= 768px) */
+  nav[data-mobile-bottom-nav="true"] {
+    display: none !important;
+  }
 }

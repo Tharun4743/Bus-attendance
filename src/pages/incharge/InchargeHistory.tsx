@@ -1,4 +1,4 @@
-﻿import { InchargeHistorySkeleton } from '../../components/skeleton/InchargeSkeletons';
+import { InchargeHistorySkeleton } from '../../components/skeleton/InchargeSkeletons';
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../services/api';
 import { AttendanceRecord } from '../../types';

@@ -1,6 +1,7 @@
 import { AdminDashboardSkeleton } from '../../components/skeleton/AdminSkeletons';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { Bus, Student, SessionInfo, ActiveSession, User } from '../../types';
 import { StatCard } from '../../components/ui/StatCard';
@@ -59,6 +60,8 @@ export const AdminDashboard: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const { user } = useAuth();
+  const lastFocusRef = useRef<number>(0);
 
   // Fetch Attendance Roster & Bus Data
   const fetchDashboardData = async () => {
@@ -136,25 +139,54 @@ export const AdminDashboard: React.FC = () => {
   };
 
   useEffect(() => {
+    const token = localStorage.getItem('bus_token');
+    if (!user || !token) {
+      setIsLoading(false);
+      return;
+    }
+
+    lastFocusRef.current = Date.now();
     refreshAll();
+
     const interval = setInterval(() => {
+      const currentToken = localStorage.getItem('bus_token');
+      if (!currentToken) {
+        clearInterval(interval);
+        return;
+      }
       fetchDashboardData();
       fetchSessionData();
       fetchPendingApprovals();
       fetchFleetStats();
     }, 25000);
-    const onFocus = () => {
+
+    const throttledRefresh = () => {
+      const currentToken = localStorage.getItem('bus_token');
+      if (!currentToken) return;
+      const now = Date.now();
+      if (now - lastFocusRef.current < 15000) return;
+      lastFocusRef.current = now;
       fetchDashboardData();
       fetchSessionData();
       fetchPendingApprovals();
       fetchFleetStats();
     };
-    window.addEventListener('focus', onFocus);
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        throttledRefresh();
+      }
+    };
+
+    window.addEventListener('focus', throttledRefresh);
+    document.addEventListener('visibilitychange', onVisibility);
+
     return () => {
       clearInterval(interval);
-      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('focus', throttledRefresh);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, []);
+  }, [user]);
 
   if (isLoading && !data) {
     return <AdminDashboardSkeleton />;
