@@ -16,14 +16,18 @@ import {
 export const InchargeStudents: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const fetchStudents = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
       const res = await api.getInchargeStudents();
       setStudents(res || []);
     } catch (err: any) {
       console.error('Failed to load incharge students:', err);
+      setError(err?.message || 'Failed to load assigned students');
     } finally {
       setIsLoading(false);
     }
@@ -40,6 +44,19 @@ export const InchargeStudents: React.FC = () => {
 
   if (isLoading && students.length === 0) {
     return <InchargeStudentsSkeleton />;
+  }
+
+  if (error && students.length === 0) {
+    return (
+      <div className="py-12">
+        <EmptyState
+          title="Failed to Load Assigned Students"
+          description={error}
+          actionText="Retry Connection"
+          onAction={fetchStudents}
+        />
+      </div>
+    );
   }
 
   return (

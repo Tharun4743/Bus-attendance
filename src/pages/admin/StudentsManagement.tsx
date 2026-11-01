@@ -1,4 +1,5 @@
 import { AdminStudentsSkeleton } from '../../components/skeleton/AdminSkeletons';
+import { SkeletonTable } from '../../components/skeleton/SkeletonPrimitives';
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Bus, Student } from '../../types';
@@ -23,6 +24,7 @@ export const StudentsManagement: React.FC = () => {
   const [students, setStudents] = useState<(Student & { bus: Bus | null })[]>([]);
   const [buses, setBuses] = useState<Bus[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedBus, setSelectedBus] = useState<string>('ALL');
   const [selectedActive, setSelectedActive] = useState<string>('ALL');
@@ -47,6 +49,8 @@ export const StudentsManagement: React.FC = () => {
   const [active, setActive] = useState<boolean>(true);
 
   const fetchData = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
       const [stuRes, busRes] = await Promise.all([
         api.getStudents({ search: searchTerm, busId: selectedBus, active: selectedActive }),
@@ -54,8 +58,9 @@ export const StudentsManagement: React.FC = () => {
       ]);
       setStudents(stuRes);
       setBuses(busRes);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load students:', err);
+      setError(err?.message || 'Failed to load students directory.');
     } finally {
       setIsLoading(false);
     }
@@ -166,8 +171,22 @@ export const StudentsManagement: React.FC = () => {
     }
   };
 
-  if (isLoading && students.length === 0) {
+  if (isLoading && students.length === 0 && !error) {
     return <AdminStudentsSkeleton />;
+  }
+
+  if (error && students.length === 0) {
+    return (
+      <div className="py-12 max-w-xl mx-auto">
+        <EmptyState
+          icon={AlertCircle}
+          title="Failed to Load Students"
+          description={error}
+          actionText="Retry Loading"
+          onAction={fetchData}
+        />
+      </div>
+    );
   }
 
   return (
@@ -243,9 +262,8 @@ export const StudentsManagement: React.FC = () => {
       {/* Student List Table */}
       <div className="bg-white dark:bg-[#141418] rounded-2xl shadow-xs border border-zinc-200/90 dark:border-[#26262e] overflow-hidden transition-all">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-2">
-            <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Loading student directory...</p>
+          <div className="p-4">
+            <SkeletonTable rows={6} columns={5} />
           </div>
         ) : students.length === 0 ? (
           <div className="p-6 sm:p-8">

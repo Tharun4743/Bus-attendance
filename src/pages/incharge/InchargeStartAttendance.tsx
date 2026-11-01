@@ -4,6 +4,8 @@ import { api } from '../../services/api';
 import { Bus, ActiveSession } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { EmptyState } from '../../components/common/EmptyState';
+import { InchargeStartAttendanceSkeleton } from '../../components/skeleton/InchargeSkeletons';
 import { InchargeMapPickerModal } from '../../components/incharge/InchargeMapPickerModal';
 import {
   PlayCircle,
@@ -18,12 +20,15 @@ export const InchargeStartAttendance: React.FC = () => {
   const [busData, setBusData] = useState<{ bus: Bus; totalStudents: number } | null>(null);
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [sessionType, setSessionType] = useState<'MORNING' | 'EVENING'>('MORNING');
   const [attendanceMode, setAttendanceMode] = useState<'GROUND' | 'TRAVELLING'>('GROUND');
   const [isMapModalOpen, setIsMapModalOpen] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const fetchSessionData = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
       const [busRes, sessRes] = await Promise.all([
         api.getInchargeMyBus(),
@@ -37,6 +42,7 @@ export const InchargeStartAttendance: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Failed to load session details:', err);
+      setError(err?.message || 'Failed to load transit session parameters');
     } finally {
       setIsLoading(false);
     }
@@ -58,10 +64,30 @@ export const InchargeStartAttendance: React.FC = () => {
   };
 
   if (isLoading) {
+    return <InchargeStartAttendanceSkeleton />;
+  }
+
+  if (error && !busData) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 space-y-3">
-        <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-bold text-zinc-500">Checking Active Transit Window...</p>
+      <div className="py-12">
+        <EmptyState
+          title="Failed to Load Bus Details"
+          description={error}
+          actionText="Retry Connection"
+          onAction={fetchSessionData}
+        />
+      </div>
+    );
+  }
+
+  if (!busData?.bus) {
+    return (
+      <div className="py-12">
+        <EmptyState
+          icon={BusIcon}
+          title="No Bus Assigned"
+          description="You are currently not assigned to coordinate any bus routes. Please contact the fleet administrator."
+        />
       </div>
     );
   }

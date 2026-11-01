@@ -1,16 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, CheckCheck, Trash2, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { Notification } from '../../types';
 import { formatISTTime } from '../../utils/time';
 import { subscribeToNotifications } from '../../lib/supabaseRealtime';
 
 export const NotificationBell: React.FC = () => {
+  const { role } = useAuth();
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const navigate = useNavigate();
+
+  const getNotificationPath = () => {
+    switch (role) {
+      case 'ADMIN':
+        return '/admin/notifications';
+      case 'INCHARGE':
+        return '/incharge/notifications';
+      case 'STUDENT':
+        return '/student/notifications';
+      default:
+        return '/login';
+    }
+  };
 
   const fetchNotifications = async () => {
     try {
@@ -54,7 +69,7 @@ export const NotificationBell: React.FC = () => {
       if (notif.link) {
         navigate(notif.link);
       } else {
-        navigate('/admin/notifications');
+        navigate(getNotificationPath());
       }
     } catch (err) {
       console.error(err);
@@ -161,7 +176,7 @@ export const NotificationBell: React.FC = () => {
                 <button
                   onClick={() => {
                     setIsOpen(false);
-                    navigate('/admin/notifications');
+                    navigate(getNotificationPath());
                   }}
                   className="text-xs text-blue-600 dark:text-sky-400 font-bold hover:underline cursor-pointer ml-1"
                 >
