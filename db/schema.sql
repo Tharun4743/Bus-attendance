@@ -185,6 +185,7 @@ CREATE TABLE IF NOT EXISTS public.attendance_records (
     student_id TEXT NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
     bus_id TEXT NOT NULL,
     attendance_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    date DATE GENERATED ALWAYS AS (attendance_date) STORED,
     session_type session_type NOT NULL,
     attendance_mode TEXT DEFAULT 'GROUND',
     status attendance_status NOT NULL DEFAULT 'PRESENT',
@@ -204,6 +205,13 @@ CREATE TABLE IF NOT EXISTS public.attendance_records (
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
     CONSTRAINT unique_student_session_attendance UNIQUE (student_id, attendance_date, session_type)
 );
+
+-- Idempotent column migrations for attendance_records table
+DO $$ BEGIN
+    ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS date DATE GENERATED ALWAYS AS (attendance_date) STORED;
+EXCEPTION
+    WHEN others THEN null;
+END $$;
 
 -- ============================================================================
 -- 9. OTP_VERIFICATIONS TABLE (Brevo 6-Digit Email OTP Storage)
@@ -227,11 +235,14 @@ CREATE TABLE IF NOT EXISTS public.password_resets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT NOT NULL,
     token TEXT,
+    reset_token TEXT,
     token_hash TEXT NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
     used BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
+
+ALTER TABLE public.password_resets ADD COLUMN IF NOT EXISTS reset_token TEXT;
 
 -- ============================================================================
 -- 11. NOTIFICATIONS TABLE (Transit Broadcasts & Student Alerts)
@@ -272,10 +283,13 @@ CREATE INDEX IF NOT EXISTS idx_students_reg_no ON public.students(register_numbe
 CREATE INDEX IF NOT EXISTS idx_students_bus_id ON public.students(bus_id);
 CREATE INDEX IF NOT EXISTS idx_students_status ON public.students(status);
 CREATE INDEX IF NOT EXISTS idx_attendance_date_bus ON public.attendance_records(attendance_date, bus_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_records_bus_date ON public.attendance_records(bus_id, date);
 CREATE INDEX IF NOT EXISTS idx_attendance_student ON public.attendance_records(student_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_status_bus ON public.active_sessions(status, bus_id);
 CREATE INDEX IF NOT EXISTS idx_otp_email ON public.otp_verifications(email, expires_at);
-CREATE INDEX IF NOT EXISTS idx_password_resets_token ON public.password_resets(token_hash);
+CREATE INDEX IF NOT EXISTS idx_otp_verifications_email_code ON public.otp_verifications(email, otp_code);
+CREATE INDEX IF NOT EXISTS idx_password_resets_token ON public.password_resets(reset_token);
+CREATE INDEX IF NOT EXISTS idx_password_resets_token_hash ON public.password_resets(token_hash);
 
 -- ============================================================================
 -- 14. ROW-LEVEL SECURITY (RLS) POLICIES
