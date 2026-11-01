@@ -478,7 +478,7 @@ export const SignupPage: React.FC = () => {
                         <input
                           type="text"
                           required
-                          placeholder="Enter Bus In-Charge Number (e.g. BUS06)"
+                          placeholder="Enter Bus In-Charge Number (e.g. BUS01)"
                           value={preferredBusId}
                           onChange={(e) => setPreferredBusId(e.target.value.toUpperCase())}
                           className="w-full h-10 pl-10 pr-4 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none font-bold"
@@ -504,7 +504,7 @@ export const SignupPage: React.FC = () => {
                       <input
                         type="text"
                         required
-                        placeholder="e.g. TN-33-AX-8899 or BUS06"
+                        placeholder="e.g. TN-33-AX-8899 or BUS01"
                         value={busNumber}
                         onChange={(e) => setBusNumber(e.target.value.toUpperCase())}
                         className="w-full h-10 pl-10 pr-4 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none font-bold tracking-wider"

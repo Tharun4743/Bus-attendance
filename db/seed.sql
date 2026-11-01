@@ -35,7 +35,6 @@ ON CONFLICT (id) DO UPDATE SET
 -- 2. SEED INITIAL FLEET BUSES
 INSERT INTO public.buses (id, bus_number, route_name, incharge_id, capacity, active)
 VALUES 
-    ('BUS06', 'Bus No 6', 'Dharapuram Route', 'INC006', 60, true),
     ('BUS01', 'Bus No 1', 'Karur Central', 'INC001', 60, true),
     ('BUS02', 'Bus No 2', 'Erode Express', 'INC002', 60, true)
 ON CONFLICT (id) DO UPDATE SET
@@ -71,7 +70,7 @@ VALUES (
     'INIT_COORDINATOR_DEFAULT_PASS',
     'VSB Transit Coordinator',
     'ADMIN',
-    'BUS06',
+    'BUS01',
     'APPROVED',
     true
 )
@@ -82,7 +81,7 @@ ON CONFLICT (email) DO UPDATE SET
     status = EXCLUDED.status,
     active = EXCLUDED.active;
 
--- 3c. Bus Incharge Coordinator (Aarthi - BUS06 Dharapuram)
+-- 3c. Bus Incharge Coordinator (Aarthi - BUS01 Dharapuram)
 INSERT INTO public.users (id, email, password_hash, name, role, assigned_bus_id, status, active)
 VALUES (
     'b0000000-0000-0000-0000-000000000003',
@@ -90,7 +89,7 @@ VALUES (
     'INIT_INCHARGE_DEFAULT_PASS',
     'Aarthi (Bus Incharge)',
     'INCHARGE',
-    'BUS06',
+    'BUS01',
     'APPROVED',
     true
 )
@@ -111,7 +110,7 @@ VALUES (
     'Tharunkumar K (Student)',
     'STUDENT',
     'STU-24IT001',
-    'BUS06',
+    'BUS01',
     'APPROVED',
     true
 )
@@ -147,8 +146,8 @@ VALUES (
     'Tharunkumar K (Student)',
     'tharunkumark42007@gmail.com',
     '+91 9876543210',
-    'BUS06',
-    'BUS06',
+    'BUS01',
+    'BUS01',
     'APPROVED',
     true,
     true,
