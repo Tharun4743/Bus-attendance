@@ -8,6 +8,7 @@ import { StatusBadge } from '../../components/common/StatusBadge';
 import { StatCard } from '../../components/ui/StatCard';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { Select } from '../../components/ui/Select';
 import { EmptyState } from '../../components/common/EmptyState';
 import {
   RefreshCw,
@@ -296,29 +297,34 @@ export const LiveMonitoring: React.FC = () => {
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Bus Filter */}
-            <select
+            <Select
+              placeholder="Select Bus Route"
               value={busFilter}
               onChange={(e) => setBusFilter(e.target.value)}
-              className="h-8 px-2.5 text-xs font-bold rounded-lg border border-zinc-200 dark:border-[#2a2a34] bg-white dark:bg-[#16161c] text-zinc-800 dark:text-zinc-200 outline-none"
-            >
-              <option value="ALL">All Fleet Buses</option>
-              {(data?.buses || []).map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.busNumber}
-                </option>
-              ))}
-            </select>
+              className="py-1 text-xs font-bold"
+              containerClassName="w-40"
+              options={[
+                { value: 'ALL', label: 'All Fleet Buses' },
+                ...(data?.buses || []).map((b) => ({
+                  value: b.id,
+                  label: b.busNumber,
+                })),
+              ]}
+            />
 
             {/* Status Filter */}
-            <select
+            <Select
+              placeholder="Select Attendance Status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-8 px-2.5 text-xs font-bold rounded-lg border border-zinc-200 dark:border-[#2a2a34] bg-white dark:bg-[#16161c] text-zinc-800 dark:text-zinc-200 outline-none"
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="PRESENT">Verified Present</option>
-              <option value="NOT_PRESENT">Absent / Unverified</option>
-            </select>
+              className="py-1 text-xs font-bold"
+              containerClassName="w-40"
+              options={[
+                { value: 'ALL', label: 'All Statuses' },
+                { value: 'PRESENT', label: 'Verified Present' },
+                { value: 'NOT_PRESENT', label: 'Absent / Unverified' },
+              ]}
+            />
           </div>
         </div>
 

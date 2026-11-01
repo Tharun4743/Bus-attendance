@@ -967,66 +967,47 @@ export const AttendanceHistoryView: React.FC = () => {
           />
         </div>
 
-        <div>
-          <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
-            Bus Route
-          </label>
-          <select
-            value={filterBus}
-            onChange={(e) => setFilterBus(e.target.value)}
-            className="w-full h-9 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white outline-none"
-          >
-            <option value="ALL">All Buses ({buses.length})</option>
-            {buses.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.busNumber} — {b.routeName}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          label="Bus Route"
+          placeholder="Select Bus Route"
+          value={filterBus}
+          onChange={(e) => setFilterBus(e.target.value)}
+          options={[
+            { value: 'ALL', label: `All Buses (${buses.length})` },
+            ...buses.map((b) => ({
+              value: b.id,
+              label: `${b.busNumber} — ${b.routeName}`,
+            })),
+          ]}
+        />
 
-        <div>
-          <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
-            Student
-          </label>
-          <select
-            value={filterStudent}
-            onChange={(e) => setFilterStudent(e.target.value)}
-            className="w-full h-9 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white outline-none"
-          >
-            <option value="ALL">All Students ({students.length})</option>
-            {students.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.registerNumber} - {s.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          label="Student"
+          placeholder="Select Student"
+          value={filterStudent}
+          onChange={(e) => setFilterStudent(e.target.value)}
+          options={[
+            { value: 'ALL', label: `All Students (${students.length})` },
+            ...students.map((s) => ({
+              value: s.id,
+              label: `${s.registerNumber} - ${s.name}`,
+            })),
+          ]}
+        />
 
-        <div>
-          <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">
-            Attendance Status
-          </label>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="w-full h-9 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white outline-none"
-          >
-            <option value="ALL">All Statuses ({history.length})</option>
-            <option value="PRESENT">
-              Present Only ({history.filter((h) => h.status === 'PRESENT').length})
-            </option>
-            <option value="NOT_PRESENT">
-              Not Present ({history.filter((h) => h.status === 'NOT_PRESENT').length})
-            </option>
-            <option value="LOCATION_UNAVAILABLE">
-              Location Unavailable ({history.filter((h) => h.status === 'LOCATION_UNAVAILABLE').length})
-            </option>
-            <option value="INVALID_LOCATION">
-              Invalid Location ({history.filter((h) => h.status === 'INVALID_LOCATION').length})
-            </option>
-          </select>
-        </div>
+        <Select
+          label="Attendance Status"
+          placeholder="Select Attendance Status"
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          options={[
+            { value: 'ALL', label: `All Statuses (${history.length})` },
+            { value: 'PRESENT', label: `Present Only (${history.filter((h) => h.status === 'PRESENT').length})` },
+            { value: 'NOT_PRESENT', label: `Not Present (${history.filter((h) => h.status === 'NOT_PRESENT').length})` },
+            { value: 'LOCATION_UNAVAILABLE', label: `Location Unavailable (${history.filter((h) => h.status === 'LOCATION_UNAVAILABLE').length})` },
+            { value: 'INVALID_LOCATION', label: `Invalid Location (${history.filter((h) => h.status === 'INVALID_LOCATION').length})` },
+          ]}
+        />
       </div>
 
       {/* History Table */}

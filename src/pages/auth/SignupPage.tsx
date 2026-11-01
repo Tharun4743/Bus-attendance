@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { Select } from '../../components/ui/Select';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import {
   Bus as BusIcon,
@@ -453,26 +454,22 @@ export const SignupPage: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="relative">
-                    <Compass className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
+                  <div>
                     {loadingBuses ? (
-                      <div className="w-full h-10 pl-10 pr-4 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] flex items-center text-zinc-400">
+                      <div className="w-full h-10 px-4 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] flex items-center text-zinc-400">
                         Loading available In-Charge routes...
                       </div>
                     ) : availableBuses.length > 0 ? (
-                      <select
+                      <Select
+                        placeholder="Select Bus Route"
                         required
                         value={preferredBusId}
                         onChange={(e) => setPreferredBusId(e.target.value)}
-                        className="w-full h-10 pl-10 pr-4 text-xs rounded-xl bg-zinc-50 dark:bg-[#101014] border border-zinc-200 dark:border-[#2e2e38] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none font-medium"
-                      >
-                        <option value="">-- Select In-Charge Route ({availableBuses.length} Active) --</option>
-                        {availableBuses.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.busNumber} — {b.routeName} (In-Charge: {b.inchargeName})
-                          </option>
-                        ))}
-                      </select>
+                        options={availableBuses.map((b) => ({
+                          value: b.id,
+                          label: `${b.busNumber} — ${b.routeName} (In-Charge: ${b.inchargeName})`,
+                        }))}
+                      />
                     ) : (
                       <div className="space-y-1">
                         <input

@@ -5,6 +5,7 @@ import { Bus, Student, User } from '../../types';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { Select } from '../../components/ui/Select';
 import {
   UserCheck,
   CheckCircle2,
@@ -345,38 +346,27 @@ export const StudentApprovals: React.FC = () => {
                       )}
 
                       {/* Confirm/Edit Bus Number before approval */}
-                      <div>
-                        <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
-                          Assigned Bus Number <span className="text-rose-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <select
-                            value={currentBusNumber}
-                            onChange={(e) =>
-                              setInchargeBusNumbers({
-                                ...inchargeBusNumbers,
-                                [inc.id]: e.target.value.toUpperCase(),
-                              })
-                            }
-                            className="w-full h-10 px-3 text-xs font-bold font-mono uppercase rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#1a1a20] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none"
-                          >
-                            <option value="">-- Select Assigned Fleet Bus ({buses.length} Fleet Options) --</option>
-                            {buses.map((b) => (
-                              <option key={b.id} value={b.busNumber}>
-                                {b.busNumber} — {b.routeName}
-                              </option>
-                            ))}
-                            {currentBusNumber && !buses.some((b) => b.busNumber.toUpperCase() === currentBusNumber.toUpperCase()) && (
-                              <option value={currentBusNumber}>
-                                {currentBusNumber} (Custom / New Route)
-                              </option>
-                            )}
-                          </select>
-                        </div>
-                        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1">
-                          Dynamically assigns this In-Charge to an operational fleet bus in PostgreSQL.
-                        </p>
-                      </div>
+                      <Select
+                        label="Assigned Bus Number"
+                        placeholder="Select Bus"
+                        required
+                        value={currentBusNumber}
+                        onChange={(e) =>
+                          setInchargeBusNumbers({
+                            ...inchargeBusNumbers,
+                            [inc.id]: e.target.value.toUpperCase(),
+                          })
+                        }
+                        options={[
+                          ...buses.map((b) => ({
+                            value: b.busNumber,
+                            label: `${b.busNumber} — ${b.routeName}`,
+                          })),
+                          ...(currentBusNumber && !buses.some((b) => b.busNumber.toUpperCase() === currentBusNumber.toUpperCase())
+                            ? [{ value: currentBusNumber, label: `${currentBusNumber} (Custom / New Route)` }]
+                            : []),
+                        ]}
+                      />
                     </div>
 
                     {/* Actions */}
@@ -475,25 +465,19 @@ export const StudentApprovals: React.FC = () => {
                         </p>
                       )}
 
-                      <div>
-                        <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
-                          Authoritative Bus Assignment <span className="text-rose-500">*</span>
-                        </label>
-                        <select
-                          value={currentSelectedBus}
-                          onChange={(e) =>
-                            setSelectedBuses({ ...selectedBuses, [stu.id]: e.target.value })
-                          }
-                          className="w-full h-10 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#1a1a20] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none"
-                        >
-                          <option value="">-- Choose Bus ({buses.length} Fleet Buses) --</option>
-                          {buses.map((b) => (
-                            <option key={b.id} value={b.id}>
-                              {b.busNumber} — {b.routeName}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <Select
+                        label="Authoritative Bus Assignment"
+                        placeholder="Select Bus"
+                        required
+                        value={currentSelectedBus}
+                        onChange={(e) =>
+                          setSelectedBuses({ ...selectedBuses, [stu.id]: e.target.value })
+                        }
+                        options={buses.map((b) => ({
+                          value: b.id,
+                          label: `${b.busNumber} — ${b.routeName}`,
+                        }))}
+                      />
                     </div>
 
                     {/* Actions */}
