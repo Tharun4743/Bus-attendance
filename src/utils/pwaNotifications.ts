@@ -115,6 +115,8 @@ export function registerServiceWorker(): void {
         .register('/sw.js')
         .then((reg) => {
           console.log('✅ ServiceWorker registered with scope:', reg.scope);
+          // Force immediate update check to ensure stale caches are purged
+          reg.update().catch(() => {});
         })
         .catch((err) => {
           console.log('⚠️ ServiceWorker registration failed:', err);
