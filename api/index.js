@@ -36967,6 +36967,16 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 function toRadians(degrees) {
   return degrees * Math.PI / 180;
 }
+function calculateVelocity(p1, p2) {
+  if (!p1.timestamp || !p2.timestamp) return 0;
+  const t1 = new Date(p1.timestamp).getTime();
+  const t2 = new Date(p2.timestamp).getTime();
+  const dtSeconds = Math.abs(t2 - t1) / 1e3;
+  if (dtSeconds <= 0) return 0;
+  const distanceMeters = calculateDistance(p1.latitude, p1.longitude, p2.latitude, p2.longitude);
+  const speedKmh = distanceMeters / dtSeconds * 3.6;
+  return Math.round(speedKmh * 100) / 100;
+}
 
 // src/server/attendance/verifier.ts
 var AttendanceVerifier = class {
@@ -37147,6 +37157,23 @@ var AttendanceVerifier = class {
     const maxDist = Math.max(...calculatedDistances);
     const minDist = Math.min(...calculatedDistances);
     const jitterSpread = Math.round((maxDist - minDist) * 100) / 100;
+    if (readings.length >= 2) {
+      for (let i = 0; i < readings.length - 1; i++) {
+        const r1 = readings[i];
+        const r2 = readings[i + 1];
+        if (r1.timestamp && r2.timestamp) {
+          const speedKmh = calculateVelocity(r1, r2);
+          if (speedKmh > 120) {
+            return {
+              status: "INVALID_LOCATION",
+              message: `High velocity anomaly detected (${Math.round(speedKmh)} km/h > 120 km/h). Mock location jump rejected.`,
+              distanceMeters: avgDistance,
+              accuracyMeters: avgAccuracy
+            };
+          }
+        }
+      }
+    }
     if (readings.length >= 2 && jitterSpread > 25) {
       return {
         status: "LOW_GPS_ACCURACY",

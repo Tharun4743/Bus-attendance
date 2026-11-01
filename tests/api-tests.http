@@ -1,0 +1,540 @@
+### ============================================================================
+### 🚌 COLLEGE BUS ATTENDANCE MANAGEMENT SYSTEM — REST CLIENT SUITE
+### VSCode REST Client (humao.rest-client) Comprehensive API Specification
+### Conforms Strictly to Section 6.2 Architecture Directive & Anti-Secret Policy
+### ============================================================================
+###
+### HOW TO RUN IN VSCODE:
+### 1. Ensure the backend server is running (`npm run server` or `tsx server.ts`).
+### 2. Configure variables in your untracked local .env file.
+### 3. Click "Send Request" above any block to execute against live endpoints.
+###
+### ENVIRONMENT VARIABLES UTILIZED (from .env):
+### - BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME
+### - CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
+### - JWT_SECRET, DATABASE_URL, PORT
+
+@baseUrl = http://localhost:3001
+@brevoApiUrl = https://api.brevo.com/v3
+@cloudinaryApiUrl = https://api.cloudinary.com/v1_1
+
+# Development Test Parameters (Generic placeholders - No secrets)
+@adminEmail = admin@college.edu
+@studentEmail = student@college.edu
+@inchargeEmail = incharge@college.edu
+@testRegNumber = 7376222CB101
+@testBusId = BUS-01
+@defaultPassword = DevelopmentTestPassword123!
+@sampleTimestamp = 1730000000
+
+### ============================================================================
+### 1. SYSTEM HEALTH & SETUP STATUS
+### ============================================================================
+
+### 1.1 Health Check
+GET {{baseUrl}}/api/health
+Accept: application/json
+
+###
+
+### 1.2 Auth Setup Status (Determine if initial Admin exists)
+GET {{baseUrl}}/api/auth/setup-status
+Accept: application/json
+
+### ============================================================================
+### 2. BREVO TRANSACTIONAL EMAIL ENGINE (Direct Brevo REST API v3)
+### ============================================================================
+
+### 2.1 Brevo Direct: Send 6-Digit Cryptographic Registration OTP
+POST {{brevoApiUrl}}/smtp/email
+api-key: {{$dotenv BREVO_API_KEY}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "sender": {
+    "name": "{{$dotenv BREVO_SENDER_NAME}}",
+    "email": "{{$dotenv BREVO_SENDER_EMAIL}}"
+  },
+  "to": [
+    {
+      "email": "{{studentEmail}}",
+      "name": "Student Commuter"
+    }
+  ],
+  "subject": "[849201] Your College Bus Attendance Registration Code",
+  "htmlContent": "<div style='font-family:sans-serif;padding:24px;background:#0b0f19;color:#f8fafc;border-radius:8px;'><h2 style='color:#38bdf8;'>🚌 College Bus Attendance Verification</h2><p>Hello Student Commuter,</p><p>Your 6-digit registration verification code is:</p><h1 style='letter-spacing:8px;color:#38bdf8;font-family:monospace;'>849201</h1><p>This code expires in 10 minutes. If you did not initiate this request, disregard this email.</p></div>"
+}
+
+###
+
+### 2.2 Brevo Direct: Send Student Boarding Alert (Transit Confirmation)
+POST {{brevoApiUrl}}/smtp/email
+api-key: {{$dotenv BREVO_API_KEY}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "sender": {
+    "name": "{{$dotenv BREVO_SENDER_NAME}}",
+    "email": "{{$dotenv BREVO_SENDER_EMAIL}}"
+  },
+  "to": [
+    {
+      "email": "{{studentEmail}}",
+      "name": "Parent / Student Guardian"
+    }
+  ],
+  "subject": "🚌 Transit Boarding Confirmed: Bus 01 Evening Route",
+  "htmlContent": "<div style='font-family:sans-serif;padding:24px;background:#0b0f19;color:#f8fafc;border-radius:8px;'><h2 style='color:#10b981;'>✅ Student Transit Confirmed</h2><p>Student <strong>Student Commuter</strong> (Reg: 7376222CB101) has successfully boarded <strong>Bus 01</strong> at College Campus Ground.</p><p>Timestamp: <strong>16:52 IST</strong> | Status: <strong>VERIFIED_PRESENT</strong></p></div>"
+}
+
+###
+
+### 2.3 Brevo Direct: Send Student Absentee Notice (Missed Session Alert)
+POST {{brevoApiUrl}}/smtp/email
+api-key: {{$dotenv BREVO_API_KEY}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "sender": {
+    "name": "{{$dotenv BREVO_SENDER_NAME}}",
+    "email": "{{$dotenv BREVO_SENDER_EMAIL}}"
+  },
+  "to": [
+    {
+      "email": "{{studentEmail}}",
+      "name": "Parent / Student Guardian"
+    }
+  ],
+  "subject": "⚠️ Absentee Notice: Evening Bus Session Unattended",
+  "htmlContent": "<div style='font-family:sans-serif;padding:24px;background:#0b0f19;color:#f8fafc;border-radius:8px;'><h2 style='color:#ef4444;'>⚠️ Attendance Notice</h2><p>Student <strong>Student Commuter</strong> (Reg: 7376222CB101) did not verify attendance on <strong>Bus 01</strong> for the Evening Session.</p><p>Session Closed: <strong>16:55 IST</strong> | Mode: <strong>GROUND_GEOFENCE</strong></p></div>"
+}
+
+###
+
+### 2.4 Brevo Direct: Send Cryptographic Password Reset Link
+POST {{brevoApiUrl}}/smtp/email
+api-key: {{$dotenv BREVO_API_KEY}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "sender": {
+    "name": "{{$dotenv BREVO_SENDER_NAME}}",
+    "email": "{{$dotenv BREVO_SENDER_EMAIL}}"
+  },
+  "to": [
+    {
+      "email": "{{adminEmail}}",
+      "name": "System Administrator"
+    }
+  ],
+  "subject": "Reset Your Bus Attendance Portal Password",
+  "htmlContent": "<div style='font-family:sans-serif;padding:24px;background:#0b0f19;color:#f8fafc;border-radius:8px;'><h2 style='color:#38bdf8;'>🚌 Password Reset Request</h2><p>Click the secure link below to choose a new password. This link is valid for 15 minutes:</p><p><a href='http://localhost:3001/reset-password?token=a1b2c3d4e5f67890a1b2c3d4e5f67890' style='background:#0284c7;color:#fff;padding:10px 20px;text-decoration:none;border-radius:4px;'>Reset Password</a></p></div>"
+}
+
+### ============================================================================
+### 3. SUPABASE AUTHENTICATION & RBAC LIFECYCLE (ZERO MOCKS)
+### ============================================================================
+
+### 3.1 Initial Admin Setup (Executed only when no admin exists)
+POST {{baseUrl}}/api/auth/setup
+Content-Type: application/json
+
+{
+  "name": "Fleet SuperAdmin",
+  "email": "{{adminEmail}}",
+  "password": "{{defaultPassword}}"
+}
+
+###
+
+### 3.2 Admin Authentication & Token Generation
+# @name adminLogin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{defaultPassword}}"
+}
+
+### Capture JWT Token from Admin Login
+@adminToken = {{adminLogin.response.body.token}}
+
+###
+
+### 3.3 Student Authentication & Token Generation (Email or Register Number)
+# @name studentLogin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{studentEmail}}",
+  "password": "{{defaultPassword}}"
+}
+
+### Capture JWT Token from Student Login
+@studentToken = {{studentLogin.response.body.token}}
+
+###
+
+### 3.4 In-Charge Authentication & Token Generation
+# @name inchargeLogin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{inchargeEmail}}",
+  "password": "{{defaultPassword}}"
+}
+
+### Capture JWT Token from Incharge Login
+@inchargeToken = {{inchargeLogin.response.body.token}}
+
+###
+
+### 3.5 Authenticated User Profile (Token Verification & RBAC Claim)
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+### 3.6 Public Bus Fleet Discovery for Signup Registration
+GET {{baseUrl}}/api/auth/available-buses
+Accept: application/json
+
+###
+
+### 3.7 Student Registration — Request 6-Digit Brevo OTP
+POST {{baseUrl}}/api/auth/signup/request-otp
+Content-Type: application/json
+
+{
+  "role": "STUDENT",
+  "name": "Kavitha R",
+  "registerNumber": "7376222CB109",
+  "email": "kavitha.student@college.edu",
+  "phone": "+919876543210",
+  "password": "{{defaultPassword}}",
+  "preferredBusId": "BUS-01"
+}
+
+###
+
+### 3.8 Bus In-Charge Registration — Request 6-Digit Brevo OTP
+POST {{baseUrl}}/api/auth/signup/request-otp
+Content-Type: application/json
+
+{
+  "role": "INCHARGE",
+  "name": "Prof. S. Natarajan",
+  "email": "natarajan.incharge@college.edu",
+  "phone": "+919876543219",
+  "password": "{{defaultPassword}}",
+  "busNumber": "BUS-02",
+  "routeName": "Karur Central Express"
+}
+
+###
+
+### 3.9 Registration OTP Verification & Supabase Account Creation
+POST {{baseUrl}}/api/auth/signup/verify-otp
+Content-Type: application/json
+
+{
+  "email": "kavitha.student@college.edu",
+  "otp": "123456"
+}
+
+###
+
+### 3.10 Password Reset Request (Dispatches Reset Link via Brevo API)
+POST {{baseUrl}}/api/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "{{studentEmail}}"
+}
+
+###
+
+### 3.11 Password Reset Submission (Verifies SHA-256 Token & Updates Password)
+POST {{baseUrl}}/api/auth/reset-password
+Content-Type: application/json
+
+{
+  "token": "development_safe_token_hash_reference",
+  "newPassword": "NewStrongDevPassword2026!"
+}
+
+### ============================================================================
+### 4. CLOUDINARY MEDIA PIPELINE & ID CARD STORAGE
+### ============================================================================
+
+### 4.1 Backend Direct Upload Signature Generation
+# Retrieves timestamp, SHA-1 signature, and cloudName for secure client upload
+# @name getCloudinarySignature
+GET {{baseUrl}}/api/media/signature
+Accept: application/json
+
+### Capture Signature Parameters
+@cloudName = {{getCloudinarySignature.response.body.cloudName}}
+@apiKey = {{getCloudinarySignature.response.body.apiKey}}
+@signature = {{getCloudinarySignature.response.body.signature}}
+@timestamp = {{getCloudinarySignature.response.body.timestamp}}
+@folder = {{getCloudinarySignature.response.body.folder}}
+
+###
+
+### 4.2 Direct Cloudinary HTTPS Media Upload (Direct to Cloudinary CDN)
+# Uses the signed signature payload generated from endpoint 4.1
+POST https://api.cloudinary.com/v1_1/{{$dotenv CLOUDINARY_CLOUD_NAME}}/image/upload
+Content-Type: application/x-www-form-urlencoded
+
+file=data%3Aimage%2Fpng%3Bbase64%2CiVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk%2BP%2B%2FHgAFhAJ%2FwlseKgAAAABJRU5ErkJggg%3D%3D&folder=bus-attendance%2Fid_cards&api_key={{$dotenv CLOUDINARY_API_KEY}}&timestamp={{sampleTimestamp}}&signature=development_sample_signature_hash
+
+###
+
+### 4.3 Backend Authenticated Media Upload Pipeline
+# Server-side upload to Cloudinary with secure HTTPS URL & Public ID return
+POST {{baseUrl}}/api/media/upload
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "fileDataUri": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==",
+  "folder": "bus-attendance/id_cards"
+}
+
+###
+
+### 4.4 Student ID Card Verification Upload
+POST {{baseUrl}}/api/media/upload
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "fileDataUri": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==",
+  "folder": "bus-attendance/id_cards"
+}
+
+### ============================================================================
+### 5. ATTENDANCE, GEOFENCING & REAL-TIME TRANSIT SESSIONS
+### ============================================================================
+
+### 5.1 Active Session Retrieval (Global / Campus Default Window)
+GET {{baseUrl}}/api/attendance/session
+Accept: application/json
+
+###
+
+### 5.2 Active Session Retrieval for Specific Bus Fleet
+GET {{baseUrl}}/api/attendance/session?busId={{testBusId}}
+Accept: application/json
+
+###
+
+### 5.3 In-Charge: Start Ground Attendance Session (Assigned Bus Only)
+POST {{baseUrl}}/api/attendance/session/start
+Authorization: Bearer {{inchargeToken}}
+Content-Type: application/json
+
+{
+  "sessionType": "EVENING",
+  "attendanceMode": "GROUND",
+  "busId": "{{testBusId}}",
+  "radiusMeters": 15,
+  "maxGpsAccuracyMeters": 50,
+  "latitude": 10.9572,
+  "longitude": 78.0766,
+  "locationName": "Campus Bus Terminal"
+}
+
+###
+
+### 5.4 In-Charge: Start Travelling Transit Attendance Session (Transit Verification)
+POST {{baseUrl}}/api/attendance/session/start
+Authorization: Bearer {{inchargeToken}}
+Content-Type: application/json
+
+{
+  "sessionType": "EVENING",
+  "attendanceMode": "TRAVELLING",
+  "busId": "{{testBusId}}",
+  "radiusMeters": 1000,
+  "maxGpsAccuracyMeters": 1500,
+  "latitude": 10.9572,
+  "longitude": 78.0766,
+  "locationName": "Transit Route Stop - Toll Gate"
+}
+
+###
+
+### 5.5 Student: Ground Geofence Check-in & GPS Verification
+# Verifies presence against campus perimeter (15m radius default)
+POST {{baseUrl}}/api/attendance/verify
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "latitude": 10.957205,
+  "longitude": 78.076610,
+  "accuracy": 8.5,
+  "capturedAt": 1730000000000,
+  "readings": [
+    { "latitude": 10.957201, "longitude": 78.076608, "accuracy": 8.0, "timestamp": 1730000000000 },
+    { "latitude": 10.957205, "longitude": 78.076610, "accuracy": 8.5, "timestamp": 1730000001000 },
+    { "latitude": 10.957208, "longitude": 78.076612, "accuracy": 8.2, "timestamp": 1730000002000 }
+  ]
+}
+
+###
+
+### 5.6 Student: Travelling Transit Verification (On-Bus Dynamic Check-in)
+# Validates student coordinates relative to active moving bus coordinates
+POST {{baseUrl}}/api/attendance/verify-location
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "latitude": 10.9580,
+  "longitude": 78.0780,
+  "accuracy": 12.0,
+  "capturedAt": 1730000005000,
+  "readings": [
+    { "latitude": 10.9580, "longitude": 78.0780, "accuracy": 12.0, "timestamp": 1730000005000 }
+  ]
+}
+
+###
+
+### 5.7 Mobile Zero-Hardware Biometric: Generate Challenge
+GET {{baseUrl}}/api/attendance/mobile/challenge
+Authorization: Bearer {{studentToken}}
+Accept: application/json
+
+###
+
+### 5.8 Mobile Zero-Hardware Biometric: Register Credential
+POST {{baseUrl}}/api/attendance/mobile/register-biometric
+Authorization: Bearer {{studentToken}}
+Content-Type: application/json
+
+{
+  "credentialId": "cred_safe_test_identifier_2026",
+  "rawId": "raw_test_identifier_hex_token",
+  "transports": ["internal"]
+}
+
+###
+
+### 5.9 Mobile Zero-Hardware Biometric: Retrieve Registered Credential
+GET {{baseUrl}}/api/attendance/mobile/credential
+Authorization: Bearer {{studentToken}}
+Accept: application/json
+
+###
+
+### 5.10 Student: Query Personal Attendance History
+GET {{baseUrl}}/api/student/attendance-history
+Authorization: Bearer {{studentToken}}
+Accept: application/json
+
+###
+
+### 5.11 In-Charge: Conclude Session & Finalize Daily Attendance Report
+POST {{baseUrl}}/api/attendance/session/end
+Authorization: Bearer {{inchargeToken}}
+Content-Type: application/json
+
+{
+  "sessionId": "SESSION-CURRENT-BUS-01"
+}
+
+### ============================================================================
+### 6. ADMIN FLEET MANAGEMENT, GEOFENCE SETTINGS & AUDIT
+### ============================================================================
+
+### 6.1 Admin: Retrieve Pending Student Approvals Queue
+GET {{baseUrl}}/api/admin/approvals
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+### 6.2 Admin: Approve Student Registration
+POST {{baseUrl}}/api/admin/approvals/STUDENT-SAMPLE-ID/approve
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "busId": "{{testBusId}}"
+}
+
+###
+
+### 6.3 Admin: Retrieve Pending In-Charge Approvals Queue
+GET {{baseUrl}}/api/admin/incharges/pending
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+### 6.4 Admin: Retrieve Campus Transit Fleet Roster
+GET {{baseUrl}}/api/admin/buses
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+### 6.5 Admin: Retrieve Geofence & Session Timers
+GET {{baseUrl}}/api/admin/settings
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+### 6.6 Admin: Update Geofence Perimeter & Transit Windows
+PUT {{baseUrl}}/api/admin/settings
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "location": {
+    "name": "VSB Engineering College Campus Ground",
+    "latitude": 10.9572,
+    "longitude": 78.0766,
+    "radiusMeters": 15,
+    "maxGpsAccuracyMeters": 50
+  },
+  "morning": {
+    "startTime": "07:30",
+    "endTime": "08:15",
+    "reportTime": "08:20"
+  },
+  "evening": {
+    "startTime": "16:45",
+    "endTime": "17:15",
+    "reportTime": "17:20"
+  },
+  "timezone": "Asia/Kolkata",
+  "enforceGps": true
+}
+
+###
+
+### 6.7 Admin: Query Finalized Daily Reports
+GET {{baseUrl}}/api/admin/reports
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+###
+
+### 6.8 Notifications Feed (RBAC-Filtered Alert Broadcasts)
+GET {{baseUrl}}/api/notifications
+Authorization: Bearer {{studentToken}}
+Accept: application/json
