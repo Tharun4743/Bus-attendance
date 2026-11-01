@@ -97,12 +97,16 @@ export const StudentSidebar: React.FC = () => {
   const renderNavContent = () => (
     <div className="flex flex-col h-full space-y-4">
       {/* Portal Identification Header */}
-      <div className="px-3 py-2.5 bg-zinc-100/90 dark:bg-[#141418] rounded-xl border border-zinc-200/90 dark:border-[#26262e] flex items-center justify-between">
-        <div id="app-logo-slot" className="logo-container empty:hidden" aria-label="Company Logo Slot"></div>
-        <p className="text-[10px] font-black tracking-wider text-emerald-600 dark:text-emerald-400 uppercase">
-          COMMUTER PORTAL
-        </p>
-        <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Student Attendance Hub</p>
+      <div className="px-3 py-2.5 bg-zinc-100/90 dark:bg-[#141418] rounded-xl border border-zinc-200/90 dark:border-[#26262e] flex items-center gap-2">
+        <div id="app-logo-slot" className="logo-container shrink-0" aria-label="Company Logo Slot">
+          <img src="/icon.svg" alt="VSB Logo" className="w-5 h-5 rounded-md object-contain shrink-0" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-black tracking-wider text-emerald-600 dark:text-emerald-400 uppercase truncate">
+            COMMUTER PORTAL
+          </p>
+          <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">VSB Bus Attendance</p>
+        </div>
       </div>
 
       {/* Navigation Items */}

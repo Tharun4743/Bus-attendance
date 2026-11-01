@@ -1,7 +1,7 @@
 {
-  "name": "College Bus Attendance System",
-  "short_name": "BusAttendance",
-  "description": "Transit & Geofence Bus Attendance System with Dynamic 6-Digit Code Verification",
+  "name": "VSB Bus Attendance System",
+  "short_name": "VSB Bus",
+  "description": "VSB Bus Attendance Management System with GPS Geofencing and Biometric Verification",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
