@@ -85,6 +85,7 @@ export interface StorageAdapter {
     sessionId: string,
     coords: { latitude: number; longitude: number; accuracyMeters?: number }
   ): Promise<ActiveSession | null>;
+  rotateSessionCode?(sessionId: string): Promise<ActiveSession | null>;
 
   // Settings
   getSettings(): Promise<AttendanceSettings>;

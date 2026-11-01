@@ -373,7 +373,7 @@ export const StudentProfile: React.FC = () => {
               className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/40"
             >
               <Fingerprint className="w-3.5 h-3.5" />
-              {isDeviceBiometricEnrolled ? 'Re-enroll Fingerprint' : 'Register Phone Biometric'}
+              {isDeviceBiometricEnrolled ? 'Re-register Fingerprint' : 'Register My Phone Fingerprint'}
             </Button>
 
             <Button

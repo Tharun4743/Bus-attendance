@@ -9,7 +9,15 @@ import crypto from 'crypto';
 import { brevoMailer } from '../lib/brevo';
 import { cloudinaryPipeline } from '../lib/cloudinary';
 import { faceVerificationEngine } from '../lib/faceVerification';
-import { mobileBiometricEngine } from '../lib/webauthn';
+import {
+  mobileBiometricEngine,
+  getRPID,
+  getExpectedOrigin,
+  createStudentRegistrationOptions,
+  verifyStudentRegistration,
+  createStudentAuthenticationOptions,
+  verifyStudentAuthentication,
+} from '../lib/webauthn';
 import { calculateDistance } from './attendance/haversine';
 import { reconcileEveningSchedule } from './attendance/scheduleEngine';
 
@@ -1066,12 +1074,172 @@ apiRouter.post('/attendance/verify-location', requireAuth(['STUDENT']), handleVe
 // 📱 MOBILE ZERO-HARDWARE ATTENDANCE (FACE + GPS or BIOMETRIC + GPS)
 // --------------------------------------------------------------------------
 apiRouter.get(
+  '/attendance/mobile/registration-options',
+  requireAuth(['STUDENT']),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const studentId = req.user!.studentId || req.user!.id;
+      let student = await storage.getStudentById(studentId);
+      if (!student && req.user!.email) {
+        student = await storage.getStudentById(req.user!.email);
+      }
+      if (!student) {
+        return res.status(404).json({ error: 'Student record not found.' });
+      }
+
+      const host = (req.get('x-forwarded-host') || req.get('host') || 'vsbecbus.vercel.app').split(',')[0].trim();
+      const rpID = getRPID(host);
+      const options = await createStudentRegistrationOptions(student, rpID);
+
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+      await storage.updateStudent(student.id, {
+        biometricChallenge: options.challenge,
+        biometricChallengeExpiresAt: expiresAt,
+      });
+
+      return res.json(options);
+    } catch (err: any) {
+      console.error('Error creating WebAuthn registration options:', err);
+      return res.status(500).json({ error: err?.message || 'Failed to generate WebAuthn registration options.' });
+    }
+  }
+);
+
+apiRouter.post(
+  '/attendance/mobile/verify-registration',
+  requireAuth(['STUDENT']),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const studentId = req.user!.studentId || req.user!.id;
+      let student = await storage.getStudentById(studentId);
+      if (!student && req.user!.email) {
+        student = await storage.getStudentById(req.user!.email);
+      }
+      if (!student) {
+        return res.status(404).json({ error: 'Student record not found.' });
+      }
+
+      if (!student.biometricChallenge) {
+        return res.status(400).json({ error: 'No active biometric challenge found. Please restart registration.' });
+      }
+
+      if (student.biometricChallengeExpiresAt && new Date(student.biometricChallengeExpiresAt).getTime() < Date.now()) {
+        return res.status(400).json({ error: 'Biometric challenge expired. Please retry.' });
+      }
+
+      const host = (req.get('x-forwarded-host') || req.get('host') || 'vsbecbus.vercel.app').split(',')[0].trim();
+      const rpID = getRPID(host);
+      const expectedOrigin = getExpectedOrigin(host);
+
+      const registrationResponse = req.body;
+      const verifyResult = await verifyStudentRegistration(
+        student,
+        registrationResponse,
+        student.biometricChallenge,
+        expectedOrigin,
+        rpID
+      );
+
+      if (!verifyResult.verified || !verifyResult.credential) {
+        return res.status(400).json({
+          verified: false,
+          error: verifyResult.error || 'Biometric authentication failed. Try again.',
+        });
+      }
+
+      // Check if credential ID is already bound to another student
+      const allStudents = await storage.getStudents();
+      const duplicate = allStudents.find(
+        (s) => s.id !== student.id && s.biometricCredential?.credentialId === verifyResult.credential!.credentialId
+      );
+      if (duplicate) {
+        return res.status(400).json({
+          verified: false,
+          error: 'This device fingerprint sensor is already bound to another student profile.',
+        });
+      }
+
+      await storage.updateStudent(student.id, {
+        biometricCredential: verifyResult.credential,
+        biometricEnrolledAt: new Date().toISOString(),
+        biometricChallenge: null as any,
+        biometricChallengeExpiresAt: null as any,
+      });
+
+      mobileBiometricEngine.registerCredential(
+        student.id,
+        verifyResult.credential.credentialId,
+        undefined,
+        verifyResult.credential.transports
+      );
+
+      return res.json({
+        verified: true,
+        message: 'Phone biometric registration completed.',
+        credentialId: verifyResult.credential.credentialId,
+      });
+    } catch (err: any) {
+      console.error('Error verifying WebAuthn registration:', err);
+      return res.status(500).json({ error: err?.message || 'Biometric registration verification failed.' });
+    }
+  }
+);
+
+apiRouter.get(
+  '/attendance/mobile/authentication-options',
+  requireAuth(['STUDENT']),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const studentId = req.user!.studentId || req.user!.id;
+      let student = await storage.getStudentById(studentId);
+      if (!student && req.user!.email) {
+        student = await storage.getStudentById(req.user!.email);
+      }
+      if (!student) {
+        return res.status(404).json({ error: 'Student record not found.' });
+      }
+
+      if (!student.biometricCredential) {
+        return res.status(400).json({
+          error: 'No phone biometric credential registered. Touch "Register My Phone Fingerprint" first.',
+        });
+      }
+
+      const host = (req.get('x-forwarded-host') || req.get('host') || 'vsbecbus.vercel.app').split(',')[0].trim();
+      const rpID = getRPID(host);
+      const options = await createStudentAuthenticationOptions(student, rpID);
+
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+      await storage.updateStudent(student.id, {
+        biometricChallenge: options.challenge,
+        biometricChallengeExpiresAt: expiresAt,
+      });
+
+      return res.json(options);
+    } catch (err: any) {
+      console.error('Error creating WebAuthn authentication options:', err);
+      return res.status(500).json({ error: err?.message || 'Failed to generate WebAuthn authentication options.' });
+    }
+  }
+);
+
+apiRouter.get(
   '/attendance/mobile/challenge',
   requireAuth(['STUDENT']),
   async (req: AuthRequest, res: Response) => {
     try {
       const studentId = req.user!.studentId || req.user!.id;
+      let student = await storage.getStudentById(studentId);
+      if (!student && req.user!.email) {
+        student = await storage.getStudentById(req.user!.email);
+      }
       const challenge = mobileBiometricEngine.generateChallenge(studentId);
+      if (student) {
+        await storage.updateStudent(student.id, {
+          biometricChallenge: challenge,
+          biometricChallengeExpiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        });
+      }
       return res.json({ challenge });
     } catch (err: any) {
       return res.status(500).json({ error: 'Failed to generate biometric challenge.' });
@@ -1111,6 +1279,8 @@ apiRouter.post(
             registeredAt: new Date().toISOString(),
           },
           biometricEnrolledAt: new Date().toISOString(),
+          biometricChallenge: null as any,
+          biometricChallengeExpiresAt: null as any,
         });
       }
 
@@ -1166,6 +1336,8 @@ apiRouter.post(
         await storage.updateStudent(student.id, {
           biometricCredential: null as any,
           biometricEnrolledAt: null as any,
+          biometricChallenge: null as any,
+          biometricChallengeExpiresAt: null as any,
         });
       }
 
@@ -1193,6 +1365,8 @@ apiRouter.post(
         await storage.updateStudent(student.id, {
           biometricCredential: null as any,
           biometricEnrolledAt: null as any,
+          biometricChallenge: null as any,
+          biometricChallengeExpiresAt: null as any,
         });
       }
 
@@ -1452,14 +1626,64 @@ apiRouter.post(
         faceConfidence = faceResult.confidence;
         console.log(`✅ [Face-Matched] Student ${student.registerNumber} verified via ${faceResult.engine} (${faceConfidence}% confidence).`);
       } else if (method === 'PHONE_BIOMETRIC_GPS') {
-        const bioResult = mobileBiometricEngine.verifyAssertion(studentId, biometricPayload || {});
-        if (!bioResult.verified) {
+        const bioPayload = biometricPayload || {};
+        const authResponse = bioPayload.response || bioPayload;
+
+        if (!authResponse || !authResponse.id) {
           return res.status(400).json({
             status: 'BIOMETRIC_FAILED',
-            message: bioResult.message || 'Phone biometric verification (Fingerprint/FaceID) failed.',
+            message: "Biometric authentication payload missing. Touch your phone's fingerprint sensor.",
           });
         }
+
+        if (!student.biometricCredential) {
+          return res.status(400).json({
+            status: 'BIOMETRIC_FAILED',
+            message: 'No enrolled phone fingerprint credential found. Please register your fingerprint first.',
+          });
+        }
+
+        if (!student.biometricChallenge) {
+          return res.status(400).json({
+            status: 'BIOMETRIC_FAILED',
+            message: 'Biometric verification session expired. Please touch "Verify Fingerprint" again.',
+          });
+        }
+
+        const host = (req.get('x-forwarded-host') || req.get('host') || 'vsbecbus.vercel.app').split(',')[0].trim();
+        const rpID = getRPID(host);
+        const expectedOrigin = getExpectedOrigin(host);
+
+        const bioResult = await verifyStudentAuthentication(
+          student,
+          authResponse,
+          student.biometricChallenge,
+          expectedOrigin,
+          rpID
+        );
+
+        if (!bioResult.verified) {
+          console.warn(`❌ [Biometric-Mismatch] Student ${student.registerNumber}: ${bioResult.error}`);
+          return res.status(400).json({
+            status: 'BIOMETRIC_FAILED',
+            message: bioResult.error || 'Biometric authentication failed. Try again.',
+          });
+        }
+
+        // Increment counter & consume single-use challenge
+        const updatedCredential = {
+          ...student.biometricCredential,
+          counter: bioResult.newCounter !== undefined ? bioResult.newCounter : (student.biometricCredential.counter || 0) + 1,
+        };
+
+        await storage.updateStudent(student.id, {
+          biometricCredential: updatedCredential,
+          biometricChallenge: null as any,
+          biometricChallengeExpiresAt: null as any,
+        });
+
         deviceBiometricPassed = true;
+        console.log(`✅ [Biometric-Verified] Student ${student.registerNumber} verified via native phone fingerprint.`);
       } else {
         return res.status(400).json({
           status: 'GENERIC',
@@ -1812,7 +2036,7 @@ apiRouter.get('/admin/incharges', requireAuth(['ADMIN']), async (_req: Request, 
 
 apiRouter.post('/admin/incharges', requireAuth(['ADMIN']), async (req: Request, res: Response) => {
   try {
-    const { name, email, phone, password, assignedBusId } = req.body;
+    const { name, email, phone, password, assignedBusId, assignedTransit, transit } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Name, email, and password are required.' });
     }
@@ -1821,6 +2045,7 @@ apiRouter.post('/admin/incharges', requireAuth(['ADMIN']), async (req: Request, 
     if (existing) {
       return res.status(400).json({ error: `User with email ${cleanEmail} already exists.` });
     }
+    const chosenTransit = (assignedTransit || transit || 'MORNING') as SessionType;
     const hashedPassword = await hashPassword(String(password).trim());
     const id = `incharge-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
     const newIncharge = await storage.createUser({
@@ -1834,9 +2059,10 @@ apiRouter.post('/admin/incharges', requireAuth(['ADMIN']), async (req: Request, 
       approved: true,
       status: 'APPROVED',
       assignedBusId: assignedBusId || undefined,
+      assignedTransit: chosenTransit,
     });
     if (assignedBusId) {
-      await storage.updateBus(assignedBusId, { inchargeId: newIncharge.id });
+      await storage.updateBus(assignedBusId, { inchargeId: newIncharge.id, assignedTransit: chosenTransit });
     }
     const { password: _, ...safeUser } = newIncharge;
     return res.status(201).json({ success: true, user: safeUser, message: 'In-Charge registered successfully.' });
@@ -1847,7 +2073,7 @@ apiRouter.post('/admin/incharges', requireAuth(['ADMIN']), async (req: Request, 
 
 apiRouter.post('/admin/buses', requireAuth(['ADMIN']), async (req: Request, res: Response) => {
   try {
-    const { busNumber, routeName, inchargeId, capacity, active } = req.body;
+    const { busNumber, routeName, inchargeId, capacity, active, assignedTransit, transit } = req.body;
     if (!busNumber || !routeName) {
       return res.status(400).json({ error: 'Bus number and route name are required.' });
     }
@@ -1855,18 +2081,20 @@ apiRouter.post('/admin/buses', requireAuth(['ADMIN']), async (req: Request, res:
     const cleanBusNo = busNumber.trim().toUpperCase();
     const cleanRoute = routeName.trim();
     const busId = cleanBusNo.startsWith('BUS') ? cleanBusNo : `BUS-${cleanBusNo}`;
+    const chosenTransit = (assignedTransit || transit || 'MORNING') as SessionType;
 
     const newBus = await storage.createBus({
       id: busId,
       busNumber: cleanBusNo,
       routeName: cleanRoute,
       inchargeId: inchargeId || '',
+      assignedTransit: chosenTransit,
       capacity: capacity ? Number(capacity) : 60,
       active: active !== undefined ? Boolean(active) : true,
     });
 
     if (inchargeId) {
-      await storage.updateUser(inchargeId, { assignedBusId: newBus.id });
+      await storage.updateUser(inchargeId, { assignedBusId: newBus.id, assignedTransit: chosenTransit });
     }
 
     return res.status(201).json(newBus);
@@ -1879,6 +2107,9 @@ apiRouter.put('/admin/buses/:id', requireAuth(['ADMIN']), async (req: Request, r
   try {
     const { id } = req.params;
     const updates = req.body;
+    if (updates.transit && !updates.assignedTransit) {
+      updates.assignedTransit = updates.transit;
+    }
     const updated = await storage.updateBus(id, updates);
     if (!updated) {
       return res.status(404).json({ error: 'Bus not found.' });
@@ -2480,7 +2711,7 @@ apiRouter.post('/admin/assignments/student', requireAuth(['ADMIN']), async (req:
 
 apiRouter.post('/admin/assignments/incharge', requireAuth(['ADMIN']), async (req: Request, res: Response) => {
   try {
-    const { inchargeId, busId } = req.body;
+    const { inchargeId, busId, transit, sessionType } = req.body;
     if (!inchargeId || !busId) {
       return res.status(400).json({ error: 'inchargeId and busId are required.' });
     }
@@ -2492,11 +2723,12 @@ apiRouter.post('/admin/assignments/incharge', requireAuth(['ADMIN']), async (req
     if (!incharge || incharge.role !== 'INCHARGE') {
       return res.status(404).json({ error: `In-charge ${inchargeId} not found.` });
     }
-    await storage.updateBus(busId, { inchargeId });
-    await storage.updateUser(inchargeId, { assignedBusId: busId });
+    const targetTransit = (transit || sessionType || bus.assignedTransit || incharge.assignedTransit || 'MORNING') as SessionType;
+    await storage.updateBus(busId, { inchargeId, assignedTransit: targetTransit });
+    await storage.updateUser(inchargeId, { assignedBusId: busId, assignedTransit: targetTransit });
     return res.json({
       success: true,
-      message: `${incharge.name} assigned to Bus ${bus.busNumber}.`,
+      message: `${incharge.name} assigned to Bus ${bus.busNumber} (${targetTransit === 'MORNING' ? 'Morning' : 'Evening'} Transit).`,
     });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
@@ -2506,20 +2738,28 @@ apiRouter.post('/admin/assignments/incharge', requireAuth(['ADMIN']), async (req
 apiRouter.put('/admin/incharges/:id', requireAuth(['ADMIN']), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { assignedBusId, active, name, phone } = req.body;
+    const { assignedBusId, assignedTransit, transit, active, name, phone } = req.body;
     const user = await storage.getUserById(id);
     if (!user || user.role !== 'INCHARGE') {
       return res.status(404).json({ error: 'In-Charge not found.' });
     }
     const updates: Partial<User> = {};
     if (assignedBusId !== undefined) updates.assignedBusId = assignedBusId;
+    if (assignedTransit !== undefined || transit !== undefined) {
+      updates.assignedTransit = (assignedTransit || transit) as SessionType;
+    }
     if (active !== undefined) updates.active = Boolean(active);
     if (name !== undefined) updates.name = String(name).trim();
     if (phone !== undefined) updates.phone = String(phone).trim();
 
     const updated = await storage.updateUser(id, updates);
     if (assignedBusId) {
-      await storage.updateBus(assignedBusId, { inchargeId: id });
+      await storage.updateBus(assignedBusId, {
+        inchargeId: id,
+        ...(updates.assignedTransit ? { assignedTransit: updates.assignedTransit } : {})
+      });
+    } else if (updates.assignedTransit && user.assignedBusId) {
+      await storage.updateBus(user.assignedBusId, { assignedTransit: updates.assignedTransit });
     }
     return res.json({ success: true, user: updated });
   } catch (err: any) {

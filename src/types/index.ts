@@ -12,6 +12,7 @@ export interface User {
   phone?: string;
   role: Role;
   assignedBusId?: string;
+  assignedTransit?: SessionType;
   busNumber?: string;
   routeName?: string;
   studentId?: string;
@@ -19,6 +20,17 @@ export interface User {
   approved?: boolean;
   active?: boolean;
   createdAt?: string;
+}
+
+export interface BiometricCredential {
+  credentialId: string;
+  rawId?: string;
+  publicKey?: string;
+  counter?: number;
+  transports?: string[];
+  deviceType?: string;
+  backedUp?: boolean;
+  registeredAt: string;
 }
 
 export interface Student {
@@ -45,7 +57,9 @@ export interface Student {
   faceDescriptorRight?: number[];
   faceEnrolledAt?: string;
   faceEnrollmentQuality?: number;
-  biometricCredential?: any;
+  biometricCredential?: BiometricCredential;
+  biometricChallenge?: string;
+  biometricChallengeExpiresAt?: string;
   biometricEnrolledAt?: string;
   approvedAt?: string;
   approvedBy?: string;
@@ -58,6 +72,7 @@ export interface Bus {
   busNumber: string;
   routeName: string;
   inchargeId: string;
+  assignedTransit?: SessionType;
   capacity?: number;
   active: boolean;
 }
