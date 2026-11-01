@@ -5,7 +5,7 @@ import { api } from '../services/api';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
-import { Bus, Lock, Mail, ArrowRight, AlertCircle, UserPlus, Clock, XCircle, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, ArrowRight, AlertCircle, UserPlus, Clock, XCircle, Eye, EyeOff } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState<string>('');
@@ -98,22 +98,21 @@ export const LoginPage: React.FC = () => {
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div id="app-logo-slot" className="logo-container mx-auto mb-2 empty:hidden" aria-label="Company Logo Slot"></div>
+        <div id="app-logo-slot" className="logo-container mx-auto mb-3 flex justify-center" aria-label="Company Logo Slot">
+          <img src="/icon.svg" alt="VSB Bus Attendance Logo" className="w-16 h-16 rounded-2xl shadow-lg shadow-emerald-600/25 object-contain" />
+        </div>
         <div className="flex flex-col items-center justify-center gap-2 mb-3">
-          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-600 dark:bg-emerald-500 text-white shadow-lg shadow-emerald-600/25">
-            <Bus className="w-8 h-8" />
-          </div>
           <div>
             <Badge variant="emerald">
-              TRANSPORT PORTAL
+              INSTITUTIONAL TRANSPORT PORTAL
             </Badge>
           </div>
         </div>
         <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
-          Bus Attendance
+          VSB Bus Attendance
         </h1>
         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-          College Transit & Dynamic Geofence Portal
+          Campus Transit & Live Geofence Portal
         </p>
       </div>
 

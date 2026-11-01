@@ -333,11 +333,10 @@ export const SignupPage: React.FC = () => {
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div id="app-logo-slot" className="logo-container mx-auto mb-2 empty:hidden" aria-label="Company Logo Slot"></div>
+        <div id="app-logo-slot" className="logo-container mx-auto mb-3 flex justify-center" aria-label="Company Logo Slot">
+          <img src="/icon.svg" alt="VSB Logo" className="w-16 h-16 rounded-2xl shadow-lg shadow-emerald-600/25 object-contain" />
+        </div>
         <div className="flex flex-col items-center justify-center gap-2 mb-3">
-          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-600 dark:bg-emerald-500 shadow-lg shadow-emerald-600/25 text-white">
-            {role === 'INCHARGE' ? <BusIcon className="w-8 h-8" /> : <GraduationCap className="w-8 h-8" />}
-          </div>
           <div>
             <Badge variant={role === 'INCHARGE' ? 'indigo' : 'emerald'}>
               {role === 'INCHARGE' ? 'BUS IN-CHARGE ONBOARDING' : 'STUDENT COMMUTER ONBOARDING'}
