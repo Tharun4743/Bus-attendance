@@ -4,7 +4,7 @@ import { api } from '../../services/api';
 import { Bus, AttendanceRecord, ActiveSession, Student } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { MobileVerificationModal } from '../../components/attendance/MobileVerificationModal';
+import { MobileVerificationModal, type VerificationMethod } from '../../components/attendance/MobileVerificationModal';
 import {
   CheckCircle2,
   MapPin,
@@ -14,7 +14,6 @@ import {
   Camera,
   Fingerprint,
   Bus as BusIcon,
-  Navigation,
 } from 'lucide-react';
 import { formatISTTime } from '../../utils/time';
 
@@ -27,7 +26,7 @@ export const StudentVerifyAttendance: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [isMobileModalOpen, setIsMobileModalOpen] = useState<boolean>(false);
-  const [mobileModalTab, setMobileModalTab] = useState<'FACE' | 'BIOMETRIC'>('FACE');
+  const [mobileModalMethod, setMobileModalMethod] = useState<VerificationMethod>('');
 
   const [verificationNotice, setVerificationNotice] = useState<{
     type: 'success' | 'error' | 'warning';
@@ -81,106 +80,6 @@ export const StudentVerifyAttendance: React.FC = () => {
       clearInterval(interval);
     };
   }, [fetchStatus]);
-
-  // GPS Ground Verification
-  const handleVerifyGroundAttendance = () => {
-    if (!navigator.geolocation) {
-      setVerificationNotice({
-        type: 'error',
-        message: 'Geolocation Not Supported',
-        details: 'Your device or browser does not support GPS location acquisition.',
-      });
-      return;
-    }
-
-    setIsVerifying(true);
-    setVerificationNotice(null);
-
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const { latitude, longitude, accuracy } = pos.coords;
-          const capturedAt = new Date().toISOString();
-
-          const result = await api.verifyLocation({
-            latitude,
-            longitude,
-            accuracy,
-            capturedAt,
-          });
-
-          if (result.status === 'PRESENT') {
-            setVerificationNotice({
-              type: 'success',
-              message: 'Attendance Verified Successfully!',
-              details: `Marked PRESENT at College Ground (${result.distanceMeters != null ? Math.round(result.distanceMeters) : 0}m from center, GPS accuracy ±${Math.round(accuracy)}m).`,
-            });
-            await fetchStatus();
-          } else if (result.status === 'OUTSIDE_GEOFENCE') {
-            setVerificationNotice({
-              type: 'error',
-              message: 'Outside College Ground Geofence',
-              details: `You are approximately ${result.distanceMeters != null ? Math.round(result.distanceMeters) : '?'}m away from College Ground. The maximum permitted radius is 10m. You must be physically at the College Ground to mark ground attendance.`,
-            });
-          } else if (result.status === 'LOW_GPS_ACCURACY') {
-            setVerificationNotice({
-              type: 'warning',
-              message: 'Low GPS Accuracy Detected',
-              details: `Your current GPS accuracy is ±${Math.round(accuracy)}m, but maximum allowed uncertainty is 20m. Please move outdoors away from tall concrete structures to improve satellite lock.`,
-            });
-          } else if (result.status === 'ALREADY_SUBMITTED') {
-            setVerificationNotice({
-              type: 'success',
-              message: 'Attendance Already Recorded',
-              details: 'You have already marked your attendance for this active session.',
-            });
-            await fetchStatus();
-          } else if (result.status === 'SESSION_CLOSED' || result.status === 'SESSION_NOT_FOUND') {
-            setVerificationNotice({
-              type: 'error',
-              message: 'Session No Longer Active',
-              details: 'The attendance session has been closed by your bus in-charge.',
-            });
-            await fetchStatus();
-          } else {
-            setVerificationNotice({
-              type: 'error',
-              message: result.message || 'Verification could not be completed.',
-              details: `Status: ${result.status}`,
-            });
-          }
-        } catch (err: any) {
-          setVerificationNotice({
-            type: 'error',
-            message: err?.message || 'Attendance verification request failed.',
-          });
-        } finally {
-          setIsVerifying(false);
-        }
-      },
-      (geoError) => {
-        setIsVerifying(false);
-        let errorDetail = 'Could not acquire your current GPS coordinates.';
-        if (geoError.code === geoError.PERMISSION_DENIED) {
-          errorDetail = 'Location permission was denied. Please allow location access in your device and browser settings.';
-        } else if (geoError.code === geoError.POSITION_UNAVAILABLE) {
-          errorDetail = 'GPS satellite position unavailable. Please ensure Location/GPS is turned ON on your phone.';
-        } else if (geoError.code === geoError.TIMEOUT) {
-          errorDetail = 'Location request timed out. Please try again with clear view of the sky.';
-        }
-        setVerificationNotice({
-          type: 'error',
-          message: 'Location Access Error',
-          details: errorDetail,
-        });
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 12000,
-        maximumAge: 0,
-      }
-    );
-  };
 
   // Travelling Bus Verification
   const handleVerifyTravellingAttendance = async () => {
@@ -387,51 +286,31 @@ export const StudentVerifyAttendance: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                   <Button
                     variant="primary"
                     size="lg"
-                    onClick={handleVerifyGroundAttendance}
-                    disabled={isVerifying}
-                    className="flex-1 flex items-center justify-center gap-2 text-sm font-bold py-3"
-                  >
-                    {isVerifying ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        Acquiring GPS & Verifying...
-                      </>
-                    ) : (
-                      <>
-                        <Navigation className="w-4 h-4" />
-                        Verify Attendance with GPS
-                      </>
-                    )}
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    size="lg"
                     onClick={() => {
-                      setMobileModalTab('BIOMETRIC');
+                      setMobileModalMethod('FACE_GPS');
                       setIsMobileModalOpen(true);
                     }}
-                    className="flex items-center justify-center gap-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
-                  >
-                    <Fingerprint className="w-4 h-4" />
-                    Verify Fingerprint
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={() => {
-                      setMobileModalTab('FACE');
-                      setIsMobileModalOpen(true);
-                    }}
-                    className="flex items-center justify-center gap-2 text-xs font-semibold"
+                    className="flex items-center justify-center gap-2 text-xs font-semibold py-3"
                   >
                     <Camera className="w-4 h-4" />
-                    Face Biometric
+                    Face + GPS
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => {
+                      setMobileModalMethod('FINGERPRINT_GPS');
+                      setIsMobileModalOpen(true);
+                    }}
+                    className="flex items-center justify-center gap-2 text-xs font-semibold py-3 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
+                  >
+                    <Fingerprint className="w-4 h-4" />
+                    Fingerprint + GPS
                   </Button>
                 </div>
               </div>
@@ -483,20 +362,20 @@ export const StudentVerifyAttendance: React.FC = () => {
         </div>
       )}
 
-      {/* Mobile / Face Verification Modal */}
+      {/* Mobile Verification Modal (Face + GPS OR Fingerprint + GPS) */}
       <MobileVerificationModal
         isOpen={isMobileModalOpen}
         onClose={() => setIsMobileModalOpen(false)}
         busId={bus?.id || student?.busId || ''}
         studentId={student?.id || ''}
         studentName={student?.name || ''}
-        initialTab={mobileModalTab}
+        initialMethod={mobileModalMethod}
         onSuccess={() => {
           setIsMobileModalOpen(false);
           setVerificationNotice({
             type: 'success',
-            message: 'Biometric Attendance Verified!',
-            details: 'Your face biometric and location have been successfully recorded.',
+            message: 'Attendance Verified Successfully!',
+            details: 'Your attendance and GPS location have been confirmed.',
           });
           fetchStatus();
         }}

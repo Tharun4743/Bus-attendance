@@ -62104,25 +62104,33 @@ async function verifyAuthenticationResponse(options) {
 function getRPID(reqOrHost) {
   if (!reqOrHost) return "vsbecbus.vercel.app";
   const clean = reqOrHost.replace(/^https?:\/\//i, "").split("/")[0].split(":")[0].trim();
+  if (clean === "localhost" || clean === "127.0.0.1") return clean;
   return clean || "vsbecbus.vercel.app";
 }
-function getExpectedOrigin(reqOrHost) {
+function getExpectedOrigin(reqOrHost, clientOrigin) {
   const rpid = getRPID(reqOrHost);
   const origins = /* @__PURE__ */ new Set([
     `https://${rpid}`,
     `http://${rpid}`,
     "https://vsbecbus.vercel.app",
-    "https://vsbecbus-4t4ek3lwc-bus25.vercel.app",
+    "https://vsbecbus-3t2ziqibd-bus25.vercel.app",
+    "https://vsbecbus-bus25.vercel.app",
     "http://localhost:5173",
-    "http://localhost:3000"
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000"
   ]);
+  if (clientOrigin && (clientOrigin.startsWith("https://") || clientOrigin.startsWith("http://localhost") || clientOrigin.startsWith("http://127.0.0.1"))) {
+    origins.add(clientOrigin);
+  }
   return Array.from(origins);
 }
 async function createStudentRegistrationOptions(student, rpID) {
-  const userID = Buffer.from(student.id, "utf-8");
+  const userID = new Uint8Array(Buffer.from(student.id, "utf-8"));
   const studentIdentifier = student.registerNumber || student.email || student.id;
   const options = await generateRegistrationOptions({
-    rpName: "Bus Attendance PWA",
+    rpName: "VSB Bus Attendance",
     rpID,
     userID,
     userName: studentIdentifier,
@@ -62131,8 +62139,10 @@ async function createStudentRegistrationOptions(student, rpID) {
     authenticatorSelection: {
       authenticatorAttachment: "platform",
       userVerification: "required",
-      residentKey: "required"
+      residentKey: "preferred",
+      requireResidentKey: false
     },
+    supportedAlgorithmIDs: [-7, -257],
     timeout: 6e4
   });
   return options;
@@ -62150,11 +62160,12 @@ async function verifyStudentRegistration(_student, response, expectedChallenge, 
       return { verified: false, error: "Cryptographic registration verification failed on server." };
     }
     const { credential, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
+    const receivedTransports = response.response?.transports || credential.transports || ["internal", "hybrid"];
     const biometricCredential = {
       credentialId: credential.id,
       publicKey: Buffer.from(credential.publicKey).toString("base64url"),
       counter: credential.counter,
-      transports: credential.transports || ["internal"],
+      transports: receivedTransports,
       deviceType: credentialDeviceType,
       backedUp: credentialBackedUp,
       registeredAt: (/* @__PURE__ */ new Date()).toISOString()
@@ -62168,12 +62179,13 @@ async function createStudentAuthenticationOptions(student, rpID) {
   if (!student.biometricCredential) {
     throw new Error("No physical biometric credential enrolled on this student profile.");
   }
+  const transports = student.biometricCredential.transports && student.biometricCredential.transports.length > 0 ? student.biometricCredential.transports : ["internal", "hybrid"];
   const options = await generateAuthenticationOptions({
     rpID,
     allowCredentials: [
       {
         id: student.biometricCredential.credentialId,
-        transports: ["internal"]
+        transports
       }
     ],
     userVerification: "required",
@@ -62188,6 +62200,7 @@ async function verifyStudentAuthentication(student, response, expectedChallenge,
   try {
     const buffer = Buffer.from(student.biometricCredential.publicKey, "base64url");
     const publicKeyUint8 = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+    const transports = student.biometricCredential.transports && student.biometricCredential.transports.length > 0 ? student.biometricCredential.transports : ["internal", "hybrid"];
     const verification = await verifyAuthenticationResponse({
       response,
       expectedChallenge,
@@ -62197,7 +62210,7 @@ async function verifyStudentAuthentication(student, response, expectedChallenge,
         id: student.biometricCredential.credentialId,
         publicKey: publicKeyUint8,
         counter: student.biometricCredential.counter || 0,
-        transports: ["internal"]
+        transports
       },
       requireUserVerification: true
     });
@@ -63297,7 +63310,7 @@ apiRouter.post(
       }
       const host = (req.get("x-forwarded-host") || req.get("host") || "vsbecbus.vercel.app").split(",")[0].trim();
       const rpID = getRPID(host);
-      const expectedOrigin = getExpectedOrigin(host);
+      const expectedOrigin = getExpectedOrigin(host, req.get("origin"));
       const registrationResponse = req.body;
       const verifyResult = await verifyStudentRegistration(
         student,
@@ -63650,6 +63663,16 @@ apiRouter.post(
           message: "No bus assigned to this student. Please wait for administrator bus assignment."
         });
       }
+      const todayDate = getISTDateString();
+      const existingAttendance = await storage.getAttendanceRecord(student.id, todayDate, activeSession.sessionType);
+      if (existingAttendance && existingAttendance.status === "PRESENT") {
+        return res.json({
+          status: "PRESENT",
+          message: "Attendance already recorded and verified for this session.",
+          record: existingAttendance,
+          distanceMeters: existingAttendance.distanceMeters
+        });
+      }
       if (latitude === void 0 || longitude === void 0) {
         return res.status(400).json({
           status: "LOCATION_UNAVAILABLE",
@@ -63746,7 +63769,7 @@ apiRouter.post(
         }
         const host = (req.get("x-forwarded-host") || req.get("host") || "vsbecbus.vercel.app").split(",")[0].trim();
         const rpID = getRPID(host);
-        const expectedOrigin = getExpectedOrigin(host);
+        const expectedOrigin = getExpectedOrigin(host, req.get("origin"));
         const bioResult = await verifyStudentAuthentication(
           student,
           authResponse,
@@ -63778,7 +63801,6 @@ apiRouter.post(
           message: "Invalid verification method. Expected FACE_GPS or PHONE_BIOMETRIC_GPS."
         });
       }
-      const todayDate = getISTDateString();
       const nowIso = (/* @__PURE__ */ new Date()).toISOString();
       const record = await storage.createAttendance({
         id: crypto5.randomUUID(),
