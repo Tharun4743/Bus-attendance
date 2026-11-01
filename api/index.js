@@ -38638,12 +38638,19 @@ apiRouter.post("/auth/login", async (req, res) => {
       return res.status(400).json({ error: "Email/Register Number and password are required." });
     }
     const input = email.trim().toLowerCase();
-    const users = await storage.getUsers();
-    let user = users.find((u) => u.email.toLowerCase() === input);
+    let user = await storage.getUserByEmail(input);
     if (!user) {
       const student = await storage.getStudentByRegisterNumber(input);
       if (student) {
-        user = users.find((u) => u.id === student.id || u.studentId === student.id || u.email.toLowerCase() === student.email.toLowerCase());
+        if (student.userId) {
+          user = await storage.getUserById(student.userId);
+        }
+        if (!user) {
+          user = await storage.getUserById(student.id);
+        }
+        if (!user && student.email) {
+          user = await storage.getUserByEmail(student.email.toLowerCase());
+        }
       }
     }
     const isPasswordValid = Boolean(user && user.password && await comparePassword(password, user.password));
@@ -38651,21 +38658,24 @@ apiRouter.post("/auth/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid email/register number or password." });
     }
     if (user.role === "STUDENT") {
-      const studentRecord = user.studentId ? await storage.getStudentById(user.studentId) : null;
+      let studentRecord = user.studentId ? await storage.getStudentById(user.studentId) : null;
+      if (!studentRecord) {
+        studentRecord = await storage.getStudentForUser(user);
+      }
       const status = studentRecord?.status || user.status || "PENDING";
       const isApproved = studentRecord?.approved ?? user.approved ?? false;
       const isActive = studentRecord?.active ?? user.active ?? false;
-      if (status === "PENDING" || !isApproved) {
-        return res.status(403).json({
-          error: "Your account is still waiting for Admin approval.",
-          status: "PENDING"
-        });
-      }
       if (status === "REJECTED") {
         return res.status(403).json({
           error: "Your registration was rejected by Admin.",
           status: "REJECTED",
           reason: studentRecord?.rejectionReason
+        });
+      }
+      if (status === "PENDING" || !isApproved) {
+        return res.status(403).json({
+          error: "Your account is still waiting for Admin approval.",
+          status: "PENDING"
         });
       }
       if (!isActive) {
@@ -38679,16 +38689,16 @@ apiRouter.post("/auth/login", async (req, res) => {
       const status = user.status || "PENDING";
       const isApproved = user.approved ?? status === "APPROVED";
       const isActive = user.active ?? false;
-      if (status === "PENDING" || !isApproved) {
-        return res.status(403).json({
-          error: "Your Bus In-Charge account is pending administrative approval.",
-          status: "PENDING"
-        });
-      }
       if (status === "REJECTED") {
         return res.status(403).json({
           error: "Your Bus In-Charge registration was rejected by Admin.",
           status: "REJECTED"
+        });
+      }
+      if (status === "PENDING" || !isApproved) {
+        return res.status(403).json({
+          error: "Your Bus In-Charge account is pending administrative approval.",
+          status: "PENDING"
         });
       }
       if (!isActive) {

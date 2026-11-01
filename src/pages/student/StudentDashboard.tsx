@@ -1,5 +1,5 @@
 import { StudentDashboardSkeleton } from '../../components/skeleton/StudentSkeletons';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
@@ -28,6 +28,7 @@ import { subscribeToNotifications, subscribeToSessionChanges } from '../../lib/s
 
 export const StudentDashboard: React.FC = () => {
   const { user } = useAuth();
+  const lastFocusRef = useRef<number>(0);
   const [student, setStudent] = useState<Student | null>(null);
   const [bus, setBus] = useState<Bus | null>(null);
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
@@ -73,22 +74,41 @@ export const StudentDashboard: React.FC = () => {
     }
   };
 
-  // Live Auto-Refresh: 20s interval + window focus + visibility change + Supabase Realtime
   useEffect(() => {
-    fetchStudentData();
-    const interval = setInterval(fetchStudentData, 20000);
+    const token = localStorage.getItem('bus_token');
+    if (!user || !token) {
+      setIsLoading(false);
+      return;
+    }
 
-    const onFocus = () => {
+    lastFocusRef.current = Date.now();
+    fetchStudentData();
+
+    const interval = setInterval(() => {
+      const currentToken = localStorage.getItem('bus_token');
+      if (!currentToken) {
+        clearInterval(interval);
+        return;
+      }
+      fetchStudentData();
+    }, 20000);
+
+    const throttledRefresh = () => {
+      const currentToken = localStorage.getItem('bus_token');
+      if (!currentToken) return;
+      const now = Date.now();
+      if (now - lastFocusRef.current < 15000) return;
+      lastFocusRef.current = now;
       fetchStudentData();
     };
 
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        fetchStudentData();
+        throttledRefresh();
       }
     };
 
-    window.addEventListener('focus', onFocus);
+    window.addEventListener('focus', throttledRefresh);
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     // Supabase Realtime instant sync
@@ -101,12 +121,12 @@ export const StudentDashboard: React.FC = () => {
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('focus', throttledRefresh);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       unsubNotif();
       unsubSession();
     };
-  }, []);
+  }, [user]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);

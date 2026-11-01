@@ -1,5 +1,6 @@
 import { InchargeDashboardSkeleton } from '../../components/skeleton/InchargeSkeletons';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { Bus, SessionInfo, ActiveSession } from '../../types';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -49,6 +50,8 @@ export const InchargeDashboard: React.FC = () => {
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const { user } = useAuth();
+  const lastFocusRef = useRef<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PRESENT' | 'NOT_PRESENT'>('ALL');
   const [isMapModalOpen, setIsMapModalOpen] = useState<boolean>(false);
@@ -97,25 +100,51 @@ export const InchargeDashboard: React.FC = () => {
     setIsRefreshing(false);
   };
 
-  // Smart Polling: 25s background interval + instant revalidation on tab focus
   useEffect(() => {
+    const token = localStorage.getItem('bus_token');
+    if (!user || !token) {
+      setIsLoading(false);
+      return;
+    }
+
+    lastFocusRef.current = Date.now();
     refreshAll();
+
     const interval = setInterval(() => {
+      const currentToken = localStorage.getItem('bus_token');
+      if (!currentToken) {
+        clearInterval(interval);
+        return;
+      }
       fetchData();
       fetchSession();
     }, 25000);
 
-    const onFocus = () => {
+    const throttledRefresh = () => {
+      const currentToken = localStorage.getItem('bus_token');
+      if (!currentToken) return;
+      const now = Date.now();
+      if (now - lastFocusRef.current < 15000) return;
+      lastFocusRef.current = now;
       fetchData();
       fetchSession();
     };
 
-    window.addEventListener('focus', onFocus);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        throttledRefresh();
+      }
+    };
+
+    window.addEventListener('focus', throttledRefresh);
+    document.addEventListener('visibilitychange', onVisibility);
+
     return () => {
       clearInterval(interval);
-      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('focus', throttledRefresh);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, []);
+  }, [user]);
 
   // End Live Session
   const handleEndSession = async () => {

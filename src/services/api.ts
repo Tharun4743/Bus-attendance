@@ -34,28 +34,71 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const token = this.getToken();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string>),
+    const isGet = !options.method || options.method.toUpperCase() === 'GET';
+    const cacheKey = isGet ? `GET:${endpoint}` : null;
+
+    if (cacheKey && this.inFlightRequests.has(cacheKey)) {
+      return this.inFlightRequests.get(cacheKey)! as Promise<T>;
+    }
+
+    const execute = async (): Promise<T> => {
+      const token = this.getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(options.headers as Record<string, string>),
+      };
+
+      // Do not send stale Bearer tokens to /auth/login
+      const isLoginEndpoint = endpoint === '/auth/login' || endpoint.startsWith('/auth/login');
+      if (token && !isLoginEndpoint) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers,
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      // Centralized 401 response interceptor
+      if (response.status === 401) {
+        localStorage.removeItem('bus_token');
+        this.setToken(null);
+        this.inFlightRequests.clear();
+        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+          window.dispatchEvent(
+            new CustomEvent('auth:session-expired', {
+              detail: {
+                endpoint,
+                status: 401,
+                message: data.error || data.message || 'Unauthorized: session expired',
+              },
+            })
+          );
+        }
+        const unauthorizedError = new Error(data.error || data.message || 'Unauthorized: session expired');
+        (unauthorizedError as any).status = 401;
+        (unauthorizedError as any).statusCode = 401;
+        throw unauthorizedError;
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || `Request failed with status ${response.status}`);
+      }
+
+      return data as T;
     };
 
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+    if (cacheKey) {
+      const promise = execute().finally(() => {
+        this.inFlightRequests.delete(cacheKey);
+      });
+      this.inFlightRequests.set(cacheKey, promise);
+      return promise;
     }
 
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers,
-    });
-
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(data.error || data.message || `Request failed with status ${response.status}`);
-    }
-
-    return data as T;
+    return execute();
   }
 
   // Auth & First-time Setup
