@@ -7,6 +7,7 @@ import { Modal } from '../../components/common/Modal';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { Select } from '../../components/ui/Select';
 import {
   Users,
   Search,
@@ -231,32 +232,37 @@ export const StudentsManagement: React.FC = () => {
         </div>
 
         {/* Bus Filter */}
-        <select
+        <Select
+          placeholder="Select Bus Route"
           value={selectedBus}
           onChange={(e) => setSelectedBus(e.target.value)}
-          className="h-10 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white outline-none"
-        >
-          <option value="ALL">All Fleet Buses ({buses.length})</option>
-          {buses.map((b) => {
-            const count = students.filter((s) => s.busId === b.id || s.bus?.busNumber === b.busNumber).length;
-            return (
-              <option key={b.id} value={b.id}>
-                {b.busNumber} — {b.routeName} ({count} Student{count === 1 ? '' : 's'})
-              </option>
-            );
-          })}
-        </select>
+          className="h-10 text-xs font-bold"
+          containerClassName="sm:w-64"
+          options={[
+            { value: 'ALL', label: `All Fleet Buses (${buses.length})` },
+            ...buses.map((b) => {
+              const count = students.filter((s) => s.busId === b.id || s.bus?.busNumber === b.busNumber).length;
+              return {
+                value: b.id,
+                label: `${b.busNumber} — ${b.routeName} (${count} Student${count === 1 ? '' : 's'})`,
+              };
+            }),
+          ]}
+        />
 
         {/* Status Filter */}
-        <select
+        <Select
+          placeholder="Select Status"
           value={selectedActive}
           onChange={(e) => setSelectedActive(e.target.value)}
-          className="h-10 px-3 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white outline-none"
-        >
-          <option value="ALL">All Statuses ({students.length})</option>
-          <option value="true">Active Only ({students.filter((s) => s.active).length})</option>
-          <option value="false">Inactive Only ({students.filter((s) => !s.active).length})</option>
-        </select>
+          className="h-10 text-xs font-bold"
+          containerClassName="sm:w-44"
+          options={[
+            { value: 'ALL', label: `All Statuses (${students.length})` },
+            { value: 'true', label: `Active Only (${students.filter((s) => s.active).length})` },
+            { value: 'false', label: `Inactive Only (${students.filter((s) => !s.active).length})` },
+          ]}
+        />
       </div>
 
       {/* Student List Table */}
@@ -430,24 +436,17 @@ export const StudentsManagement: React.FC = () => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
-              Assigned Bus *
-            </label>
-            <select
-              value={busId}
-              onChange={(e) => setBusId(e.target.value)}
-              required
-              className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none"
-            >
-              <option value="">-- Choose Assigned Fleet Bus ({buses.length}) --</option>
-              {buses.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.busNumber} — {b.routeName}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            label="Assigned Bus"
+            placeholder="Select Bus"
+            value={busId}
+            onChange={(e) => setBusId(e.target.value)}
+            required
+            options={buses.map((b) => ({
+              value: b.id,
+              label: `${b.busNumber} — ${b.routeName}`,
+            }))}
+          />
 
           <div className="flex items-center gap-2.5 pt-2">
             <input

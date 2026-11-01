@@ -35,6 +35,9 @@ export const InchargeStartAttendance: React.FC = () => {
         api.getSessionInfo(),
       ]);
       setBusData(busRes);
+      if (busRes?.bus?.assignedTransit) {
+        setSessionType(busRes.bus.assignedTransit);
+      }
       if (sessRes.activeSession && sessRes.activeSession.status === 'ACTIVE') {
         setActiveSession(sessRes.activeSession);
       } else {

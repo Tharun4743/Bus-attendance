@@ -3,6 +3,7 @@ import { api } from '../../services/api';
 import { Bus, Student, User } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/common/Modal';
 import { EmptyState } from '../../components/common/EmptyState';
 import { AdminBusAssignmentsSkeleton } from '../../components/skeleton/AdminSkeletons';
@@ -11,6 +12,8 @@ import {
   CheckCircle2,
   AlertCircle,
   RefreshCw,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 export const BusAssignments: React.FC = () => {
@@ -54,7 +57,7 @@ export const BusAssignments: React.FC = () => {
 
   const handleOpenAssignStudent = (student: Student) => {
     setSelectedStudent(student);
-    setTargetBusId(student.busId || data?.buses[0]?.id || '');
+    setTargetBusId(student.busId || '');
     setIsStudentModalOpen(true);
   };
 
@@ -168,9 +171,23 @@ export const BusAssignments: React.FC = () => {
                 </h3>
                 <p className="text-xs text-zinc-500 mt-0.5">{bus.routeName}</p>
               </div>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-[#c084fc] border border-purple-200 dark:border-purple-800">
-                {bus.assignedCount} / {bus.capacity || 60} Seats
-              </span>
+              <div className="flex flex-col items-end gap-1.5">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-[#c084fc] border border-purple-200 dark:border-purple-800">
+                  {bus.assignedCount} / {bus.capacity || 60} Seats
+                </span>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold border ${
+                  bus.assignedTransit === 'EVENING'
+                    ? 'bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400'
+                    : 'bg-blue-500/10 border-blue-500/20 text-blue-700 dark:text-blue-400'
+                }`}>
+                  {bus.assignedTransit === 'EVENING' ? (
+                    <Moon className="w-2.5 h-2.5 text-amber-500" />
+                  ) : (
+                    <Sun className="w-2.5 h-2.5 text-blue-500" />
+                  )}
+                  <span>{bus.assignedTransit === 'EVENING' ? 'Evening Transit' : 'Morning Transit'}</span>
+                </span>
+              </div>
             </div>
 
             <div className="pt-2 border-t border-zinc-100 dark:border-[#26262e] text-xs space-y-1">
@@ -283,24 +300,17 @@ export const BusAssignments: React.FC = () => {
             <p className="text-zinc-500">{selectedStudent?.email}</p>
           </div>
 
-          <div>
-            <label className="block text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">
-              Select Fleet Bus *
-            </label>
-            <select
-              required
-              value={targetBusId}
-              onChange={(e) => setTargetBusId(e.target.value)}
-              className="w-full h-10 px-3 text-xs rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-white dark:bg-[#101014] text-zinc-900 dark:text-white outline-none font-bold"
-            >
-              <option value="">-- Choose Bus --</option>
-              {(data?.buses || []).map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.busNumber} — {b.routeName} ({b.assignedCount} assigned)
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            label="Select Fleet Bus"
+            placeholder="Select Bus"
+            required
+            value={targetBusId}
+            onChange={(e) => setTargetBusId(e.target.value)}
+            options={(data?.buses || []).map((b) => ({
+              value: b.id,
+              label: `${b.busNumber} — ${b.routeName} (${b.assignedCount} assigned)`,
+            }))}
+          />
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-100 dark:border-[#26262e]">
             <Button type="button" variant="secondary" size="sm" onClick={() => setIsStudentModalOpen(false)}>

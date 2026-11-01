@@ -1,5 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Fingerprint, MapPin, X, CheckCircle2, AlertTriangle, RefreshCw, KeyRound, ShieldCheck, ArrowRight, Smartphone } from 'lucide-react';
+import {
+  startRegistration,
+  startAuthentication,
+  browserSupportsWebAuthn,
+  platformAuthenticatorIsAvailable,
+} from '@simplewebauthn/browser';
 import { api } from '../../services/api';
 import { cameraCapture } from '../../lib/cameraCapture';
 
@@ -124,7 +130,7 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
   onClose,
   busId,
   studentId,
-  studentName,
+  studentName: _studentName,
   initialTab = 'FACE',
   onSuccess,
 }) => {
@@ -335,108 +341,53 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
   };
 
   /**
-   * Registers native smartphone platform biometric (TouchID, FaceID, or Fingerprint)
-   * using navigator.credentials.create()
+   * Registers native smartphone platform biometric (Fingerprint)
+   * using WebAuthn Platform Authenticator (Android BiometricPrompt / iOS TouchID)
    */
   const handleRegisterBiometrics = async () => {
-    if (!window.PublicKeyCredential) {
+    if (!browserSupportsWebAuthn()) {
       setErrorMsg('Hardware biometrics (Fingerprint/FaceID) not supported on this browser. Please use Mobile Face & GPS check.');
       return;
     }
 
+    const hasPlatformAuth = await platformAuthenticatorIsAvailable();
+    if (!hasPlatformAuth) {
+      setErrorMsg('No physical biometric sensor found on this phone. Please ensure your fingerprint is enrolled in device Android Settings.');
+      return;
+    }
+
     setIsLoading(true);
-    setStatusText('Prompting phone biometric sensor for enrollment...');
+    setStatusText("Touch your phone's fingerprint sensor.");
     setErrorMsg(null);
 
     try {
-      const { challenge } = await api.getMobileBiometricChallenge();
-      const challengeBytes = base64UrlToUint8Array(challenge);
-      const salt = Date.now().toString(36);
-      const uniqueUserId = `${(studentId || 'student').slice(0, 36)}_${salt}`;
-      let userIdBytes = new TextEncoder().encode(uniqueUserId);
-      if (userIdBytes.length > 64) {
-        userIdBytes = userIdBytes.slice(0, 64);
+      // 1. Fetch server-generated WebAuthn registration options with platform authenticator enforced
+      const optionsJSON = await api.getMobileRegistrationOptions();
+
+      // 2. Invoke Android native biometric prompt directly on phone
+      const registrationResponse = await startRegistration({ optionsJSON });
+
+      // 3. Cryptographically verify attestation on backend
+      setStatusText('Verifying fingerprint cryptographic attestation on server...');
+      const verifyRes = await api.verifyMobileRegistration(registrationResponse);
+
+      if (verifyRes.verified) {
+        const credId = verifyRes.credentialId;
+        const storageKey = getStorageKey();
+        localStorage.setItem(storageKey, credId);
+        setRegisteredCredId(credId);
+        setStatusText('Phone biometric registration completed.');
+        setTimeout(() => setStatusText(null), 4000);
+      } else {
+        setErrorMsg('Biometric authentication failed. Try again.');
       }
-
-      const createOptions: CredentialCreationOptions = {
-        publicKey: {
-          challenge: challengeBytes as unknown as BufferSource,
-          rp: {
-            name: 'College Bus Transit System',
-            ...(typeof window !== 'undefined' &&
-            window.location.hostname &&
-            window.location.hostname !== 'localhost' &&
-            !/^\d+\.\d+\.\d+\.\d+$/.test(window.location.hostname) &&
-            !window.location.hostname.includes(':')
-              ? { id: window.location.hostname }
-              : {}),
-          },
-          user: {
-            id: userIdBytes as unknown as BufferSource,
-            name: (studentName || 'student').toLowerCase().replace(/\s+/g, '.'),
-            displayName: studentName || 'Student Commuter',
-          },
-          pubKeyCredParams: [
-            { type: 'public-key', alg: -7 },   // ES256
-            { type: 'public-key', alg: -257 }, // RS256
-            { type: 'public-key', alg: -8 },   // Ed25519
-            { type: 'public-key', alg: -37 },  // PS256
-          ],
-          authenticatorSelection: {
-            authenticatorAttachment: 'platform',
-            userVerification: 'preferred',
-            residentKey: 'preferred',
-          },
-          timeout: 60000,
-          attestation: 'none',
-        },
-      };
-
-      let credential: PublicKeyCredential | null = null;
-      try {
-        credential = (await navigator.credentials.create(createOptions)) as PublicKeyCredential | null;
-      } catch (tier1Err: any) {
-        // Fallback tier for smartphones where strict platform attachment constraints trigger NotAllowedError
-        const fallbackOptions: CredentialCreationOptions = {
-          publicKey: {
-            ...createOptions.publicKey!,
-            authenticatorSelection: {
-              userVerification: 'preferred',
-              residentKey: 'preferred',
-            },
-          },
-        };
-        credential = (await navigator.credentials.create(fallbackOptions)) as PublicKeyCredential | null;
-      }
-
-      if (!credential) {
-        setErrorMsg('Biometric registration was dismissed or not completed.');
-        return;
-      }
-
-      const credId = credential.id;
-      const rawIdB64 = bufferToBase64Url(credential.rawId);
-
-      const storageKey = getStorageKey();
-      localStorage.setItem(storageKey, credId);
-      localStorage.setItem(`${storageKey}_raw`, rawIdB64);
-      localStorage.setItem(`${storageKey}_transports`, JSON.stringify(['internal']));
-      setRegisteredCredId(credId);
-
-      try {
-        await api.registerMobileBiometric({
-          credentialId: credId,
-          rawId: rawIdB64,
-          transports: ['internal'],
-        });
-      } catch (syncErr) {
-        console.warn('Backend biometric registration sync notice:', syncErr);
-      }
-
-      setStatusText('Biometric registered successfully on this device! You can now verify attendance.');
-      setTimeout(() => setStatusText(null), 4000);
     } catch (err: any) {
-      setErrorMsg(formatWebAuthnError(err, true));
+      console.error('WebAuthn registration error:', err);
+      if (err.name === 'NotAllowedError') {
+        setErrorMsg('Biometric authentication was cancelled or timed out. Try again.');
+      } else {
+        setErrorMsg(err.message || 'Biometric authentication failed. Try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -452,73 +403,31 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
       return;
     }
 
-    if (!window.PublicKeyCredential) {
+    if (!browserSupportsWebAuthn()) {
       setErrorMsg('Hardware biometrics (Fingerprint/FaceID) not supported on this browser. Please use Face & Location verification.');
       return;
     }
 
-    if (!registeredCredId) {
-      setErrorMsg('No biometric credential registered on this device. Please tap "Register Phone Biometric" first.');
-      return;
-    }
-
     setIsLoading(true);
-    setStatusText('Prompting phone biometric sensor...');
+    setStatusText("Touch your phone's fingerprint sensor.");
     setErrorMsg(null);
 
     try {
-      // 1. Get challenge from server
-      const { challenge } = await api.getMobileBiometricChallenge();
-      const challengeBytes = base64UrlToUint8Array(challenge);
+      // 1. Fetch server-generated authentication options (transports: ['internal'] strictly prevents QR code)
+      const optionsJSON = await api.getMobileAuthenticationOptions();
 
-      let biometricPayload: any = { challenge };
+      // 2. Trigger native Android fingerprint prompt
+      const authResponse = await startAuthentication({ optionsJSON });
 
-      // 2. Trigger native smartphone biometric sensor via WebAuthn
-      try {
-        const getOptions: CredentialRequestOptions = {
-          publicKey: {
-            challenge: challengeBytes as unknown as BufferSource,
-            timeout: 60000,
-            userVerification: 'preferred',
-            allowCredentials: [
-              {
-                id: base64UrlToUint8Array(
-                  localStorage.getItem(`${getStorageKey()}_raw`) || registeredCredId
-                ) as unknown as BufferSource,
-                type: 'public-key',
-                transports: ['internal', 'hybrid'],
-              },
-            ],
-          },
-        };
-
-        const credential = (await navigator.credentials.get(getOptions)) as PublicKeyCredential | null;
-
-        if (credential) {
-          biometricPayload = {
-            challenge,
-            credentialId: credential.id,
-            rawId: credential.id,
-            signature: 'webauthn-assertion-verified',
-          };
-        } else {
-          setErrorMsg('Device biometric prompt was dismissed or failed to authenticate.');
-          return;
-        }
-      } catch (credErr: any) {
-        setErrorMsg(formatWebAuthnError(credErr, false));
-        return;
-      }
-
-      // 3. Dispatch to verify-mobile endpoint
-      setStatusText('Logging verified biometric attendance with GPS...');
+      // 3. Dispatch to server for cryptographic signature validation alongside GPS
+      setStatusText('Validating fingerprint assertion & GPS perimeter...');
       const res = await api.verifyMobile({
         busId,
         method: 'PHONE_BIOMETRIC_GPS',
         latitude: coords.latitude,
         longitude: coords.longitude,
         accuracy: coords.accuracy,
-        biometricPayload,
+        biometricPayload: { response: authResponse },
       });
 
       if (res.status === 'PRESENT') {
@@ -530,10 +439,15 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
           onSuccess();
         }, 1800);
       } else {
-        setErrorMsg(res.message || 'Phone biometric verification failed.');
+        setErrorMsg(res.message || 'Biometric authentication failed. Try again.');
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Biometric verification failed.');
+      console.error('WebAuthn verification error:', err);
+      if (err.name === 'NotAllowedError') {
+        setErrorMsg('Biometric prompt was cancelled or timed out. Try again.');
+      } else {
+        setErrorMsg(err.message || 'Biometric authentication failed. Try again.');
+      }
     } finally {
       setIsLoading(false);
       setStatusText(null);
@@ -812,7 +726,7 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
                       </>
                     ) : (
                       <>
-                        <Fingerprint className="w-4 h-4" /> Scan Fingerprint (In-Display / Side Sensor)
+                        <Fingerprint className="w-4 h-4" /> Register My Phone Fingerprint
                       </>
                     )}
                   </button>
@@ -910,7 +824,7 @@ export const MobileVerificationModal: React.FC<MobileVerificationModalProps> = (
                       </>
                     ) : (
                       <>
-                        <Fingerprint className="w-4 h-4" /> Scan In-Display / Side Fingerprint to Verify
+                        <Fingerprint className="w-4 h-4" /> Verify Fingerprint
                       </>
                     )}
                   </button>

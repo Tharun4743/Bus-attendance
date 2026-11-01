@@ -18,6 +18,7 @@ import {
   AlertCircle,
   Navigation,
   Compass,
+  Fingerprint,
   Bell,
   ArrowRight,
 } from 'lucide-react';
@@ -418,6 +419,14 @@ export const StudentDashboard: React.FC = () => {
                 <span>{bus?.routeName || activeSession?.location?.name || sessionInfo?.locationName}</span>
               </>
             )}
+            {(bus?.assignedTransit || user?.assignedTransit) && (
+              <>
+                <span>•</span>
+                <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                  {(bus?.assignedTransit || user?.assignedTransit) === 'EVENING' ? 'Evening Transit' : 'Morning Transit'}
+                </span>
+              </>
+            )}
           </p>
         </div>
 
@@ -670,6 +679,21 @@ export const StudentDashboard: React.FC = () => {
                   </span>
                 </button>
               )}
+
+              {/* Direct Native Phone Fingerprint Attendance Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileModalTab('BIOMETRIC');
+                  setIsMobileModalOpen(true);
+                }}
+                className="flex items-center justify-center gap-3 py-3.5 sm:py-4 px-4 sm:px-5 rounded-2xl border font-bold text-sm shadow-xs transition-all cursor-pointer min-h-[52px] bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-950/50 active:scale-[0.98] border-emerald-200 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-300"
+              >
+                <Fingerprint className="w-5 h-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-center">
+                  Verify Fingerprint
+                </span>
+              </button>
 
               {/* Secondary Biometric / Face option */}
               <button

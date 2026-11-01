@@ -83,7 +83,17 @@ export async function reconcileEveningSchedule(
     // Start evening session for active buses
     const buses = await storage.getBuses();
     const activeBuses = buses.filter((b) => b.active);
-    const busId = activeBuses.length > 0 ? activeBuses[0].id : 'BUS01';
+    if (activeBuses.length === 0) {
+      return {
+        executedAt: new Date().toISOString(),
+        timeIST,
+        dateIST,
+        autoScheduleEnabled,
+        action: 'IDLE',
+        details: 'No active buses registered in the database for scheduled evening session.',
+      };
+    }
+    const busId = activeBuses[0].id;
     const sessionId = `SCHED-EVENING-${dateIST.replace(/-/g, '')}-${busId}`;
 
     const newSession = await storage.saveActiveSession({

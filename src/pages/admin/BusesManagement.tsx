@@ -2,12 +2,13 @@ import { AdminBusesSkeleton } from '../../components/skeleton/AdminSkeletons';
 import { SkeletonTable } from '../../components/skeleton/SkeletonPrimitives';
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
-import { Bus, User } from '../../types';
+import { Bus, User, SessionType } from '../../types';
 import { Modal } from '../../components/common/Modal';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { Bus as BusIcon, Plus, Edit2, CheckCircle, XCircle, Users, AlertCircle } from 'lucide-react';
+import { Select } from '../../components/ui/Select';
+import { Bus as BusIcon, Plus, Edit2, CheckCircle, XCircle, Users, AlertCircle, Sun, Moon } from 'lucide-react';
 
 export const BusesManagement: React.FC = () => {
   const [buses, setBuses] = useState<(Bus & { studentsCount: number; inchargeName: string })[]>([]);
@@ -30,6 +31,7 @@ export const BusesManagement: React.FC = () => {
   const [routeName, setRouteName] = useState<string>('');
   const [capacity, setCapacity] = useState<number>(60);
   const [inchargeId, setInchargeId] = useState<string>('');
+  const [assignedTransit, setAssignedTransit] = useState<SessionType>('MORNING');
   const [active, setActive] = useState<boolean>(true);
 
   const handleViewBusStudents = async (bus: Bus) => {
@@ -73,7 +75,8 @@ export const BusesManagement: React.FC = () => {
     setBusNumber('');
     setRouteName('');
     setCapacity(60);
-    setInchargeId(incharges[0]?.id || '');
+    setInchargeId('');
+    setAssignedTransit('MORNING');
     setActive(true);
     setFormError(null);
     setIsModalOpen(true);
@@ -84,7 +87,8 @@ export const BusesManagement: React.FC = () => {
     setBusNumber(bus.busNumber);
     setRouteName(bus.routeName);
     setCapacity(bus.capacity || 60);
-    setInchargeId(bus.inchargeId);
+    setInchargeId(bus.inchargeId || '');
+    setAssignedTransit(bus.assignedTransit || 'MORNING');
     setActive(bus.active);
     setFormError(null);
     setIsModalOpen(true);
@@ -107,6 +111,7 @@ export const BusesManagement: React.FC = () => {
           routeName: routeName.trim(),
           capacity: Number(capacity) || 60,
           inchargeId,
+          assignedTransit,
           active,
         });
         setFeedback({
@@ -119,6 +124,7 @@ export const BusesManagement: React.FC = () => {
           routeName: routeName.trim(),
           capacity: Number(capacity) || 60,
           inchargeId,
+          assignedTransit,
           active,
         });
         setFeedback({
@@ -226,6 +232,7 @@ export const BusesManagement: React.FC = () => {
                   <th className="px-5 py-3.5">Bus Code</th>
                   <th className="px-5 py-3.5">Bus Number</th>
                   <th className="px-5 py-3.5">Route Description</th>
+                  <th className="px-5 py-3.5">Transit Shift</th>
                   <th className="px-5 py-3.5">Assigned Incharge</th>
                   <th className="px-5 py-3.5">Active Students</th>
                   <th className="px-5 py-3.5">Status</th>
@@ -240,6 +247,20 @@ export const BusesManagement: React.FC = () => {
                       {bus.busNumber}
                     </td>
                     <td className="px-5 py-4 font-bold text-zinc-800 dark:text-zinc-200">{bus.routeName}</td>
+                    <td className="px-5 py-4">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border ${
+                        bus.assignedTransit === 'EVENING'
+                          ? 'bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400'
+                          : 'bg-blue-500/10 border-blue-500/20 text-blue-700 dark:text-blue-400'
+                      }`}>
+                        {bus.assignedTransit === 'EVENING' ? (
+                          <Moon className="w-3 h-3 text-amber-500" />
+                        ) : (
+                          <Sun className="w-3 h-3 text-blue-500" />
+                        )}
+                        <span>{bus.assignedTransit === 'EVENING' ? 'Evening Transit' : 'Morning Transit'}</span>
+                      </span>
+                    </td>
                     <td className="px-5 py-4 text-zinc-600 dark:text-zinc-300 font-medium">
                       {bus.inchargeName || 'Unassigned'}
                     </td>
@@ -337,23 +358,28 @@ export const BusesManagement: React.FC = () => {
             />
           </div>
 
-          <div>
-            <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
-              Assigned Bus Incharge
-            </label>
-            <select
-              value={inchargeId}
-              onChange={(e) => setInchargeId(e.target.value)}
-              className="w-full h-11 px-4 text-xs font-bold rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white focus:bg-white dark:focus:bg-[#141418] outline-none"
-            >
-              <option value="">-- Unassigned / No Incharge ({incharges.length} Available) --</option>
-              {incharges.map((inc) => (
-                <option key={inc.id} value={inc.id}>
-                  {inc.name} ({inc.email})
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            label="Assigned Bus Incharge"
+            placeholder="Select Bus In-charge"
+            value={inchargeId}
+            onChange={(e) => setInchargeId(e.target.value)}
+            options={incharges.map((inc) => ({
+              value: inc.id,
+              label: `${inc.name} (${inc.email})`,
+            }))}
+          />
+
+          <Select
+            label="Transit Shift"
+            placeholder="Select Transit"
+            required
+            value={assignedTransit}
+            onChange={(e) => setAssignedTransit(e.target.value as SessionType)}
+            options={[
+              { value: 'MORNING', label: 'Morning Transit' },
+              { value: 'EVENING', label: 'Evening Transit' },
+            ]}
+          />
 
           <div>
             <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
