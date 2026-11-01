@@ -111,7 +111,7 @@ export interface ActiveSession {
   sessionType: SessionType;
   attendanceMode: AttendanceMode;
   verificationMethod?: VerificationMethod;
-  busId: string; // "BUS01", "BUS02" or "ALL"
+  busId: string; // Database bus identifier or "ALL"
   status: SessionStatus;
   startedBy: string;
   currentCode?: string; // Obsolete, optional for backward compatibility
