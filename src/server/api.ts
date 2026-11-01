@@ -736,7 +736,7 @@ apiRouter.get('/attendance/session', async (req: Request, res: Response) => {
  * Strict database-backed bus authorization check for In-Charge operations.
  * Validates against live database storage; never relies on stale JWT claims alone.
  */
-async function verifyInchargeBusAuthorization(
+export async function verifyInchargeBusAuthorization(
   reqUser: TokenPayload,
   targetBusId?: string
 ): Promise<{ authorized: boolean; bus?: Bus; user?: User; error?: string; status?: number }> {

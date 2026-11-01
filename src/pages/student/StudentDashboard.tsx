@@ -794,6 +794,33 @@ export const StudentDashboard: React.FC = () => {
           await fetchStudentData();
         }}
       />
+
+      {/* 6. MOBILE DOCKED ACTION BAR (Positioned strictly at bottom above MobileBottomNav) */}
+      {isSessionActive && !isPresent && (
+        <div className="md:hidden fixed bottom-14 inset-x-0 z-30 px-4 py-2.5 bg-white/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md border-t border-zinc-200/80 dark:border-[#26262e] shadow-lg animate-in slide-in-from-bottom duration-200">
+          {isGroundMode ? (
+            <button
+              type="button"
+              onClick={handleVerifyGroundAttendance}
+              disabled={isVerifying}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-black text-xs shadow-md bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white shadow-emerald-600/30 transition-all cursor-pointer disabled:opacity-60"
+            >
+              <Navigation className={`w-4 h-4 shrink-0 ${isVerifying ? 'animate-spin' : ''}`} />
+              <span>{isVerifying ? 'ACQUIRING GPS & VERIFYING...' : '📍 VERIFY GROUND ATTENDANCE (GPS)'}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleVerifyTravellingAttendance}
+              disabled={isVerifying}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-black text-xs shadow-md bg-sky-600 hover:bg-sky-500 active:scale-98 text-white shadow-sky-600/30 transition-all cursor-pointer disabled:opacity-60"
+            >
+              <Compass className={`w-4 h-4 shrink-0 ${isVerifying ? 'animate-spin' : ''}`} />
+              <span>{isVerifying ? 'CONFIRMING BOARDING...' : '🚌 CONFIRM BUS BOARDING'}</span>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

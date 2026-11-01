@@ -1,5 +1,5 @@
 import { StorageAdapter } from '../storage/StorageAdapter';
-import { calculateDistance } from './haversine';
+import { calculateDistance, calculateVelocity } from './haversine';
 import { evaluateSessionStatus, getISTDateString } from './session';
 import {
   AttendanceRecord,
@@ -238,6 +238,25 @@ export class AttendanceVerifier {
     const maxDist = Math.max(...calculatedDistances);
     const minDist = Math.min(...calculatedDistances);
     const jitterSpread = Math.round((maxDist - minDist) * 100) / 100;
+
+    // Velocity / Anti-spoofing check between consecutive pings (>120 km/h mock jump detection)
+    if (readings.length >= 2) {
+      for (let i = 0; i < readings.length - 1; i++) {
+        const r1 = readings[i];
+        const r2 = readings[i + 1];
+        if (r1.timestamp && r2.timestamp) {
+          const speedKmh = calculateVelocity(r1, r2);
+          if (speedKmh > 120) {
+            return {
+              status: 'INVALID_LOCATION',
+              message: `High velocity anomaly detected (${Math.round(speedKmh)} km/h > 120 km/h). Mock location jump rejected.`,
+              distanceMeters: avgDistance,
+              accuracyMeters: avgAccuracy,
+            };
+          }
+        }
+      }
+    }
 
     if (readings.length >= 2 && jitterSpread > 25) {
       return {
