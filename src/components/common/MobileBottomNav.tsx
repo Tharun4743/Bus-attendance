@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Role } from '../../types';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 import {
   Home,
   Users,
@@ -27,9 +28,15 @@ export interface MobileNavItem {
  * Guarantees that strictly ONE tab is active at any time.
  */
 export const MobileBottomNav: React.FC = () => {
+  const isMobile = useIsMobile(768);
   const { role } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Strictly hidden on desktop viewports
+  if (!isMobile) {
+    return null;
+  }
 
   // Robust effective role resolution (handles mixed-case roles and layout route inference)
   const effectiveRole = useMemo<Role | null>(() => {
