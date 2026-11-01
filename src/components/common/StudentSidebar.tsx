@@ -12,6 +12,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { getActiveNavPath, NavItemDef } from '../../utils/navigation';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 
 interface SidebarNavItem extends NavItemDef {
   icon: React.ComponentType<{ className?: string }>;
@@ -19,6 +20,9 @@ interface SidebarNavItem extends NavItemDef {
 }
 
 export const StudentSidebar: React.FC = () => {
+  const isMobile = useIsMobile(768);
+  if (isMobile) return null;
+
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();

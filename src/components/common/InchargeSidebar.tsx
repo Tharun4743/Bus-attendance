@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getActiveNavPath, NavItemDef } from '../../utils/navigation';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 
 interface SidebarNavItem extends NavItemDef {
   icon: React.ComponentType<{ className?: string }>;
@@ -19,6 +20,9 @@ interface SidebarNavItem extends NavItemDef {
 }
 
 export const InchargeSidebar: React.FC = () => {
+  const isMobile = useIsMobile(768);
+  if (isMobile) return null;
+
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();

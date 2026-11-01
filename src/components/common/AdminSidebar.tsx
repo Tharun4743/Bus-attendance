@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 import {
   LayoutDashboard,
   Users,
@@ -18,6 +19,9 @@ interface SidebarNavItem extends NavItemDef {
 }
 
 export const AdminSidebar: React.FC = () => {
+  const isMobile = useIsMobile(768);
+  if (isMobile) return null;
+
   const location = useLocation();
   const [pendingCount, setPendingCount] = useState<number>(0);
 
