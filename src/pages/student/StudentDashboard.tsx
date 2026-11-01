@@ -307,7 +307,7 @@ export const StudentDashboard: React.FC = () => {
   const isGroundMode = activeSession?.attendanceMode === 'GROUND' || !activeSession?.attendanceMode;
 
   return (
-    <div className="space-y-4 w-full mx-auto pb-8">
+    <div className={`space-y-4 w-full mx-auto ${isSessionActive && !isPresent ? 'pb-36' : 'pb-8'}`}>
       {/* Network / Sync Error Notice */}
       {errorMessage && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-800 dark:text-rose-200 shadow-xs">
@@ -797,7 +797,12 @@ export const StudentDashboard: React.FC = () => {
 
       {/* 6. MOBILE DOCKED ACTION BAR (Positioned strictly at bottom above MobileBottomNav) */}
       {isSessionActive && !isPresent && (
-        <div className="md:hidden fixed bottom-14 inset-x-0 z-30 px-4 py-2.5 bg-white/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md border-t border-zinc-200/80 dark:border-[#26262e] shadow-lg animate-in slide-in-from-bottom duration-200">
+        <div
+          className="md:hidden fixed inset-x-0 z-30 px-4 py-2.5 bg-white/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md border-t border-zinc-200/80 dark:border-[#26262e] shadow-lg animate-in slide-in-from-bottom duration-200"
+          style={{
+            bottom: 'calc(3.5rem + max(0.5rem, env(safe-area-inset-bottom)))',
+          }}
+        >
           {isGroundMode ? (
             <button
               type="button"

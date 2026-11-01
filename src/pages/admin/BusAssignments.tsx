@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/common/Modal';
 import { EmptyState } from '../../components/common/EmptyState';
+import { AdminBusAssignmentsSkeleton } from '../../components/skeleton/AdminSkeletons';
 import {
   Search,
   CheckCircle2,
@@ -23,6 +24,7 @@ export const BusAssignments: React.FC = () => {
   } | null>(null);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -33,11 +35,14 @@ export const BusAssignments: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const fetchData = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
       const res = await api.getAssignments();
       setData(res);
     } catch (err: any) {
       console.error('Failed to load assignments:', err);
+      setError(err?.message || 'Failed to load assignments');
     } finally {
       setIsLoading(false);
     }
@@ -80,10 +85,18 @@ export const BusAssignments: React.FC = () => {
   });
 
   if (isLoading) {
+    return <AdminBusAssignmentsSkeleton />;
+  }
+
+  if (error && !data) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 space-y-3">
-        <div className="w-8 h-8 border-3 border-purple-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-bold text-zinc-500">Loading Bus Assignments...</p>
+      <div className="py-12">
+        <EmptyState
+          title="Failed to Load Fleet Assignments"
+          description={error}
+          actionText="Retry Connection"
+          onAction={fetchData}
+        />
       </div>
     );
   }

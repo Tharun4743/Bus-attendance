@@ -20066,14 +20066,14 @@ var require_etag = __commonJS({
   "node_modules/etag/index.js"(exports, module) {
     "use strict";
     module.exports = etag;
-    var crypto6 = __require("crypto");
+    var crypto7 = __require("crypto");
     var Stats = __require("fs").Stats;
     var toString = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash2 = crypto6.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash2 = crypto7.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash2 + '"';
     }
@@ -22966,11 +22966,11 @@ var require_request = __commonJS({
 // node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "node_modules/cookie-signature/index.js"(exports) {
-    var crypto6 = __require("crypto");
+    var crypto7 = __require("crypto");
     exports.sign = function(val, secret) {
       if ("string" !== typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto6.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto7.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports.unsign = function(val, secret) {
       if ("string" !== typeof val) throw new TypeError("Signed cookie string must be provided.");
@@ -22979,7 +22979,7 @@ var require_cookie_signature = __commonJS({
       return sha1(mac) == sha1(val) ? str : false;
     };
     function sha1(str) {
-      return crypto6.createHash("sha1").update(str).digest("hex");
+      return crypto7.createHash("sha1").update(str).digest("hex");
     }
   }
 });
@@ -25280,7 +25280,7 @@ var require_cert_signatures = __commonJS({
 var require_sasl = __commonJS({
   "node_modules/pg/lib/crypto/sasl.js"(exports, module) {
     "use strict";
-    var crypto6 = require_utils4();
+    var crypto7 = require_utils4();
     var { signatureAlgorithmHashFromCertificate } = require_cert_signatures();
     function saslprep(password) {
       const nonAsciiSpace = /[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000]/g;
@@ -25298,7 +25298,7 @@ var require_sasl = __commonJS({
       if (mechanism === "SCRAM-SHA-256-PLUS" && typeof stream.getPeerCertificate !== "function") {
         throw new Error("SASL: Mechanism SCRAM-SHA-256-PLUS requires a certificate");
       }
-      const clientNonce = crypto6.randomBytes(18).toString("base64");
+      const clientNonce = crypto7.randomBytes(18).toString("base64");
       const gs2Header = mechanism === "SCRAM-SHA-256-PLUS" ? "p=tls-server-end-point" : stream ? "y" : "n";
       return {
         mechanism,
@@ -25340,20 +25340,20 @@ var require_sasl = __commonJS({
         const peerCert = stream.getPeerCertificate().raw;
         let hashName = signatureAlgorithmHashFromCertificate(peerCert);
         if (hashName === "MD5" || hashName === "SHA-1") hashName = "SHA-256";
-        const certHash = await crypto6.hashByName(hashName, peerCert);
+        const certHash = await crypto7.hashByName(hashName, peerCert);
         const bindingData = Buffer.concat([Buffer.from("p=tls-server-end-point,,"), Buffer.from(certHash)]);
         channelBinding = bindingData.toString("base64");
       }
       const clientFinalMessageWithoutProof = "c=" + channelBinding + ",r=" + sv.nonce;
       const authMessage = clientFirstMessageBare + "," + serverFirstMessage + "," + clientFinalMessageWithoutProof;
       const saltBytes = Buffer.from(sv.salt, "base64");
-      const saltedPassword = await crypto6.deriveKey(saslprep(password), saltBytes, sv.iteration);
-      const clientKey = await crypto6.hmacSha256(saltedPassword, "Client Key");
-      const storedKey = await crypto6.sha256(clientKey);
-      const clientSignature = await crypto6.hmacSha256(storedKey, authMessage);
+      const saltedPassword = await crypto7.deriveKey(saslprep(password), saltBytes, sv.iteration);
+      const clientKey = await crypto7.hmacSha256(saltedPassword, "Client Key");
+      const storedKey = await crypto7.sha256(clientKey);
+      const clientSignature = await crypto7.hmacSha256(storedKey, authMessage);
       const clientProof = xorBuffers(Buffer.from(clientKey), Buffer.from(clientSignature)).toString("base64");
-      const serverKey = await crypto6.hmacSha256(saltedPassword, "Server Key");
-      const serverSignatureBytes = await crypto6.hmacSha256(serverKey, authMessage);
+      const serverKey = await crypto7.hmacSha256(saltedPassword, "Server Key");
+      const serverSignatureBytes = await crypto7.hmacSha256(serverKey, authMessage);
       session.message = "SASLResponse";
       session.serverSignature = Buffer.from(serverSignatureBytes).toString("base64");
       session.response = clientFinalMessageWithoutProof + ",p=" + clientProof;
@@ -27592,7 +27592,7 @@ var require_client = __commonJS({
     var Query2 = require_query2();
     var defaults2 = require_defaults();
     var Connection2 = require_connection();
-    var crypto6 = require_utils4();
+    var crypto7 = require_utils4();
     var activeQueryDeprecationNotice = nodeUtils.deprecate(
       () => {
       },
@@ -27847,7 +27847,7 @@ var require_client = __commonJS({
       _handleAuthMD5Password(msg) {
         this._getPassword(async () => {
           try {
-            const hashedPassword = await crypto6.postgresMd5PasswordHash(this.user, this.password, msg.salt);
+            const hashedPassword = await crypto7.postgresMd5PasswordHash(this.user, this.password, msg.salt);
             this.connection.password(hashedPassword);
           } catch (e) {
             this.emit("error", e);
@@ -29508,14 +29508,14 @@ var require_buffer_equal_constant_time = __commonJS({
 var require_jwa = __commonJS({
   "node_modules/jwa/index.js"(exports, module) {
     var Buffer2 = require_safe_buffer().Buffer;
-    var crypto6 = __require("crypto");
+    var crypto7 = __require("crypto");
     var formatEcdsa = require_ecdsa_sig_formatter();
     var util = __require("util");
     var MSG_INVALID_ALGORITHM = '"%s" is not a valid algorithm.\n  Supported algorithms are:\n  "HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512" and "none".';
     var MSG_INVALID_SECRET = "secret must be a string or buffer";
     var MSG_INVALID_VERIFIER_KEY = "key must be a string or a buffer";
     var MSG_INVALID_SIGNER_KEY = "key must be a string, a buffer or an object";
-    var supportsKeyObjects = typeof crypto6.createPublicKey === "function";
+    var supportsKeyObjects = typeof crypto7.createPublicKey === "function";
     if (supportsKeyObjects) {
       MSG_INVALID_VERIFIER_KEY += " or a KeyObject";
       MSG_INVALID_SECRET += "or a KeyObject";
@@ -29605,17 +29605,17 @@ var require_jwa = __commonJS({
       return function sign(thing, secret) {
         checkIsSecretKey(secret);
         thing = normalizeInput(thing);
-        var hmac = crypto6.createHmac("sha" + bits, secret);
+        var hmac = crypto7.createHmac("sha" + bits, secret);
         var sig = (hmac.update(thing), hmac.digest("base64"));
         return fromBase64(sig);
       };
     }
     var bufferEqual;
-    var timingSafeEqual = "timingSafeEqual" in crypto6 ? function timingSafeEqual2(a, b) {
+    var timingSafeEqual = "timingSafeEqual" in crypto7 ? function timingSafeEqual2(a, b) {
       if (a.byteLength !== b.byteLength) {
         return false;
       }
-      return crypto6.timingSafeEqual(a, b);
+      return crypto7.timingSafeEqual(a, b);
     } : function timingSafeEqual2(a, b) {
       if (!bufferEqual) {
         bufferEqual = require_buffer_equal_constant_time();
@@ -29632,7 +29632,7 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto6.createSign("RSA-SHA" + bits);
+        var signer = crypto7.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign(privateKey, "base64"));
         return fromBase64(sig);
       };
@@ -29642,7 +29642,7 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier2 = crypto6.createVerify("RSA-SHA" + bits);
+        var verifier2 = crypto7.createVerify("RSA-SHA" + bits);
         verifier2.update(thing);
         return verifier2.verify(publicKey, signature, "base64");
       };
@@ -29651,11 +29651,11 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto6.createSign("RSA-SHA" + bits);
+        var signer = crypto7.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign({
           key: privateKey,
-          padding: crypto6.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto6.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto7.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto7.constants.RSA_PSS_SALTLEN_DIGEST
         }, "base64"));
         return fromBase64(sig);
       };
@@ -29665,12 +29665,12 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier2 = crypto6.createVerify("RSA-SHA" + bits);
+        var verifier2 = crypto7.createVerify("RSA-SHA" + bits);
         verifier2.update(thing);
         return verifier2.verify({
           key: publicKey,
-          padding: crypto6.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto6.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto7.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto7.constants.RSA_PSS_SALTLEN_DIGEST
         }, signature, "base64");
       };
     }
@@ -35198,6 +35198,7 @@ function getStorage() {
 
 // src/server/auth.ts
 var import_jsonwebtoken = __toESM(require_jsonwebtoken(), 1);
+import crypto3 from "crypto";
 
 // node_modules/bcryptjs/index.js
 import nodeCrypto from "crypto";
@@ -36924,6 +36925,38 @@ var bcryptjs_default = {
 
 // src/server/auth.ts
 var JWT_SECRET = process.env.JWT_SECRET || process.env.AUTH_SECRET || "bus-attendance-secret-key-2026";
+var revokedTokens = /* @__PURE__ */ new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, expiresAt] of revokedTokens.entries()) {
+    if (expiresAt <= now) {
+      revokedTokens.delete(key);
+    }
+  }
+}, 60 * 60 * 1e3).unref?.();
+function revokeToken(token) {
+  try {
+    const decoded = import_jsonwebtoken.default.decode(token);
+    if (!decoded) return false;
+    const expiresAt = decoded.exp ? decoded.exp * 1e3 : Date.now() + 7 * 24 * 60 * 60 * 1e3;
+    const key = decoded.jti || token;
+    revokedTokens.set(key, expiresAt);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function isTokenRevoked(token) {
+  try {
+    const decoded = import_jsonwebtoken.default.decode(token);
+    if (!decoded) return true;
+    if (decoded.jti && revokedTokens.has(decoded.jti)) return true;
+    if (revokedTokens.has(token)) return true;
+    return false;
+  } catch {
+    return true;
+  }
+}
 async function hashPassword(password) {
   const salt = await bcryptjs_default.genSalt(10);
   return bcryptjs_default.hash(password, salt);
@@ -36942,12 +36975,16 @@ function generateToken(user) {
     name: user.name,
     role: user.role,
     assignedBusId: user.assignedBusId,
-    studentId: user.studentId
+    studentId: user.studentId,
+    jti: crypto3.randomUUID()
   };
   return import_jsonwebtoken.default.sign(payload, JWT_SECRET, { expiresIn: "7d" });
 }
 function verifyToken(token) {
   try {
+    if (isTokenRevoked(token)) {
+      return null;
+    }
     return import_jsonwebtoken.default.verify(token, JWT_SECRET);
   } catch (err) {
     return null;
@@ -37341,7 +37378,7 @@ var ReportGenerator = class {
 };
 
 // src/server/api.ts
-import crypto5 from "crypto";
+import crypto6 from "crypto";
 
 // src/lib/brevo.ts
 var BrevoMailer = class {
@@ -37505,7 +37542,7 @@ var BrevoMailer = class {
 var brevoMailer = new BrevoMailer();
 
 // src/lib/cloudinary.ts
-import crypto3 from "crypto";
+import crypto4 from "crypto";
 var CloudinaryPipeline = class {
   get cloudName() {
     return process.env.CLOUDINARY_CLOUD_NAME || "";
@@ -37528,7 +37565,7 @@ var CloudinaryPipeline = class {
     }
     const timestamp = Math.round(Date.now() / 1e3);
     const paramsToSign = `folder=${folder}&timestamp=${timestamp}${this.apiSecret}`;
-    const signature = crypto3.createHash("sha1").update(paramsToSign).digest("hex");
+    const signature = crypto4.createHash("sha1").update(paramsToSign).digest("hex");
     return {
       timestamp,
       signature,
@@ -37556,7 +37593,7 @@ var CloudinaryPipeline = class {
       formData.append("api_key", this.apiKey);
       const timestamp = Math.round(Date.now() / 1e3);
       const paramsToSign = `folder=${folder}&timestamp=${timestamp}${this.apiSecret}`;
-      const signature = crypto3.createHash("sha1").update(paramsToSign).digest("hex");
+      const signature = crypto4.createHash("sha1").update(paramsToSign).digest("hex");
       formData.append("timestamp", timestamp.toString());
       formData.append("signature", signature);
       const response = await fetch(endpoint, {
@@ -37999,7 +38036,7 @@ Return strictly a valid JSON object without markdown formatting:
 var faceVerificationEngine = new FaceVerificationEngine();
 
 // src/lib/webauthn.ts
-import crypto4 from "crypto";
+import crypto5 from "crypto";
 var MobileBiometricEngine = class {
   activeChallenges = /* @__PURE__ */ new Map();
   registeredCredentials = /* @__PURE__ */ new Map();
@@ -38007,7 +38044,7 @@ var MobileBiometricEngine = class {
    * Generates a cryptographically random challenge for navigator.credentials.get() or create()
    */
   generateChallenge(studentId) {
-    const challenge = crypto4.randomBytes(32).toString("base64url");
+    const challenge = crypto5.randomBytes(32).toString("base64url");
     this.activeChallenges.set(studentId, {
       challenge,
       expiresAt: Date.now() + 5 * 60 * 1e3
@@ -38342,12 +38379,12 @@ apiRouter.post("/auth/signup/request-otp", async (req, res) => {
       if (!cleanBusNumber) {
         return res.status(400).json({ error: "Bus Number is mandatory for Bus In-Charge registration." });
       }
-      const otp2 = crypto5.randomInt(1e5, 1e6).toString();
-      const otpHash2 = crypto5.createHash("sha256").update(otp2).digest("hex");
+      const otp2 = crypto6.randomInt(1e5, 1e6).toString();
+      const otpHash2 = crypto6.createHash("sha256").update(otp2).digest("hex");
       const passwordHash2 = await hashPassword(password);
       const expiresAt2 = new Date(Date.now() + 10 * 60 * 1e3).toISOString();
       await storage.saveOtp({
-        id: crypto5.randomUUID(),
+        id: crypto6.randomUUID(),
         email: cleanEmail,
         otpHash: otpHash2,
         expiresAt: expiresAt2,
@@ -38391,12 +38428,12 @@ apiRouter.post("/auth/signup/request-otp", async (req, res) => {
         preferredBus = matched.id;
       }
     }
-    const otp = crypto5.randomInt(1e5, 1e6).toString();
-    const otpHash = crypto5.createHash("sha256").update(otp).digest("hex");
+    const otp = crypto6.randomInt(1e5, 1e6).toString();
+    const otpHash = crypto6.createHash("sha256").update(otp).digest("hex");
     const passwordHash = await hashPassword(password);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1e3).toISOString();
     await storage.saveOtp({
-      id: crypto5.randomUUID(),
+      id: crypto6.randomUUID(),
       email: cleanEmail,
       otpHash,
       expiresAt,
@@ -38442,7 +38479,7 @@ apiRouter.post("/auth/signup/verify-otp", async (req, res) => {
     if (attempts > 5) {
       return res.status(429).json({ error: "Too many incorrect attempts. Please request a new code." });
     }
-    const inputHash = crypto5.createHash("sha256").update(String(otp).trim()).digest("hex");
+    const inputHash = crypto6.createHash("sha256").update(String(otp).trim()).digest("hex");
     if (record.otpHash !== inputHash) {
       return res.status(400).json({ error: "Invalid verification code. Please check and try again." });
     }
@@ -38513,11 +38550,11 @@ apiRouter.post("/auth/forgot-password", async (req, res) => {
         message: "If an account matches that email, a password reset link has been dispatched."
       });
     }
-    const token = crypto5.randomBytes(32).toString("hex");
-    const tokenHash = crypto5.createHash("sha256").update(token).digest("hex");
+    const token = crypto6.randomBytes(32).toString("hex");
+    const tokenHash = crypto6.createHash("sha256").update(token).digest("hex");
     const expiresAt = new Date(Date.now() + 15 * 60 * 1e3).toISOString();
     await storage.savePasswordReset({
-      id: crypto5.randomUUID(),
+      id: crypto6.randomUUID(),
       email: cleanEmail,
       tokenHash,
       expiresAt,
@@ -38545,7 +38582,7 @@ apiRouter.post("/auth/reset-password", async (req, res) => {
     if (newPassword.length < 6) {
       return res.status(400).json({ error: "Password must be at least 6 characters long." });
     }
-    const tokenHash = crypto5.createHash("sha256").update(String(token).trim()).digest("hex");
+    const tokenHash = crypto6.createHash("sha256").update(String(token).trim()).digest("hex");
     const record = await storage.getPasswordReset(tokenHash);
     if (!record || record.used) {
       return res.status(400).json({ error: "Invalid or already used reset token. Please request a new link." });
@@ -38678,6 +38715,18 @@ apiRouter.get("/auth/me", requireAuth(), async (req, res) => {
     return res.json({ user: safeUser });
   } catch (err) {
     return res.status(500).json({ error: err.message });
+  }
+});
+apiRouter.post("/auth/logout", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+      revokeToken(token);
+    }
+    return res.json({ success: true, message: "Logged out successfully." });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || "Logout failed." });
   }
 });
 apiRouter.get("/admin/approvals", requireAuth(["ADMIN"]), async (_req, res) => {
@@ -39379,7 +39428,7 @@ apiRouter.post(
       const todayDate = getISTDateString();
       const nowIso = (/* @__PURE__ */ new Date()).toISOString();
       const record = await storage.createAttendance({
-        id: crypto5.randomUUID(),
+        id: crypto6.randomUUID(),
         studentId,
         busId: targetBusId,
         attendanceDate: todayDate,
