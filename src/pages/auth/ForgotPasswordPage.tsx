@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
-import { Bus, Mail, ArrowRight, AlertCircle, CheckCircle2, ArrowLeft, Loader2 } from 'lucide-react';
+import { Mail, ArrowRight, AlertCircle, CheckCircle2, ArrowLeft, Loader2 } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
@@ -39,11 +39,10 @@ export const ForgotPasswordPage: React.FC = () => {
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div id="app-logo-slot" className="logo-container mx-auto mb-2 empty:hidden" aria-label="Company Logo Slot"></div>
+        <div id="app-logo-slot" className="logo-container mx-auto mb-3 flex justify-center" aria-label="Company Logo Slot">
+          <img src="/icon.svg" alt="VSB Logo" className="w-16 h-16 rounded-2xl shadow-lg shadow-emerald-600/25 object-contain" />
+        </div>
         <div className="flex flex-col items-center justify-center gap-2 mb-3">
-          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-600 dark:bg-emerald-500 text-white shadow-lg shadow-emerald-600/25">
-            <Bus className="w-8 h-8" />
-          </div>
           <div>
             <Badge variant="emerald">
               ACCOUNT RECOVERY
