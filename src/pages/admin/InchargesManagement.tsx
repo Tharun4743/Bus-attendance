@@ -1,4 +1,5 @@
 import { AdminInchargesSkeleton } from '../../components/skeleton/AdminSkeletons';
+import { SkeletonTable } from '../../components/skeleton/SkeletonPrimitives';
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Bus, User } from '../../types';
@@ -25,6 +26,7 @@ export const InchargesManagement: React.FC = () => {
   const [pendingIncharges, setPendingIncharges] = useState<User[]>([]);
   const [buses, setBuses] = useState<Bus[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'ACTIVE' | 'PENDING'>('ACTIVE');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -46,6 +48,8 @@ export const InchargesManagement: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const fetchData = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
       const [allIncharges, pendingRes, allBuses] = await Promise.all([
         api.getIncharges(),
@@ -57,6 +61,7 @@ export const InchargesManagement: React.FC = () => {
       setBuses(allBuses || []);
     } catch (err: any) {
       console.error('Failed to load incharges:', err);
+      setError(err?.message || 'Failed to load in-charges roster.');
     } finally {
       setIsLoading(false);
     }
@@ -163,8 +168,22 @@ export const InchargesManagement: React.FC = () => {
     );
   });
 
-  if (isLoading && incharges.length === 0) {
+  if (isLoading && incharges.length === 0 && !error) {
     return <AdminInchargesSkeleton />;
+  }
+
+  if (error && incharges.length === 0) {
+    return (
+      <div className="py-12 max-w-xl mx-auto">
+        <EmptyState
+          icon={AlertCircle}
+          title="Failed to Load In-Charges"
+          description={error}
+          actionText="Retry Loading"
+          onAction={fetchData}
+        />
+      </div>
+    );
   }
 
   return (
@@ -255,9 +274,8 @@ export const InchargesManagement: React.FC = () => {
       </div>
 
       {isLoading ? (
-        <div className="py-16 flex flex-col items-center justify-center space-y-3 bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e]">
-          <RefreshCw className="w-6 h-6 animate-spin text-purple-600 dark:text-purple-400" />
-          <p className="text-xs font-medium text-zinc-500">Loading in-charges roster...</p>
+        <div className="p-4 bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] shadow-xs">
+          <SkeletonTable rows={5} columns={5} />
         </div>
       ) : activeTab === 'ACTIVE' ? (
         /* ACTIVE INCHARGES LIST */

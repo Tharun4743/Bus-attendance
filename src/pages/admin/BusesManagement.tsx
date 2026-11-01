@@ -1,4 +1,5 @@
 import { AdminBusesSkeleton } from '../../components/skeleton/AdminSkeletons';
+import { SkeletonTable } from '../../components/skeleton/SkeletonPrimitives';
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Bus, User } from '../../types';
@@ -12,6 +13,7 @@ export const BusesManagement: React.FC = () => {
   const [buses, setBuses] = useState<(Bus & { studentsCount: number; inchargeName: string })[]>([]);
   const [incharges, setIncharges] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingBus, setEditingBus] = useState<Bus | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -45,6 +47,8 @@ export const BusesManagement: React.FC = () => {
   };
 
   const fetchBuses = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
       const [busRes, incRes] = await Promise.all([
         api.getBuses(),
@@ -52,8 +56,9 @@ export const BusesManagement: React.FC = () => {
       ]);
       setBuses(busRes);
       setIncharges(incRes);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load buses:', err);
+      setError(err?.message || 'Failed to load buses.');
     } finally {
       setIsLoading(false);
     }
@@ -139,8 +144,22 @@ export const BusesManagement: React.FC = () => {
     }
   };
 
-  if (isLoading && buses.length === 0) {
+  if (isLoading && buses.length === 0 && !error) {
     return <AdminBusesSkeleton />;
+  }
+
+  if (error && buses.length === 0) {
+    return (
+      <div className="py-12 max-w-xl mx-auto">
+        <EmptyState
+          icon={AlertCircle}
+          title="Failed to Load Fleet Buses"
+          description={error}
+          actionText="Retry Loading"
+          onAction={fetchBuses}
+        />
+      </div>
+    );
   }
 
   return (
@@ -186,9 +205,8 @@ export const BusesManagement: React.FC = () => {
       {/* Buses Table */}
       <div className="bg-white dark:bg-[#141418] rounded-2xl shadow-xs border border-zinc-200/90 dark:border-[#26262e] overflow-hidden transition-all">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-2">
-            <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Loading buses...</p>
+          <div className="p-4">
+            <SkeletonTable rows={5} columns={5} />
           </div>
         ) : buses.length === 0 ? (
           <div className="p-6 sm:p-8">

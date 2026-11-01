@@ -1,3 +1,4 @@
+import { AdminLiveMonitoringSkeleton } from '../../components/skeleton/AdminSkeletons';
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Bus, SessionInfo, ActiveSession } from '../../types';
@@ -18,6 +19,7 @@ import {
   Percent,
   MapPin,
   Clock,
+  AlertCircle,
 } from 'lucide-react';
 
 export const LiveMonitoring: React.FC = () => {
@@ -44,6 +46,7 @@ export const LiveMonitoring: React.FC = () => {
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [busFilter, setBusFilter] = useState<string>('ALL');
@@ -52,8 +55,9 @@ export const LiveMonitoring: React.FC = () => {
     try {
       const res = await api.getTodayAttendance();
       setData(res);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load live monitoring attendance:', err);
+      throw err;
     }
   };
 
@@ -72,9 +76,15 @@ export const LiveMonitoring: React.FC = () => {
 
   const refreshAll = async () => {
     setIsRefreshing(true);
-    await Promise.all([fetchAttendance(), fetchSession()]);
-    setIsLoading(false);
-    setIsRefreshing(false);
+    setError(null);
+    try {
+      await Promise.all([fetchAttendance(), fetchSession()]);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load live telemetry.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
   };
 
   useEffect(() => {
@@ -148,11 +158,20 @@ export const LiveMonitoring: React.FC = () => {
     return matchesSearch && matchesStatus && matchesBus;
   });
 
-  if (isLoading) {
+  if (isLoading && !data && !error) {
+    return <AdminLiveMonitoringSkeleton />;
+  }
+
+  if (error && !data) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 space-y-3">
-        <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-bold text-zinc-500">Loading Live Telemetry Monitoring...</p>
+      <div className="py-12 max-w-xl mx-auto">
+        <EmptyState
+          icon={AlertCircle}
+          title="Live Telemetry Unavailable"
+          description={error}
+          actionText="Retry Loading"
+          onAction={refreshAll}
+        />
       </div>
     );
   }

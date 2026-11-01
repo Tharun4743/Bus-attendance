@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import { Bus, SessionInfo, ActiveSession } from '../../types';
 import { StatusBadge } from '../../components/common/StatusBadge';
+import { EmptyState } from '../../components/common/EmptyState';
 import { Button } from '../../components/ui/Button';
 import { StatCard } from '../../components/ui/StatCard';
 import { Badge } from '../../components/ui/Badge';
@@ -50,6 +51,7 @@ export const InchargeLiveAttendance: React.FC = () => {
 
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PRESENT' | 'NOT_PRESENT'>('ALL');
@@ -64,6 +66,7 @@ export const InchargeLiveAttendance: React.FC = () => {
         api.getSessionInfo(),
       ]);
       setData(rosterRes);
+      setError(null);
       if (sessRes.activeSession && sessRes.activeSession.status === 'ACTIVE') {
         setActiveSession(sessRes.activeSession);
       } else {
@@ -71,6 +74,7 @@ export const InchargeLiveAttendance: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Failed to load live incharge attendance:', err);
+      setError(err?.message || 'Failed to load live attendance data');
     }
   }, []);
 
@@ -173,6 +177,22 @@ export const InchargeLiveAttendance: React.FC = () => {
 
   if (isLoading && !data) {
     return <InchargeLiveAttendanceSkeleton />;
+  }
+
+  if (error && !data) {
+    return (
+      <div className="py-12">
+        <EmptyState
+          title="Failed to Load Live Attendance"
+          description={error}
+          actionText="Retry Connection"
+          onAction={() => {
+            setIsLoading(true);
+            fetchLiveData().finally(() => setIsLoading(false));
+          }}
+        />
+      </div>
+    );
   }
 
   return (

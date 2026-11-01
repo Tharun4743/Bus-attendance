@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
@@ -13,8 +13,22 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [error, setError] = useState<{ message: string; type?: string; reason?: string } | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const { login } = useAuth();
+  const isSubmittingRef = useRef<boolean>(false);
+  const { login, user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // If already authenticated, redirect to appropriate role dashboard
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === 'ADMIN') {
+        navigate('/admin/dashboard', { replace: true });
+      } else if (user.role === 'INCHARGE') {
+        navigate('/incharge/dashboard', { replace: true });
+      } else {
+        navigate('/student/dashboard', { replace: true });
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
 
   useEffect(() => {
     // Check if initial setup is needed
@@ -28,22 +42,28 @@ export const LoginPage: React.FC = () => {
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
+    // Prevent duplicate accidental form submissions synchronously
+    if (loading || isSubmittingRef.current) {
+      return;
+    }
+
     if (!email || !password) {
       setError({ message: 'Please enter both Email/Register Number and Password.' });
       return;
     }
 
     setError(null);
+    isSubmittingRef.current = true;
     setLoading(true);
 
     try {
-      const user = await login(email, password);
-      if (user.role === 'ADMIN') {
-        navigate('/admin/dashboard');
-      } else if (user.role === 'INCHARGE') {
-        navigate('/incharge/dashboard');
+      const loggedUser = await login(email, password);
+      if (loggedUser.role === 'ADMIN') {
+        navigate('/admin/dashboard', { replace: true });
+      } else if (loggedUser.role === 'INCHARGE') {
+        navigate('/incharge/dashboard', { replace: true });
       } else {
-        navigate('/student/dashboard');
+        navigate('/student/dashboard', { replace: true });
       }
     } catch (err: any) {
       const msg = err.message || 'Login failed. Please check your credentials.';
@@ -66,6 +86,7 @@ export const LoginPage: React.FC = () => {
         setError({ message: msg });
       }
     } finally {
+      isSubmittingRef.current = false;
       setLoading(false);
     }
   };
@@ -140,8 +161,9 @@ export const LoginPage: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={loading}
                   placeholder="you@college.edu or Register No."
-                  className="block w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
+                  className="block w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none disabled:opacity-60"
                 />
               </div>
             </div>
@@ -167,13 +189,15 @@ export const LoginPage: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={loading}
                   placeholder="Enter your password"
-                  className="block w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none"
+                  className="block w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm rounded-xl border border-zinc-200 dark:border-[#2e2e38] bg-zinc-50 dark:bg-[#101014] text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:bg-white dark:focus:bg-[#141418] outline-none disabled:opacity-60"
                 />
                 <button
                   type="button"
+                  disabled={loading}
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3 top-2.5 p-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors focus:outline-none"
+                  className="absolute right-3 top-2.5 p-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors focus:outline-none disabled:opacity-50"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                   title={showPassword ? 'Hide password' : 'Show password'}
                 >

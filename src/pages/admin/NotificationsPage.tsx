@@ -5,22 +5,26 @@ import { Notification } from '../../types';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { AdminNotificationsSkeleton } from '../../components/skeleton/AdminSkeletons';
 import { Bell, CheckCheck, FileSpreadsheet, ArrowRight, Trash2, Check } from 'lucide-react';
 
 export const NotificationsPage: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const navigate = useNavigate();
 
   const fetchNotifications = async () => {
+    setError(null);
     try {
       const res = await api.getNotifications();
       setNotifications(res.notifications);
       setUnreadCount(res.unreadCount);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load notifications:', err);
+      setError(err?.message || 'Failed to load notifications');
     } finally {
       setIsLoading(false);
     }
@@ -100,6 +104,24 @@ export const NotificationsPage: React.FC = () => {
     }
   };
 
+  if (isLoading) {
+    return <AdminNotificationsSkeleton />;
+  }
+
+  if (error && notifications.length === 0) {
+    return (
+      <div className="py-12">
+        <EmptyState
+          icon={Bell}
+          title="Failed to Load Notifications"
+          description={error}
+          actionText="Retry Connection"
+          onAction={fetchNotifications}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 w-full mx-auto pb-8">
       {/* Header */}
@@ -152,12 +174,7 @@ export const NotificationsPage: React.FC = () => {
 
       {/* Notifications List */}
       <div className="bg-white dark:bg-[#141418] rounded-2xl shadow-xs border border-zinc-200/90 dark:border-[#26262e] overflow-hidden transition-all">
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-2">
-            <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Loading notifications...</p>
-          </div>
-        ) : notifications.length === 0 ? (
+        {notifications.length === 0 ? (
           <div className="p-6 sm:p-8">
             <EmptyState
               icon={Bell}
