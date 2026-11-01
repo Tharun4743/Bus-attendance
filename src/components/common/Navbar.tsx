@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Bus, LogOut, Shield, UserCheck, GraduationCap, Menu, User, ChevronDown } from 'lucide-react';
+import { LogOut, Shield, UserCheck, GraduationCap, Menu, User, ChevronDown } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from '../ui/ThemeToggle';
 
@@ -95,13 +95,12 @@ export const Navbar: React.FC = () => {
               }
               className="flex items-center gap-2 sm:gap-2.5 group min-w-0"
             >
-              <div id="app-logo-slot" className="logo-container hidden sm:block empty:hidden" aria-label="Company Logo Slot"></div>
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-600 dark:bg-emerald-500 flex items-center justify-center text-white shadow-xs shrink-0 group-hover:scale-105 transition-transform">
-                <Bus className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+              <div id="app-logo-slot" className="logo-container shrink-0" aria-label="Company Logo Slot">
+                <img src="/icon.svg" alt="VSB Logo" className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl shadow-xs shrink-0 object-contain" />
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                 <span className="text-sm sm:text-base font-black tracking-tight text-zinc-900 dark:text-white truncate">
-                  Bus Attendance
+                  VSB Bus Attendance
                 </span>
                 {getRoleBadge()}
               </div>
