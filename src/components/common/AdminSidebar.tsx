@@ -104,7 +104,8 @@ export const AdminSidebar: React.FC = () => {
   const renderNavContent = () => (
     <div className="flex flex-col h-full space-y-4">
       {/* Portal Identification Header */}
-      <div className="px-3 py-2.5 bg-zinc-100/90 dark:bg-[#141418] rounded-xl border border-zinc-200/90 dark:border-[#26262e]">
+      <div className="px-3 py-2.5 bg-zinc-100/90 dark:bg-[#141418] rounded-xl border border-zinc-200/90 dark:border-[#26262e] flex items-center justify-between">
+        <div id="app-logo-slot" className="logo-container empty:hidden" aria-label="Company Logo Slot"></div>
         <p className="text-[10px] font-black tracking-wider text-purple-600 dark:text-purple-400 uppercase">
           ADMIN CONSOLE
         </p>
