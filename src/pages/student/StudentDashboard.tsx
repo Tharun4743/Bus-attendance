@@ -419,6 +419,14 @@ export const StudentDashboard: React.FC = () => {
                 <span>{bus?.routeName || activeSession?.location?.name || sessionInfo?.locationName}</span>
               </>
             )}
+            {(bus?.assignedTransit || user?.assignedTransit) && (
+              <>
+                <span>•</span>
+                <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                  {(bus?.assignedTransit || user?.assignedTransit) === 'EVENING' ? 'Evening Transit' : 'Morning Transit'}
+                </span>
+              </>
+            )}
           </p>
         </div>
 

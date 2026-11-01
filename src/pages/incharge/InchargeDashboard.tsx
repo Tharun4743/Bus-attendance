@@ -6,6 +6,7 @@ import { Bus, SessionInfo, ActiveSession } from '../../types';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Button } from '../../components/ui/Button';
 import { StatCard } from '../../components/ui/StatCard';
+import { Select } from '../../components/ui/Select';
 import {
   Users,
   CheckCircle,
@@ -72,6 +73,11 @@ export const InchargeDashboard: React.FC = () => {
     try {
       const res = await api.getInchargeAttendance();
       setData(res);
+      if (res?.bus?.assignedTransit) {
+        setSessionType(res.bus.assignedTransit);
+      } else if (user?.assignedTransit) {
+        setSessionType(user.assignedTransit);
+      }
     } catch (err) {
       console.error('Failed to load incharge attendance:', err);
     }
@@ -330,25 +336,31 @@ export const InchargeDashboard: React.FC = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 shrink-0 w-full sm:w-auto">
-              {/* Session Type (Morning vs Evening) */}
-              <select
+              {/* Session Type */}
+              <Select
+                placeholder="Select Transit"
                 value={sessionType}
                 onChange={(e) => setSessionType(e.target.value as 'MORNING' | 'EVENING')}
-                className="w-full sm:w-auto text-xs font-bold bg-zinc-50 dark:bg-[#1a1a20] border border-zinc-200 dark:border-[#2e2e38] rounded-xl px-3 py-2 sm:py-2.5 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 shrink-0"
-              >
-                <option value="MORNING">🌅 Morning Transit (Inbound)</option>
-                <option value="EVENING">🌆 Evening Transit (Return)</option>
-              </select>
+                containerClassName="w-full sm:w-44 shrink-0"
+                className="py-2 text-xs font-bold"
+                options={[
+                  { value: 'MORNING', label: 'Morning Transit' },
+                  { value: 'EVENING', label: 'Evening Transit' },
+                ]}
+              />
 
-              {/* Transit Starting Mode (Stationary Bay vs Travelling) */}
-              <select
+              {/* Transit Starting Mode */}
+              <Select
+                placeholder="Select Operating Mode"
                 value={selectedModeForModal}
                 onChange={(e) => setSelectedModeForModal(e.target.value as 'GROUND' | 'TRAVELLING')}
-                className="w-full sm:w-auto text-xs font-bold bg-zinc-50 dark:bg-[#1a1a20] border border-zinc-200 dark:border-[#2e2e38] rounded-xl px-3 py-2 sm:py-2.5 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 shrink-0"
-              >
-                <option value="GROUND">🛑 Stationary Bus Bay (~35m Radius)</option>
-                <option value="TRAVELLING">🚌 Travelling Transit (~1000m Radius)</option>
-              </select>
+                containerClassName="w-full sm:w-56 shrink-0"
+                className="py-2 text-xs font-bold"
+                options={[
+                  { value: 'GROUND', label: 'Stationary Bay (~35m Radius)' },
+                  { value: 'TRAVELLING', label: 'Travelling Transit (~1000m Radius)' },
+                ]}
+              />
 
               {/* Unified Start Live Attendance Button */}
               <button
