@@ -1,4 +1,4 @@
-﻿import { AdminReportsSkeleton } from '../../components/skeleton/AdminSkeletons';
+import { AdminReportsSkeleton } from '../../components/skeleton/AdminSkeletons';
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useParams } from 'react-router-dom';
 import { api } from '../../services/api';

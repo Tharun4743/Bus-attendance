@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { Role } from '../../types';
 import {
   Home,
   Users,
@@ -30,9 +31,24 @@ export const MobileBottomNav: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Robust effective role resolution (handles mixed-case roles and layout route inference)
+  const effectiveRole = useMemo<Role | null>(() => {
+    if (role) {
+      const upper = role.toUpperCase();
+      if (upper === 'ADMIN' || upper === 'INCHARGE' || upper === 'STUDENT') {
+        return upper as Role;
+      }
+    }
+    const path = location.pathname.toLowerCase();
+    if (path.startsWith('/admin')) return 'ADMIN';
+    if (path.startsWith('/incharge')) return 'INCHARGE';
+    if (path.startsWith('/student')) return 'STUDENT';
+    return null;
+  }, [role, location.pathname]);
+
   // Define mobile navigation items strictly by role
   const navItems = useMemo<MobileNavItem[]>(() => {
-    switch (role) {
+    switch (effectiveRole) {
       case 'ADMIN':
         return [
           {
@@ -176,7 +192,7 @@ export const MobileBottomNav: React.FC = () => {
       default:
         return [];
     }
-  }, [role]);
+  }, [effectiveRole]);
 
   // Determine active tab: Guarantee strictly ONE active tab by matching in priority order
   const activeTabId = useMemo<string | null>(() => {
@@ -213,20 +229,21 @@ export const MobileBottomNav: React.FC = () => {
     }
 
     // Default fallback to 'home' if inside current role's root route
-    if (role === 'ADMIN' && currentPath.startsWith('/admin')) return 'home';
-    if (role === 'INCHARGE' && currentPath.startsWith('/incharge')) return 'home';
-    if (role === 'STUDENT' && currentPath.startsWith('/student')) return 'home';
+    if (effectiveRole === 'ADMIN' && currentPath.startsWith('/admin')) return 'home';
+    if (effectiveRole === 'INCHARGE' && currentPath.startsWith('/incharge')) return 'home';
+    if (effectiveRole === 'STUDENT' && currentPath.startsWith('/student')) return 'home';
 
     return null;
-  }, [location.pathname, navItems, role]);
+  }, [location.pathname, navItems, effectiveRole]);
 
-  if (!role || navItems.length === 0) {
+  if (!effectiveRole || navItems.length === 0) {
     return null;
   }
 
   return (
     <nav
       aria-label="Mobile Bottom Navigation"
+      data-mobile-bottom-nav="true"
       className="fixed bottom-0 inset-x-0 z-40 md:hidden bg-white/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md border-t border-zinc-200/90 dark:border-[#26262e] shadow-lg select-none transition-colors duration-200"
       style={{
         paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',

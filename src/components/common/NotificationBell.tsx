@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Bell, CheckCheck, Trash2, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -8,10 +8,11 @@ import { formatISTTime } from '../../utils/time';
 import { subscribeToNotifications } from '../../lib/supabaseRealtime';
 
 export const NotificationBell: React.FC = () => {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const lastFetchRef = useRef<number>(0);
   const navigate = useNavigate();
 
   const getNotificationPath = () => {
@@ -28,6 +29,8 @@ export const NotificationBell: React.FC = () => {
   };
 
   const fetchNotifications = async () => {
+    const token = localStorage.getItem('bus_token');
+    if (!user || !token) return;
     try {
       const res = await api.getNotifications();
       setUnreadCount(res.unreadCount);
@@ -38,14 +41,46 @@ export const NotificationBell: React.FC = () => {
   };
 
   useEffect(() => {
+    const token = localStorage.getItem('bus_token');
+    if (!user || !token) {
+      setUnreadCount(0);
+      setNotifications([]);
+      return;
+    }
+
+    lastFetchRef.current = Date.now();
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 45000);
+
+    const interval = setInterval(() => {
+      const currentToken = localStorage.getItem('bus_token');
+      if (!currentToken) {
+        clearInterval(interval);
+        return;
+      }
+      fetchNotifications();
+    }, 45000);
+
+    const handleThrottledFetch = () => {
+      const currentToken = localStorage.getItem('bus_token');
+      if (!currentToken) return;
+      const now = Date.now();
+      if (now - lastFetchRef.current < 15000) {
+        return;
+      }
+      lastFetchRef.current = now;
+      fetchNotifications();
+    };
+
     const handleUpdate = () => fetchNotifications();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        handleThrottledFetch();
+      }
+    };
+
     window.addEventListener('notifications-updated', handleUpdate);
-    window.addEventListener('focus', handleUpdate);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') fetchNotifications();
-    });
+    window.addEventListener('focus', handleThrottledFetch);
+    document.addEventListener('visibilitychange', handleVisibility);
 
     const unsubRealtime = subscribeToNotifications(() => {
       fetchNotifications();
@@ -54,10 +89,11 @@ export const NotificationBell: React.FC = () => {
     return () => {
       clearInterval(interval);
       window.removeEventListener('notifications-updated', handleUpdate);
-      window.removeEventListener('focus', handleUpdate);
+      window.removeEventListener('focus', handleThrottledFetch);
+      document.removeEventListener('visibilitychange', handleVisibility);
       unsubRealtime();
     };
-  }, []);
+  }, [user]);
 
   const handleNotificationClick = async (notif: Notification) => {
     try {

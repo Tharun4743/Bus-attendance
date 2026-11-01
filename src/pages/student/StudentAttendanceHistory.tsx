@@ -1,4 +1,4 @@
-﻿import { StudentAttendanceHistorySkeleton } from '../../components/skeleton/StudentSkeletons';
+import { StudentAttendanceHistorySkeleton } from '../../components/skeleton/StudentSkeletons';
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../services/api';
 import { AttendanceRecord } from '../../types';

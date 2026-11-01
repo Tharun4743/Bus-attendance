@@ -1,4 +1,4 @@
-﻿import { StudentNotificationsSkeleton } from '../../components/skeleton/StudentSkeletons';
+import { StudentNotificationsSkeleton } from '../../components/skeleton/StudentSkeletons';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
