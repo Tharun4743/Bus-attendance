@@ -205,7 +205,7 @@ export const MobileBottomNav: React.FC = () => {
       for (const m of item.matchPaths) {
         const cleanM = m.toLowerCase().replace(/\/$/, '');
         if (cleanM !== '/admin' && cleanM !== '/incharge' && cleanM !== '/student') {
-          if (currentPath.startsWith(cleanM)) {
+          if (currentPath === cleanM || currentPath.startsWith(cleanM + '/')) {
             return item.id;
           }
         }

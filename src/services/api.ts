@@ -16,6 +16,8 @@ import {
 const API_BASE = '/api';
 
 class ApiClient {
+  private inFlightRequests: Map<string, Promise<any>> = new Map();
+
   private getToken(): string | null {
     return localStorage.getItem('bus_token');
   }
@@ -143,20 +145,66 @@ class ApiClient {
   }
 
   async login(email: string, password: string): Promise<{ token: string; user: User }> {
-    const res = await this.request<{ token: string; user: User }>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-    this.setToken(res.token);
-    return res;
+    const key = `login:${email.trim().toLowerCase()}`;
+    const existing = this.inFlightRequests.get(key);
+    if (existing) {
+      return existing;
+    }
+
+    const promise = (async () => {
+      try {
+        const res = await this.request<{ token: string; user: User }>('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email: email.trim(), password }),
+        });
+        this.setToken(res.token);
+        return res;
+      } finally {
+        this.inFlightRequests.delete(key);
+      }
+    })();
+
+    this.inFlightRequests.set(key, promise);
+    return promise;
   }
 
   async getCurrentUser(): Promise<{ user: User }> {
-    return this.request<{ user: User }>('/auth/me');
+    const token = this.getToken();
+    if (!token) {
+      throw new Error('No authentication token available.');
+    }
+    const key = `me:${token}`;
+    const existing = this.inFlightRequests.get(key);
+    if (existing) {
+      return existing;
+    }
+
+    const promise = (async () => {
+      try {
+        return await this.request<{ user: User }>('/auth/me');
+      } finally {
+        this.inFlightRequests.delete(key);
+      }
+    })();
+
+    this.inFlightRequests.set(key, promise);
+    return promise;
   }
 
   logout() {
+    const token = this.getToken();
     this.setToken(null);
+    this.inFlightRequests.clear();
+    if (token) {
+      // Best-effort server session invalidation
+      fetch(`${API_BASE}/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      }).catch(() => {});
+    }
   }
 
   // Admin: Student Approvals

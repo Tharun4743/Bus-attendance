@@ -439,3 +439,45 @@ export const InchargeMoreSkeleton: React.FC = () => {
     </div>
   );
 };
+
+// ============================================================================
+// 9. InchargeStartAttendanceSkeleton
+// ============================================================================
+export const InchargeStartAttendanceSkeleton: React.FC = () => {
+  return (
+    <div className="space-y-5 max-w-4xl mx-auto pb-8 animate-in fade-in duration-150">
+      {/* Header */}
+      <div className="bg-white dark:bg-[#141418] rounded-2xl p-5 sm:p-6 shadow-xs border border-zinc-200/90 dark:border-[#26262e] space-y-2">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-5 w-36 rounded-full" />
+          <Skeleton className="h-4 w-28 rounded-md" />
+        </div>
+        <Skeleton className="h-7 w-64 sm:w-80 rounded-lg" />
+        <Skeleton className="h-3.5 w-80 rounded" />
+      </div>
+
+      {/* Transit Window Card */}
+      <div className="bg-white dark:bg-[#141418] rounded-2xl border border-zinc-200/90 dark:border-[#26262e] p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-[#26262e] pb-4">
+          <div className="space-y-1.5">
+            <Skeleton className="h-4 w-32 rounded-md" />
+            <Skeleton className="h-6 w-48 rounded-lg" />
+          </div>
+          <Skeleton className="h-6 w-24 rounded-full" />
+        </div>
+
+        {/* Mode selector skeleton */}
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-28 rounded-md" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Skeleton className="h-20 rounded-xl" />
+            <Skeleton className="h-20 rounded-xl" />
+          </div>
+        </div>
+
+        {/* Start button skeleton */}
+        <SkeletonButton className="w-full h-12 rounded-xl mt-4" />
+      </div>
+    </div>
+  );
+};

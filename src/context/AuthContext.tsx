@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { User, Role } from '../types';
 import { api } from '../services/api';
 
@@ -17,8 +17,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const inFlightLoginRef = useRef<Promise<User> | null>(null);
+  const inFlightRefreshRef = useRef<Promise<void> | null>(null);
 
-  const refreshUser = async () => {
+  const refreshUser = async (): Promise<void> => {
+    if (inFlightRefreshRef.current) {
+      return inFlightRefreshRef.current;
+    }
+
     const token = localStorage.getItem('bus_token');
     if (!token) {
       setUser(null);
@@ -26,16 +32,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    try {
-      const res = await api.getCurrentUser();
-      setUser(res.user);
-    } catch (err) {
-      console.error('Failed to restore session:', err);
-      api.logout();
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
+    const promise = (async () => {
+      try {
+        const res = await api.getCurrentUser();
+        setUser(res.user);
+      } catch (err) {
+        console.error('Failed to restore session:', err);
+        api.logout();
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+        inFlightRefreshRef.current = null;
+      }
+    })();
+
+    inFlightRefreshRef.current = promise;
+    return promise;
   };
 
   useEffect(() => {
@@ -43,14 +55,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, pass: string): Promise<User> => {
-    setIsLoading(true);
-    try {
-      const res = await api.login(email, pass);
-      setUser(res.user);
-      return res.user;
-    } finally {
-      setIsLoading(false);
+    if (inFlightLoginRef.current) {
+      return inFlightLoginRef.current;
     }
+
+    setIsLoading(true);
+    const promise = (async () => {
+      try {
+        const res = await api.login(email, pass);
+        setUser(res.user);
+        return res.user;
+      } finally {
+        setIsLoading(false);
+        inFlightLoginRef.current = null;
+      }
+    })();
+
+    inFlightLoginRef.current = promise;
+    return promise;
   };
 
   const logout = () => {

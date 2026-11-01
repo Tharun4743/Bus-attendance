@@ -55,6 +55,7 @@ export const AdminDashboard: React.FC = () => {
   const [pendingIncharges, setPendingIncharges] = useState<User[]>([]);
   const [unreadNotifsCount, setUnreadNotifsCount] = useState<number>(0);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -64,7 +65,7 @@ export const AdminDashboard: React.FC = () => {
     try {
       const res = await api.getTodayAttendance();
       setData(res);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load dashboard data:', err);
     }
   };
@@ -118,14 +119,20 @@ export const AdminDashboard: React.FC = () => {
   // Combined Refresh
   const refreshAll = async () => {
     setIsRefreshing(true);
-    await Promise.all([
-      fetchDashboardData(),
-      fetchSessionData(),
-      fetchPendingApprovals(),
-      fetchFleetStats(),
-    ]);
-    setIsLoading(false);
-    setIsRefreshing(false);
+    setError(null);
+    try {
+      await Promise.all([
+        fetchDashboardData(),
+        fetchSessionData(),
+        fetchPendingApprovals(),
+        fetchFleetStats(),
+      ]);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to connect to the transit server.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
   };
 
   useEffect(() => {
@@ -151,6 +158,20 @@ export const AdminDashboard: React.FC = () => {
 
   if (isLoading && !data) {
     return <AdminDashboardSkeleton />;
+  }
+
+  if (error && !data) {
+    return (
+      <div className="py-12 max-w-xl mx-auto">
+        <EmptyState
+          icon={AlertCircle}
+          title="Dashboard Unavailable"
+          description={error}
+          actionText="Retry Loading"
+          onAction={refreshAll}
+        />
+      </div>
+    );
   }
 
   // Attendance Lifecycle State

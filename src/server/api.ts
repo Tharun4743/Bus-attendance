@@ -1,6 +1,6 @@
 import express, { Router, Request, Response, NextFunction } from 'express';
 import { getStorage, StorageAdapter } from './storage';
-import { generateToken, verifyToken, TokenPayload, hashPassword, comparePassword } from './auth';
+import { generateToken, verifyToken, TokenPayload, hashPassword, comparePassword, revokeToken } from './auth';
 import { evaluateSessionStatus, getISTDateString, getISTTimeString } from './attendance/session';
 import { AttendanceVerifier } from './attendance/verifier';
 import { ReportGenerator } from './reports/generator';
@@ -580,6 +580,19 @@ apiRouter.get('/auth/me', requireAuth(), async (req: AuthRequest, res: Response)
     return res.json({ user: safeUser });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
+  }
+});
+
+apiRouter.post('/auth/logout', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      revokeToken(token);
+    }
+    return res.json({ success: true, message: 'Logged out successfully.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Logout failed.' });
   }
 });
 
