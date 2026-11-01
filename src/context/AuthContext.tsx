@@ -7,6 +7,7 @@ interface AuthContextType {
   role: Role | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isSubmitting?: boolean;
   login: (email: string, pass: string) => Promise<User>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -17,10 +18,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const inFlightLoginRef = useRef<Promise<User> | null>(null);
   const inFlightRefreshRef = useRef<Promise<void> | null>(null);
 
+  // Listen for centralized session expiration events
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setUser(null);
+      setIsLoading(false);
+      setIsSubmitting(false);
+      inFlightRefreshRef.current = null;
+      inFlightLoginRef.current = null;
+    };
+
+    window.addEventListener('auth:session-expired', handleSessionExpired);
+    return () => {
+      window.removeEventListener('auth:session-expired', handleSessionExpired);
+    };
+  }, []);
+
   const refreshUser = async (): Promise<void> => {
+    // If a session check is already in-flight, return the shared promise
     if (inFlightRefreshRef.current) {
       return inFlightRefreshRef.current;
     }
@@ -37,8 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const res = await api.getCurrentUser();
         setUser(res.user);
       } catch (err) {
-        console.error('Failed to restore session:', err);
-        api.logout();
+        // Cleanly clear state on failure without firing cascading 401s or redundant logout queries
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -55,10 +73,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, pass: string): Promise<User> => {
+    // Prevent duplicate login submissions with strict loading state locking
     if (inFlightLoginRef.current) {
       return inFlightLoginRef.current;
     }
 
+    setIsSubmitting(true);
     setIsLoading(true);
     const promise = (async () => {
       try {
@@ -67,6 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return res.user;
       } finally {
         setIsLoading(false);
+        setIsSubmitting(false);
         inFlightLoginRef.current = null;
       }
     })();
@@ -76,8 +97,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    // Cleanly clear state and invalidate token on server without redundant queries
     api.logout();
     setUser(null);
+    setIsLoading(false);
+    setIsSubmitting(false);
+    inFlightRefreshRef.current = null;
+    inFlightLoginRef.current = null;
   };
 
   return (
@@ -87,6 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role: user?.role || null,
         isAuthenticated: !!user,
         isLoading,
+        isSubmitting,
         login,
         logout,
         refreshUser,
