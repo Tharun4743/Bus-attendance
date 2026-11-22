@@ -12,7 +12,6 @@ echo.
 
 where node >nul 2>&1
 if errorlevel 1 (
-    color 0C
     echo [ERROR] Node.js is not found in PATH. Please install Node.js 18+.
     pause
     exit /b 1
@@ -25,16 +24,24 @@ if exist ".agent\skills\tk_code_studio\scripts\live.mjs" (
     set "SCRIPT_PATH=.agent\skills\tk_code_studio\scripts\live.mjs"
 ) else if exist "scripts\live.mjs" (
     set "SCRIPT_PATH=scripts\live.mjs"
+) else if exist "%USERPROFILE%\.gemini\config\skills\tk_code_studio\scripts\live.mjs" (
+    set "SCRIPT_PATH=%USERPROFILE%\.gemini\config\skills\tk_code_studio\scripts\live.mjs"
+) else if exist "%USERPROFILE%\.gemini\antigravity\skills\tk_code_studio\scripts\live.mjs" (
+    set "SCRIPT_PATH=%USERPROFILE%\.gemini\antigravity\skills\tk_code_studio\scripts\live.mjs"
+) else if exist "%USERPROFILE%\.claude\skills\tk_code_studio\scripts\live.mjs" (
+    set "SCRIPT_PATH=%USERPROFILE%\.claude\skills\tk_code_studio\scripts\live.mjs"
+) else if exist "%USERPROFILE%\.cursor\skills\tk_code_studio\scripts\live.mjs" (
+    set "SCRIPT_PATH=%USERPROFILE%\.cursor\skills\tk_code_studio\scripts\live.mjs"
 )
 
 if "%SCRIPT_PATH%"=="" (
-    color 0C
     echo [ERROR] Could not find live.mjs script.
+    echo Please ensure TK Code Studio is installed in your project or global skills directory.
     pause
     exit /b 1
 )
 
-echo [*] Starting TK Code Studio on port 4743...
+echo [*] Starting TK Code Studio...
 node "%SCRIPT_PATH%" start %*
 
 if errorlevel 1 (

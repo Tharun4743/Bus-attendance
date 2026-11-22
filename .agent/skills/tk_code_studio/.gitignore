@@ -1,0 +1,10 @@
+node_modules/
+.live/
+run_tk_studio.bat
+run-tk-studio.bat
+run_tk_studio.sh
+run-tk-studio.sh
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
