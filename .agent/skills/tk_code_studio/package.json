@@ -1,0 +1,30 @@
+{
+  "name": "tk_code_studio",
+  "version": "1.0.0",
+  "description": "TK Code Studio — Visual, in-browser live editing studio for local web applications, wired directly to your source code and AI coding agent.",
+  "type": "module",
+  "main": "scripts/live.mjs",
+  "bin": {
+    "tk_code_studio": "./scripts/live.mjs"
+  },
+  "scripts": {
+    "start": "node scripts/live.mjs start",
+    "live": "node scripts/live.mjs start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tharun4743/TK_CodeStudio.git"
+  },
+  "keywords": [
+    "tk_code_studio",
+    "live_edit",
+    "devtools",
+    "shadow_dom",
+    "reverse_proxy",
+    "antigravity",
+    "ai_agent",
+    "visual_editor"
+  ],
+  "author": "Tharun Kumar (https://github.com/Tharun4743)",
+  "license": "MIT"
+}

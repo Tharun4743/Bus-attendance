@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TK Code Studio — Visual In-Browser Live Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0b0d;
+      --card: #141417;
+      --border: #242429;
+      --border-subtle: #1c1c20;
+      --accent: #10b981;
+      --accent-glow: rgba(16, 185, 129, 0.12);
+      --text: #f4f4f6;
+      --muted: #9c9ca4;
+      --success: #10b981;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(circle at 50% -10%, rgba(16, 185, 129, 0.08) 0%, transparent 45%),
+        radial-gradient(circle at 85% 25%, rgba(255, 255, 255, 0.02) 0%, transparent 35%);
+      background-attachment: fixed;
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 48px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .brand-icon {
+      color: var(--accent);
+      font-size: 20px;
+    }
+
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+      margin-left: 20px;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: var(--accent);
+      padding: 4px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: clamp(32px, 5vw, 48px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      font-size: 18px;
+      color: var(--muted);
+      max-width: 600px;
+      margin: 0 auto 32px;
+    }
+
+    /* Interactive Testing Card */
+    .test-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      margin-bottom: 48px;
+      text-align: left;
+    }
+
+    .test-box-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
+
+    .test-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+
+    .test-desc {
+      font-size: 15px;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    .instructions {
+      background: rgba(16, 185, 129, 0.04);
+      border: 1px dashed rgba(16, 185, 129, 0.3);
+      border-radius: 8px;
+      padding: 16px;
+      font-size: 13px;
+      color: #d1fae5;
+    }
+
+    .instructions ol {
+      margin-left: 20px;
+      margin-top: 6px;
+      line-height: 1.7;
+    }
+
+    /* Features Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 60px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(16, 185, 129, 0.35);
+    }
+
+    .card h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .card p {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* Quickstart */
+    .quickstart {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 60px;
+    }
+
+    .quickstart h3 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .code-snippet {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--accent);
+      background: #08080a;
+      padding: 14px 18px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    footer {
+      text-align: center;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <a href="#" class="brand">
+        <span class="brand-icon">⚡</span>
+        <span>TK Code Studio</span>
+      </a>
+
+      <div class="nav-links">
+        <a href="https://github.com/Tharun4743/TK_CodeStudio" target="_blank">GitHub</a>
+        <a href="https://github.com/Tharun4743" target="_blank">Author</a>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+      <div class="badge">Zero Dependencies · In-Browser Live Editor</div>
+      <h1>Edit Your Codebase from the Browser</h1>
+      <p class="subtitle">
+        Double-click any element on this page to edit text directly. Hit Ctrl+S to save changes straight into <code>index.html</code>.
+      </p>
+    </section>
+
+    <!-- Test Playground Area (Easy for user to click & edit) -->
+    <div class="test-box">
+      <div class="test-box-header">
+        <span>LIVE EDIT PLAYGROUND</span>
+        <span style="color: var(--success);">● Active on Port 4743</span>
+      </div>
+
+      <h2 class="test-title">Welcome to Tharun Code Studio</h2>
+      <p class="test-desc">
+        Try double-clicking this sentence right now. You can change the text, fix typos, or rewrite headings directly from your browser.
+      </p>
+
+      <div class="instructions">
+        <strong>💡 Quick Instructions:</strong>
+        <ol>
+          <li><strong>Double-click</strong> on any title or paragraph on this page.</li>
+          <li>Type your new text and press <strong>Enter</strong> to commit.</li>
+          <li>Press <strong>Ctrl + S</strong> (or click <em>Save to code</em> in the bottom bar) to write changes to disk.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- 3 Simple Pillars -->
+    <div class="grid">
+      <div class="card">
+        <h3>🎯 Direct-to-Source</h3>
+        <p>Text edits are reverse-matched and written straight into your physical files on disk.</p>
+      </div>
+
+      <div class="card">
+        <h3>🛡️ Shadow DOM</h3>
+        <p>The visual editing toolbar lives inside an isolated Shadow DOM container with zero CSS bleed.</p>
+      </div>
+
+      <div class="card">
+        <h3>⚡ 1-Click Launch</h3>
+        <p>Run <code>run_tk_studio.bat</code>. Automatically detects ports and launches the proxy.</p>
+      </div>
+    </div>
+
+    <!-- Simple Quickstart -->
+    <div class="quickstart">
+      <h3>RUNNING IN ANY PROJECT</h3>
+      <div class="code-snippet">
+        run_tk_studio.bat
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      Created & Maintained by <a href="https://github.com/Tharun4743" target="_blank">Tharun Kumar</a> (@Tharun4743)
+    </footer>
+  </div>
+
+</body>
+</html>

@@ -12,7 +12,8 @@
     "build:serverless": "esbuild src/server/serverless.ts --bundle --platform=node --format=esm --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=api/index.js --external:pg-native",
     "build": "npm run build:client && npm run build:serverless",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "live": "node .agent/skills/tk_code_studio/scripts/live.mjs start"
   },
   "engines": {
     "node": ">=18.0.0 <=24.x"

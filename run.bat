@@ -1,160 +1,66 @@
 @echo off
-setlocal enabledelayedexpansion
-title College Bus Attendance System — Unified Launcher
+setlocal
+title College Bus Attendance System
 color 0B
 
+cd /d "%~dp0"
+
 echo ===============================================================================
-echo            🚌 COLLEGE BUS ATTENDANCE MANAGEMENT SYSTEM — LAUNCHER
+echo            COLLEGE BUS ATTENDANCE MANAGEMENT SYSTEM
 echo ===============================================================================
 echo.
-echo   CONFIGURED SYSTEM ROLES:
-echo   -----------------------------------------------------------------------------
-echo   [1] SUPERADMIN : campusvsb4743@gmail.com / tharun@gmail.com (/admin/dashboard)
-echo   [2] IN-CHARGE  : aarthi@college.edu  | Role: Bus In-Charge (/incharge/dashboard)
-echo   [3] STUDENT    : 24it001@college.edu | Role: Student Commuter (/student/dashboard)
-echo   -----------------------------------------------------------------------------
+echo   [*] Web Application URL : http://localhost:5173
+echo   [*] Backend REST API    : http://localhost:3001/api
+echo   [*] Server Health Check : http://localhost:3001/api/health
+echo.
+echo   Opening browser at http://localhost:5173 and starting servers...
+echo   (Press Ctrl+C in this window at any time to stop)
+echo ===============================================================================
 echo.
 
-:: 1. Check if Node.js is installed
 where node >nul 2>nul
-if %errorlevel% neq 0 (
-    color 0C
-    echo [ERROR] Node.js is not installed or not found in your PATH!
-    echo Please install Node.js from https://nodejs.org/ and re-run.
-    echo.
-    pause
-    exit /b 1
-)
+if errorlevel 1 goto ERR_NO_NODE
 
-:: 2. Check for .env file
 if not exist ".env" (
-    echo [*] .env file not found. Creating from .env.example...
-    copy ".env.example" ".env" >nul
-    echo [!] Created .env from template. Please configure your DATABASE_URL before starting.
-    echo.
+    if exist ".env.example" copy /y ".env.example" ".env" >nul
 )
 
-:: 3. Check for node_modules
 if not exist "node_modules\" (
-    echo [*] Dependencies not found. Running npm install...
+    echo [*] Installing dependencies, please wait...
     call npm install
-    if %errorlevel% neq 0 (
-        color 0C
-        echo [ERROR] npm install failed.
-        pause
-        exit /b 1
-    )
-    echo [OK] Dependencies installed successfully.
-    echo.
+    if errorlevel 1 goto ERR_NPM_INSTALL
 )
 
-:MENU
-echo ===============================================================================
-echo   CHOOSE AN ACTION:
-echo   [1] Start Application (Express API + Vite Client + Auto-Open Browser) [DEFAULT]
-echo   [2] Run Vitest Regression Test Circuits (37 tests: Biometrics + Auth + OTP)
-echo   [3] Run System Lifecycle Verification (25 tests: npm test)
-echo   [4] Build Production Bundle (tsc + vite build)
-echo   [5] Install / Clean Reinstall Dependencies (npm install)
-echo   [6] Exit
-echo ===============================================================================
-echo.
+set "PATH=%~dp0node_modules\.bin;%PATH%"
 
-set "choice=1"
-set /p choice="Enter choice (1-6) [Press ENTER for Default 1]: "
+:: Open default web browser directly to the app URL (no extra CMD windows)
+start http://localhost:5173
 
-if "%choice%"=="1" goto START_APP
-if "%choice%"=="2" goto RUN_VITEST
-if "%choice%"=="3" goto RUN_SYSTEM_TESTS
-if "%choice%"=="4" goto BUILD_APP
-if "%choice%"=="5" goto INSTALL_DEPS
-if "%choice%"=="6" goto EXIT_APP
-
-echo [!] Invalid option. Starting Application...
-timeout /t 1 >nul
-
-:START_APP
-cls
-color 0A
-echo ===============================================================================
-echo                 STARTING BUS ATTENDANCE SYSTEM (DEV MODE)
-echo ===============================================================================
-echo.
-echo   🌐 Web Application : http://localhost:5173
-echo   🔌 REST API Server : http://localhost:3001/api
-echo   📊 Health Check    : http://localhost:3001/api/health
-echo.
-echo   Ready for local & mobile testing.
-echo   Launching web browser in 3 seconds...
-echo   (Press Ctrl+C at any time in this window to stop the server)
-echo ===============================================================================
-echo.
-
-:: Automatically open browser after 3 seconds
-start "" cmd /c "timeout /t 3 >nul && start http://localhost:5173"
-
-:: Launch concurrently both server.ts and vite
+:: Start the application (Express backend + Vite client)
 call npm run dev
-pause
-goto MENU
 
-:RUN_VITEST
-cls
-color 0E
-echo ===============================================================================
-echo                    RUNNING VITEST REGRESSION TEST CIRCUITS
-echo ===============================================================================
-echo.
-call npx vitest run
-echo.
-echo Press any key to return to menu...
-pause >nul
-cls
-goto MENU
-
-:RUN_SYSTEM_TESTS
-cls
-color 0E
-echo ===============================================================================
-echo                    RUNNING SYSTEM VERIFICATION LIFECYCLE TESTS
-echo ===============================================================================
-echo.
-call npm test
-echo.
-echo Press any key to return to menu...
-pause >nul
-cls
-goto MENU
-
-:BUILD_APP
-cls
-color 0D
-echo ===============================================================================
-echo                    BUILDING PRODUCTION BUNDLE (TSC + VITE)
-echo ===============================================================================
-echo.
-call npm run build
-echo.
-echo Press any key to return to menu...
-pause >nul
-cls
-goto MENU
-
-:INSTALL_DEPS
-cls
-color 0F
-echo ===============================================================================
-echo                    INSTALLING / REPAIRING DEPENDENCIES
-echo ===============================================================================
-echo.
-call npm install
-echo.
-echo [OK] Complete. Press any key to return to menu...
-pause >nul
-cls
-goto MENU
-
-:EXIT_APP
-cls
-echo Thank you for using College Bus Attendance System.
+if errorlevel 1 goto ERR_STOPPED
 exit /b 0
+
+:ERR_NO_NODE
+color 0C
+echo.
+echo [ERROR] Node.js is not installed or not found in system PATH.
+echo Please install Node.js from https://nodejs.org/ and re-run.
+echo.
+pause
+exit /b 1
+
+:ERR_NPM_INSTALL
+color 0C
+echo.
+echo [ERROR] npm install encountered an error.
+echo.
+pause
+exit /b 1
+
+:ERR_STOPPED
+echo.
+echo [!] Server stopped.
+pause
+exit /b 1

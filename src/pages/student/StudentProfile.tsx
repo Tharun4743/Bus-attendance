@@ -133,7 +133,7 @@ export const StudentProfile: React.FC = () => {
           </div>
           <div>
             <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
-              Student Profile & Bus Pass
+              Student Profile
             </h1>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
               Official institutional identification and commuter profile
