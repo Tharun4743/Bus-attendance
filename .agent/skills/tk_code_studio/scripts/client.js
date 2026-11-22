@@ -109,11 +109,25 @@
   const label = el => el.tagName.toLowerCase() + ([...el.classList][0] ? '.' + [...el.classList][0] : '');
   const isButton = el => el.matches('button,[role=button],input[type=submit],input[type=button],a.btn,a[class*=button],a[class*=btn]');
   const isInput = el => el.matches('input,textarea,select');
-  const isImage = el => el.matches('img,picture,image,figure,svg') || (el.style && el.style.backgroundImage && el.style.backgroundImage !== 'none');
+  const isImage = el => el.matches('img,picture,image,figure') || (el.style && el.style.backgroundImage && el.style.backgroundImage !== 'none');
+  const isIcon = el => el && (
+    el.tagName.toLowerCase() === 'svg' ||
+    el.matches('svg, svg *, [class*=lucide], [data-lucide], i.fa, i.bi, i[class*=icon], span[class*=icon]') ||
+    el.closest('svg') !== null
+  );
   const isTextElement = el => el.matches('h1,h2,h3,h4,h5,h6,p,span,a,b,strong,i,em,small,sub,sup,label,li,blockquote');
   const sizePill = $('#size-pill');
   let resizing = false;
   const directTexts = el => [...el.childNodes].filter(n => n.nodeType === 3 && n.nodeValue.trim()).map(n => n.nodeValue.trim().replace(/\s+/g, ' '));
+
+  function resolveSelectable(el) {
+    if (!el || inUI(el)) return null;
+    const svg = el.closest('svg');
+    if (svg && !inUI(svg)) return svg;
+    const iconEl = el.closest('i[class*=icon], span[class*=icon], [class*=lucide]');
+    if (iconEl && !inUI(iconEl)) return iconEl;
+    return el;
+  }
 
   function toast(msg, ms = 3500) {
     const t = $('#toast'); t.textContent = msg; t.style.display = 'block';
@@ -171,11 +185,17 @@
       b.onclick = e => { e.stopPropagation(); fn(); };
       tools.appendChild(b);
     };
-    add('Edit text', startEdit, '', 'Inline Text Edit (Double Click)');
-    add('Size 📐', promptSize, '', 'Adjust Size / Presets (Alt+R)');
-    add('Font 🔤', promptFontSize, '', 'Font & Icon Size');
-    add('Color 🎨', triggerColorPicker, '', 'Dynamic Text Color (Alt+K)');
-    add('BG 🖌️', triggerBgPicker, '', 'Dynamic Background Color (Alt+B)');
+    if (isIcon(selected)) {
+      add('Icon Size ⚡', promptIconSize, 'primary', 'Resize Icon (16px, 20px, 24px, 32px, 48px)');
+      add('Color 🎨', triggerColorPicker, '', 'Icon Color (Alt+K)');
+      add('BG 🖌️', triggerBgPicker, '', 'Icon Background (Alt+B)');
+    } else {
+      add('Edit text', startEdit, '', 'Inline Text Edit (Double Click)');
+      add('Size 📐', promptSize, '', 'Adjust Size / Presets (Alt+R)');
+      add('Font 🔤', promptFontSize, '', 'Font Size');
+      add('Color 🎨', triggerColorPicker, '', 'Dynamic Text Color (Alt+K)');
+      add('BG 🖌️', triggerBgPicker, '', 'Dynamic Background Color (Alt+B)');
+    }
     add('Move ↑', moveUp, '', 'Move Element Up (Alt+↑)');
     add('Move ↓', moveDown, '', 'Move Element Down (Alt+↓)');
     if (isImage(selected)) add('Replace 📷', promptImageUpload, '', 'Replace Image Asset');
@@ -305,8 +325,92 @@
     bgInput.click();
   }
 
+  function promptIconSize() {
+    if (!selected) return;
+    const rect = selected.getBoundingClientRect();
+    const cur = Math.round(rect.width) || parseInt(window.getComputedStyle(selected).fontSize) || 24;
+    const choice = prompt(
+      `⚡ Adjust Icon Size for <${selected.tagName.toLowerCase()}> (Current: ${cur}px):\n` +
+      `1 = Micro / Compact (16px)\n` +
+      `2 = Small (20px)\n` +
+      `3 = Standard / Medium (24px)\n` +
+      `4 = Large (32px)\n` +
+      `5 = Extra Large (40px)\n` +
+      `6 = Huge (48px)\n` +
+      `7 = Jumbo (64px)\n` +
+      `+ = Make Bigger (+4px -> ${cur + 4}px)\n` +
+      `- = Make Smaller (-4px -> ${Math.max(8, cur - 4)}px)\n` +
+      `Or enter custom size (e.g. "28px"):`,
+      `${cur}px`
+    );
+    if (!choice) return;
+    let newSize = '';
+    const c = choice.trim().toLowerCase();
+    if (c === '1' || c === 'xs') newSize = '16px';
+    else if (c === '2' || c === 'sm') newSize = '20px';
+    else if (c === '3' || c === 'md') newSize = '24px';
+    else if (c === '4' || c === 'lg') newSize = '32px';
+    else if (c === '5' || c === 'xl') newSize = '40px';
+    else if (c === '6' || c === '2xl') newSize = '48px';
+    else if (c === '7' || c === '3xl') newSize = '64px';
+    else if (c === '+' || c === 'a+') newSize = `${cur + 4}px`;
+    else if (c === '-' || c === 'a-') newSize = `${Math.max(8, cur - 4)}px`;
+    else {
+      newSize = choice.trim();
+      if (/^\d+$/.test(newSize)) newSize += 'px';
+    }
+    applyIconSize(newSize);
+  }
+
+  function applyIconSize(size) {
+    const el = selected; if (!el) return;
+    const prevStyle = el.getAttribute('style') || '';
+    const prevWidth = el.getAttribute('width');
+    const prevHeight = el.getAttribute('height');
+
+    // Force styles with !important so Tailwind utility classes (like w-5 h-5) are cleanly overridden
+    el.style.setProperty('width', size, 'important');
+    el.style.setProperty('height', size, 'important');
+    el.style.setProperty('min-width', size, 'important');
+    el.style.setProperty('min-height', size, 'important');
+    el.style.setProperty('font-size', size, 'important');
+
+    if (el.tagName.toLowerCase() === 'svg') {
+      const num = parseInt(size);
+      if (!isNaN(num)) {
+        el.setAttribute('width', String(num));
+        el.setAttribute('height', String(num));
+      }
+    }
+
+    const op = {
+      type: 'resize',
+      isIcon: true,
+      width: size,
+      height: size,
+      style: el.getAttribute('style'),
+      ...meta(el)
+    };
+    ops.push(op);
+
+    undoStack.push(() => {
+      if (prevStyle) el.setAttribute('style', prevStyle);
+      else el.removeAttribute('style');
+      if (prevWidth) el.setAttribute('width', prevWidth);
+      else el.removeAttribute('width');
+      if (prevHeight) el.setAttribute('height', prevHeight);
+      else el.removeAttribute('height');
+      ops.splice(ops.indexOf(op), 1);
+      refresh();
+    });
+
+    refresh();
+    toast(`⚡ Icon size set to ${size}`);
+  }
+
   function promptFontSize() {
     if (!selected) return;
+    if (isIcon(selected)) return promptIconSize();
     const cur = parseInt(window.getComputedStyle(selected).fontSize) || 16;
     const choice = prompt(
       `Adjust Font / Text / Icon Size (Current: ${cur}px):\n` +
@@ -438,6 +542,7 @@
 
   function promptSize() {
     if (!selected) return;
+    if (isIcon(selected)) return promptIconSize();
     const tag = selected.tagName.toLowerCase();
     const rect = selected.getBoundingClientRect();
     const curW = Math.round(rect.width);
@@ -559,13 +664,27 @@
           const dx = ev.clientX - startX;
           const dy = ev.clientY - startY;
 
-          if (isR || isSE) {
-            currentW = Math.max(16, Math.round(startW + dx));
-            selected.style.width = currentW + 'px';
-          }
-          if (isB || isSE) {
-            currentH = Math.max(16, Math.round(startH + dy));
-            selected.style.height = currentH + 'px';
+          if (isIcon(selected)) {
+            const delta = isR ? dx : (isB ? dy : Math.max(dx, dy));
+            currentW = Math.max(12, Math.round(startW + delta));
+            currentH = currentW;
+            selected.style.setProperty('width', currentW + 'px', 'important');
+            selected.style.setProperty('height', currentH + 'px', 'important');
+            selected.style.setProperty('min-width', currentW + 'px', 'important');
+            selected.style.setProperty('min-height', currentH + 'px', 'important');
+            if (selected.tagName.toLowerCase() === 'svg') {
+              selected.setAttribute('width', String(currentW));
+              selected.setAttribute('height', String(currentH));
+            }
+          } else {
+            if (isR || isSE) {
+              currentW = Math.max(16, Math.round(startW + dx));
+              selected.style.width = currentW + 'px';
+            }
+            if (isB || isSE) {
+              currentH = Math.max(16, Math.round(startH + dy));
+              selected.style.height = currentH + 'px';
+            }
           }
 
           const currentRect = selected.getBoundingClientRect();
@@ -584,10 +703,11 @@
 
           if (currentW === Math.round(startW) && currentH === Math.round(startH)) return;
 
-          const wStr = selected.style.width;
-          const hStr = selected.style.height;
+          const wStr = isIcon(selected) ? (currentW + 'px') : selected.style.width;
+          const hStr = isIcon(selected) ? (currentH + 'px') : selected.style.height;
           const op = {
             type: 'resize',
+            isIcon: isIcon(selected),
             width: wStr,
             height: hStr,
             style: selected.getAttribute('style'),
@@ -612,15 +732,26 @@
     });
   }
 
-  document.addEventListener('mousemove', e => { if (on && !inUI(e.target)) hovered = e.target; }, true);
+  document.addEventListener('mousemove', e => { if (on && !inUI(e.target)) hovered = resolveSelectable(e.target); }, true);
   document.addEventListener('click', e => {
     if (!on || inUI(e.target)) return;
     if (editing && editing.contains(e.target)) return;
     e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-    if (e.target === document.documentElement || e.target === document.body) return select(null);
-    select(e.target);
+    const target = resolveSelectable(e.target);
+    if (!target || target === document.documentElement || target === document.body) return select(null);
+    select(target);
   }, true);
-  document.addEventListener('dblclick', e => { if (on && !inUI(e.target)) { e.preventDefault(); select(e.target); startEdit(); } }, true);
+  document.addEventListener('dblclick', e => {
+    if (on && !inUI(e.target)) {
+      e.preventDefault();
+      const target = resolveSelectable(e.target);
+      if (target) {
+        select(target);
+        if (isIcon(target)) promptIconSize();
+        else startEdit();
+      }
+    }
+  }, true);
   document.addEventListener('submit', e => { if (on) e.preventDefault(); }, true);
 
   // ---- text editing ----
